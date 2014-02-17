@@ -1,12 +1,13 @@
 
 var cluster = require('cluster');
+var kaltura = require('./lib/KalturaServer');
 
 var KalturaProcess = null;
 
 if (cluster.isMaster) {
-	KalturaProcess = require('./lib/KalturaMainProcess');
+	KalturaProcess = new kaltura.KalturaMainProcess();
 }
 else{
-	KalturaProcess = require('./lib/KalturaChildProcess');
+	KalturaProcess = new kaltura.KalturaChildProcess();
 }
 
