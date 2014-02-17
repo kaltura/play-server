@@ -1,0 +1,33 @@
+
+[client]
+serviceUrl = @SERVICE_URL@
+partnerId = -6
+secret = @PLAY_PARTNER_ADMIN_SECRET@
+timeout = 90
+verifySSL = false
+
+[cloud]
+domain = @CLOUD_HOSTNAME@
+internalDomain = @CLOUD_HOSTNAME@
+httpPort = 80
+secret = @CLOUD_SECRET@
+
+[memcache]
+hostname = 127.0.0.1
+port = 11211
+touchEnabled = 0
+; See all option in https://www.npmjs.org/package/memcached
+;maxKeySize = 250
+;maxExpiration = 2592000, the max expiration of keys by the Memcached server in milliseconds.
+maxValue = 1073741824
+;poolSize = 10, the maximum connections we can allocate in our connection pool.
+;algorithm = crc32, the hashing algorithm that should be used to generate the hashRing values.
+;reconnect =  18000000, when the server is marked as dead we will attempt to reconnect every x milliseconds.
+timeout = 300
+retries = 1
+failures = 1
+retry = 30000
+;remove = false, when the server is marked as dead you can remove it from the pool so all other will receive the keys instead.
+;failOverServers = undefined, the ability use these servers as failover when the dead server get's removed from the consistent hashing scheme. This must be an array of servers confirm the server_locations specification.
+;keyCompression = true, compress keys using md5 if they exceed the maxKeySize option.
+;idle = 5000, the idle timeout for the connections.
