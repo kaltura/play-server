@@ -48,7 +48,7 @@ namespace dami
         : _reader(rdr), _pos(rdr.getCur()), _locked(true)
       { ; }
       ExitTrigger(ID3_Reader& rdr, ID3_Reader::pos_type pos) 
-        : _reader(rdr), _pos(pos) 
+        : _reader(rdr), _pos(pos), _locked(true)
       { ; }
       virtual ~ExitTrigger() { if (_locked) _reader.setCur(_pos); }
     
