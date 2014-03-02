@@ -166,7 +166,7 @@ ID3_ENUM(ID3_V2Spec)
   ID3V2_3_0,
   ID3V2_4_0,
   ID3V2_EARLIEST = ID3V2_2_0,
-  ID3V2_LATEST = ID3V2_3_0
+  ID3V2_LATEST = ID3V2_4_0
 };
 
 /** The various types of tags that id3lib can handle
