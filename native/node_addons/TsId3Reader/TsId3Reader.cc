@@ -5,33 +5,6 @@
 
 #include "mpegTs.h"
 #include "common.h"
-/*
-
-id3lib setup
-=============
-
-download and untar
-	wget 'http://downloads.sourceforge.net/project/id3lib/id3lib/3.8.3/id3lib-3.8.3.tar.gz'
-	tar zxvf id3lib-3.8.3.tar.gz
-	cd id3lib-3.8.3
-
-apply patch (http://ubuntuforums.org/showthread.php?t=1094137)
-	wget 'http://connie.slackware.com/~alien/slackbuilds/id3lib/build/id3lib-3.8.3_gcc4.diff'
-	patch -p1 < id3lib-3.8.3_gcc4.diff
-	
-enable support for v4.0 tags
-	vi +169 include/id3/globals.h		change ID3V2_LATEST to 4.0
-	
-compile
-	./configure
-	make
-	make install
-	
-add the SO to the loader search path
-	echo /usr/local/lib > /etc/ld.so.conf.d/id3.conf
-	ldconfig
-
-*/
 
 using namespace v8;
 using namespace node;
