@@ -1,0 +1,106 @@
+mpeg_ts_header
+	syncByte : 8
+	transportErrorIndicator : 1
+	payloadUnitStartIndicator : 1
+	transportPriority : 1
+	PID : 13
+	scramblingControl : 2
+	adaptationFieldExist : 1
+	containsPayload : 1
+	continuityCounter : 4
+
+mpeg_ts_adaptation_field
+	adaptationFieldLength : 8
+	discontinuityIndicator : 1
+	randomAccessIndicator : 1
+	esPriorityIndicator : 1
+	pcrFlag : 1
+	opcrFlag : 1
+	splicingPointFlag : 1
+	transportPrivateDataFlag : 1
+	adaptationFieldExtensionFlag : 1
+	
+pes_header
+	prefix : 24
+	streamId : 8
+	pesPacketLength : 16
+
+pes_optional_header
+	markerBits : 2
+	scramblingControls : 2
+	priority : 1
+	dataAlignmentIndicator : 1
+	copyright : 1
+	originalOrCopy : 1
+	ptsFlag : 1
+	dtsFlag : 1
+	escrFlag : 1
+	esRateFlag : 1
+	dsmTrickModeFlag : 1
+	additionalCopyInfoFlag : 1
+	crcFlag : 1
+	extensionFlag : 1
+	pesHeaderLength : 8
+
+pcr
+	pcr90kHzHigh : 17
+	pcr90kHzLow : 16
+	padding : 6
+	pcr27kHz : 9
+
+pts
+	pad1 : 4
+	high : 3
+	marker1 : 1
+	medium : 15
+	marker2 : 1
+	low : 15
+	marker3 : 1
+
+pat
+	pointerField : 8
+	tableId : 8
+	sectionSyntaxIndicator : 1
+	zero : 1
+	reserved1 : 2				// 11
+	reserved2 : 2				// 00
+	sectionLength : 10
+	tranportStreamId : 16
+	reserved3 : 2				// 11
+	versionNumber : 5
+	currentNextIndicator : 1
+	sectionNumber : 8
+	lastSectionNumber : 8
+
+pat_entry
+	programNumber : 16
+	reserved : 3				// 111
+	programPID : 13
+	
+pmt
+	pointerField : 8
+	tableId : 8
+	sectionSyntaxIndicator : 1
+	zero : 1
+	reserved1 : 2				// 11
+	reserved2 : 2				// 00
+	sectionLength : 10
+	programNumber : 16
+	reserved3 : 2				// 11
+	versionNumber : 5
+	currentNextIndicator : 1
+	sectionNumber : 8			// 0
+	lastSectionNumber : 8		// 0
+	reserved4 : 3
+	pcrPID : 13
+	reserved5 : 4
+	reserved6 : 2				// 00
+	programInfoLength : 10
+
+pmt_entry
+	streamType : 8
+	Reserved1 : 3
+	elementaryPID : 13
+	Reserved2 : 4
+	reserved3 : 2				// 00
+	esInfoLength : 10
