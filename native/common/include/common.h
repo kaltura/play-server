@@ -9,8 +9,10 @@
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
 #define ARRAY_ENTRIES(x) (sizeof(x) / sizeof(x[0]))
 
+#ifndef TRUE
 #define TRUE (1)
 #define FALSE (0)
+#endif
 
 typedef unsigned char byte_t;
 typedef int bool_t;

@@ -1,4 +1,9 @@
+
+#ifdef  _WIN32
+#include "Win32Functions.h"
+#else
 #include <sys/time.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include "common.h"
