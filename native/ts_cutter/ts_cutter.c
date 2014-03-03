@@ -380,7 +380,7 @@ void set_frame_timestamps(byte_t* packet_offset, timestamps_t* timestamps, int t
 		
 		if (mpeg_ts_adaptation_field_get_pcrFlag(adapt_field) && adapt_size >= sizeof_mpeg_ts_adaptation_field + sizeof_pcr)
 		{
-			set_pcr(packet_offset + sizeof_mpeg_ts_adaptation_field, timestamps->pcr + timestamp_offset);
+			update_pcr(packet_offset + sizeof_mpeg_ts_adaptation_field, timestamps->pcr + timestamp_offset);
 		}
 
 		packet_offset += adapt_size;
@@ -395,11 +395,11 @@ void set_frame_timestamps(byte_t* packet_offset, timestamps_t* timestamps, int t
 
 		if (pes_optional_header_get_ptsFlag(pes_optional_header))
 		{
-			set_pts(packet_offset, timestamps->pts + timestamp_offset);
+			update_pts(packet_offset, timestamps->pts + timestamp_offset);
 			packet_offset += sizeof_pts;
 			if (pes_optional_header_get_dtsFlag(pes_optional_header))
 			{
-				set_pts(packet_offset, timestamps->dts + timestamp_offset);
+				update_pts(packet_offset, timestamps->dts + timestamp_offset);
 			}
 		}
 	}

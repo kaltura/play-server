@@ -1,74 +1,10 @@
-#include <stdlib.h>
 #include <climits>
-#include <node.h>
-#include <v8.h>
-#include <node_object_wrap.h>
 #include "nan.h"
-#include "node_buffer.h"
-#include "mpegTsStructs.h"
+#include "dynamicBuffer.h"
+#include "mpegTs.h"
 
 #define NO_TIMESTAMP -1
 #define NO_OFFSET 0xff
-
-#define PTS_ONLY_PTS 0x2
-#define PTS_BOTH_PTS 0x3
-#define PTS_BOTH_DTS 0x1
-
-// XXXX TODO - code copied from ts_cutter - share it
-#define TRUE (1)
-#define FALSE (0)
-#define MAX(x,y) (((x) > (y)) ? (x) : (y))
-#define MIN(x,y) (((x) > (y)) ? (y) : (x))
-
-void set_pcr(pcr_t* pcr, int64_t pcr_val)
-{
-	pcr[4] = pcr[5] = 0;
-	pcr_set_pcr90kHzHigh(pcr, 	(pcr_val >> 16));
-	pcr_set_pcr90kHzLow	(pcr, 	 pcr_val 	   );
-}
-
-void set_pts(pts_t* pts, int indicator, int64_t pts_val)
-{
-	pts[0] = pts[2] = pts[4] = 0xff;
-	pts_set_pad1	(pts,	indicator);
-	pts_set_high	(pts, 	(pts_val >> 30));
-	pts_set_medium	(pts,	(pts_val >> 15));
-	pts_set_low		(pts, 	 pts_val	   );
-}
-
-typedef unsigned char byte_t;
-typedef int bool_t;
-
-typedef struct {
-	byte_t* data;
-	int write_pos;
-	int alloc_size;
-} dynamic_buffer_t;
-
-bool_t append_buffer(dynamic_buffer_t* buf, const void* data, int len)
-{
-	byte_t* new_data;
-	int new_size;
-
-	if (buf->write_pos + len > buf->alloc_size)
-	{
-		new_size = MAX(buf->write_pos + len, buf->alloc_size * 2);
-		new_data = (byte_t*)realloc(buf->data, new_size);
-		if (new_data == NULL)
-			return FALSE;
-		buf->data = new_data;
-		buf->alloc_size = new_size;
-	}
-	
-	memcpy(buf->data + buf->write_pos, data, len);
-	buf->write_pos += len;
-	return TRUE;
-}
-
-void free_buffer(dynamic_buffer_t* buf)
-{
-	free(buf->data);
-}
 
 using namespace v8;
 using namespace node;
@@ -519,21 +455,6 @@ void processChunkImpl(
 	outputState->chunkType = STATE_INVALID;
 }
 
-void* getMetadataPtr(v8::Handle<v8::Object> val)
-{
-	if (!Buffer::HasInstance(val))
-		return NULL;
-
-	if (Buffer::Length(val) < sizeof(MetadataHeader))
-		return NULL;
-		
-	MetadataHeader* header = (MetadataHeader*)Buffer::Data(val);
-	if (Buffer::Length(val) < sizeof(MetadataHeader) + header->frameCount * sizeof(FrameInfo)) //Buffer::Data(val) < sizeof(MetadataHeader)
-		return NULL;
-		
-	return header;
-}
-
 /*
 void MyFreeCallback(char* data, void* hint)
 {
@@ -544,20 +465,63 @@ void MyFreeCallback(char* data, void* hint)
 NAN_METHOD(BuildLayout) {
 	NanScope();
 
-	// XXXX TODO check which input validations are needed
+	// validate input
+	if (args.Length() < 6) 
+	{
+		return NanThrowTypeError("Function requires 6 arguments");
+	}
 	
+	void* argBuffers[4];
+	memset(&argBuffers, 0, sizeof(argBuffers));
+	
+	for (int i = 0; i < 4; i++)
+	{
+		if (args[i]->IsNull())
+			continue;
+		
+		if (!args[i]->IsObject())
+		{
+			return NanThrowTypeError("Arguments 1-4 must be either null or buffer");
+		}
+		
+		v8::Handle<v8::Object> curObject = args[i]->ToObject();
+		if (!Buffer::HasInstance(curObject))
+		{
+			return NanThrowTypeError("Arguments 1-4 must be either null or buffer");
+		}
+		
+		size_t curLength = Buffer::Length(curObject);
+		if (curLength < sizeof(MetadataHeader))
+		{
+			return NanThrowTypeError("Invalid metadata buffer (1)");
+		}
+		
+		argBuffers[i] = Buffer::Data(curObject);
+		if (curLength < sizeof(MetadataHeader) + ((MetadataHeader*)argBuffers[i])->frameCount * sizeof(FrameInfo))
+		{
+			return NanThrowTypeError("Invalid metadata buffer (2)");
+		}
+	}
+	
+	if (!args[4]->IsNumber() || !args[5]->IsNumber()) 
+	{
+		return NanThrowTypeError("Arguments 5-6 must be numbers");
+	}
+	
+	// build the layout
 	dynamic_buffer_t dynBuffer;
 	memset(&dynBuffer, 0, sizeof(dynBuffer));
 	
 	buildLayoutImpl(
 		&dynBuffer,
-		args[0]->IsObject() ? getMetadataPtr(args[0]->ToObject()) : NULL,
-		args[1]->IsObject() ? getMetadataPtr(args[1]->ToObject()) : NULL,
-		args[2]->IsObject() ? getMetadataPtr(args[2]->ToObject()) : NULL,
-		args[3]->IsObject() ? getMetadataPtr(args[3]->ToObject()) : NULL,
+		argBuffers[0],
+		argBuffers[1],
+		argBuffers[2],
+		argBuffers[3],
 		args[4]->NumberValue(),
 		args[5]->NumberValue());
 
+	// return the result
 	// XXXX TODO check if we can avoid this memory copy
 	// appending (smalloc::FreeCallback)MyFreeCallback, (void*)NULL didn't work - unresolved symbol
 	Local<Object> result = NanNewBufferHandle((char*)dynBuffer.data, dynBuffer.write_pos);
@@ -570,21 +534,43 @@ NAN_METHOD(BuildLayout) {
 NAN_METHOD(ProcessChunk) {
 	NanScope();
 
-	// XXXX TODO check which input validations are needed
+	// validate input
+	if (args.Length() < 3) 
+	{
+		return NanThrowTypeError("Function requires 3 arguments");
+	}
+	
+	if (!args[0]->IsObject() || !args[1]->IsObject())
+	{
+		return NanThrowTypeError("Arguments 1-2 must be buffers");
+	}
 
-	OutputState outputState;
-	memset(&outputState, 0, sizeof(outputState));
-	uint32_t chunkOutputStart = 0;
-	uint32_t chunkOutputEnd = 0;
-	bool moreDataNeeded = true;
+	v8::Handle<v8::Object> layoutBuffer = args[0]->ToObject();
+	v8::Handle<v8::Object> chunkBuffer = args[1]->ToObject();
+
+	if (!Buffer::HasInstance(layoutBuffer) || !Buffer::HasInstance(chunkBuffer))
+	{
+		return NanThrowTypeError("Arguments 1-2 must be buffers");
+	}
+	
+	if (!args[2]->IsObject())
+	{
+		return NanThrowTypeError("Argument 3 must be object");
+	}
 	
 	// parse the state
+	OutputState outputState;
+	memset(&outputState, 0, sizeof(outputState));
 	Local<Object> inputState = args[2].As<Object>();
 	outputState.layoutPos = 		inputState->Get(String::NewSymbol("layoutPos"))->NumberValue();
 	outputState.chunkType = 		inputState->Get(String::NewSymbol("chunkType"))->NumberValue();
 	outputState.chunkStartOffset = 	inputState->Get(String::NewSymbol("chunkStartOffset"))->NumberValue();
 
 	// process the chunk
+	uint32_t chunkOutputStart = 0;
+	uint32_t chunkOutputEnd = 0;
+	bool moreDataNeeded = true;
+
 	processChunkImpl(
 		Buffer::Data(args[0]->ToObject()),
 		Buffer::Length(args[0]->ToObject()),
@@ -615,4 +601,4 @@ void init(Handle<Object> exports)
 	exports->Set(String::NewSymbol("processChunk"), FunctionTemplate::New(ProcessChunk)->GetFunction());
 }
 
-NODE_MODULE(stitcher, init)
+NODE_MODULE(TsStitcher, init)
