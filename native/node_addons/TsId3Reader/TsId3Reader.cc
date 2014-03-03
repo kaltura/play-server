@@ -175,8 +175,12 @@ void ParseID3Tag(void* context, const byte_t* buf, int size, int64_t pts)
 NAN_METHOD(ParseBuffer) {
 	NanScope();
 
-	if (!args[0]->IsObject() || !Buffer::HasInstance(args[0]))
-	{
+	if (args.Length() < 1) {
+		return NanThrowTypeError("Function requires 1 argument");
+	}
+  
+	if (!args[0]->IsObject() || !Buffer::HasInstance(args[0])) {
+		return NanThrowTypeError("Expected buffer argument");
 	}
 
 	Local<Array> id3TagArray = Array::New();
