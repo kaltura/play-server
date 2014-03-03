@@ -16,6 +16,12 @@
     <RootNamespace>TsId3Reader</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Locals">
+    <PlatformToolset>v100</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -51,8 +57,9 @@
     <TargetName>$(ProjectName)</TargetName>
     <TargetPath>$(OutDir)\$(ProjectName).node</TargetPath>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.node</TargetExt>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.node</TargetExt>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -63,15 +70,15 @@
       <MinimalRebuild>false</MinimalRebuild>
       <OmitFramePointers>false</OmitFramePointers>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>C:\opt\node-v0.10.26\deps\uv\include;C:\opt\node-v0.10.26\tools\msvs\genfiles;C:\opt\node-v0.10.26\deps\uv\src\ares;C:\opt\node-v0.10.26\$(OutDir)obj\global_intermediate;C:\opt\node-v0.10.26\deps\openssl\openssl\include;C:\opt\node-v0.10.26\deps\v8\include;C:\opt\node-v0.10.26\deps\zlib;C:\opt\node-v0.10.26\deps\http_parser;C:\opt\node-v0.10.26\deps\cares\include;C:\opt\node-v0.10.26\src;..\..\..\..\node_modules\nan;..\..\..\common\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;BUILDING_V8_SHARED=1;BUILDING_UV_SHARED=1;BUILDING_NODE_EXTENSION;DEBUG;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\opt\node-v0.10.26\deps\uv\include;C:\opt\node-v0.10.26\tools\msvs\genfiles;C:\opt\node-v0.10.26\deps\uv\src\ares;C:\opt\node-v0.10.26\$(OutDir)obj\global_intermediate;C:\opt\node-v0.10.26\deps\openssl\openssl\include;C:\opt\node-v0.10.26\deps\v8\include;C:\opt\node-v0.10.26\deps\zlib;C:\opt\node-v0.10.26\deps\http_parser;C:\opt\node-v0.10.26\deps\cares\include;C:\opt\node-v0.10.26\src;..\..\..\..\node_modules\nan;..\..\..\common\include;..\..\..\vendor\id3lib-3.8.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;BUILDING_V8_SHARED=1;BUILDING_UV_SHARED=1;BUILDING_NODE_EXTENSION;ID3LIB_LINKOPTION=3;DEBUG;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;DelayImp.lib;$(OutDir)\node.lib;id3.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;DelayImp.lib;$(OutDir)\node.lib</AdditionalDependencies>
       <AllowIsolation>true</AllowIsolation>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -132,11 +139,6 @@
       <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;BUILDING_V8_SHARED=1;BUILDING_UV_SHARED=1;BUILDING_NODE_EXTENSION;%(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>C:\opt\node-v0.10.26\deps\uv\include;C:\opt\node-v0.10.26\tools\msvs\genfiles;C:\opt\node-v0.10.26\deps\uv\src\ares;C:\opt\node-v0.10.26\$(OutDir)obj\global_intermediate;C:\opt\node-v0.10.26\deps\openssl\openssl\include;C:\opt\node-v0.10.26\deps\v8\include;C:\opt\node-v0.10.26\deps\zlib;C:\opt\node-v0.10.26\deps\http_parser;C:\opt\node-v0.10.26\deps\cares\include;C:\opt\node-v0.10.26\src;..\..\..\..\node_modules\nan;..\..\..\common\include;..\..\..\vendor\id3lib-3.8.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\common\src\Win32Functions.cpp" />
     <ClCompile Include="..\TsId3Reader.cc" />
@@ -144,13 +146,15 @@
     <ClCompile Include="..\..\..\common\src\common.c" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\vendor\id3lib-3.8.3\Release\id3lib.dll" />
+    <None Include="..\..\..\vendor\id3lib-3.8.3\Release\id3lib.exp" />
     <None Include="binding.gyp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\common\src\Win32Functions.h" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\..\..\..\..\..\..\Users\jonathan.kanarek\Downloads\id3lib-3.8.3binaries\id3lib-3.8.3binaries\Release\id3lib.lib" />
+    <Library Include="..\..\..\vendor\id3lib-3.8.3\Release\id3lib.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -7,8 +7,15 @@ int64_t get_pcr(const pcr_t* pcr)
 	return (((int64_t)pcr_get_pcr90kHzHigh(pcr)) << 16) | pcr_get_pcr90kHzLow(pcr);
 }
 
+void update_pcr(pcr_t* pcr, int64_t pcr_val)
+{
+	pcr_set_pcr90kHzHigh(pcr, 	(pcr_val >> 16));
+	pcr_set_pcr90kHzLow	(pcr, 	 pcr_val 	   );
+}
+
 void set_pcr(pcr_t* pcr, int64_t pcr_val)
 {
+	pcr[4] = pcr[5] = 0;
 	pcr_set_pcr90kHzHigh(pcr, 	(pcr_val >> 16));
 	pcr_set_pcr90kHzLow	(pcr, 	 pcr_val 	   );
 }
@@ -18,8 +25,17 @@ int64_t get_pts(const pts_t* pts)
 	return (((int64_t)pts_get_high(pts)) << 30) | (((int64_t)pts_get_medium(pts)) << 15) | (int64_t)pts_get_low(pts);
 }
 
-void set_pts(pts_t* pts, int64_t pts_val)
+void update_pts(pts_t* pts, int64_t pts_val)
 {
+	pts_set_high	(pts, 	(pts_val >> 30));
+	pts_set_medium	(pts,	(pts_val >> 15));
+	pts_set_low		(pts, 	 pts_val	   );
+}
+
+void set_pts(pts_t* pts, int indicator, int64_t pts_val)
+{
+	pts[0] = pts[2] = pts[4] = 0xff;
+	pts_set_pad1	(pts,	indicator);
 	pts_set_high	(pts, 	(pts_val >> 30));
 	pts_set_medium	(pts,	(pts_val >> 15));
 	pts_set_low		(pts, 	 pts_val	   );

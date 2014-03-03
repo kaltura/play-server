@@ -9,6 +9,10 @@
 #define PES_MARKER (1)
 #define MAX_PES_PAYLOAD (200 * 1024)
 
+#define PTS_ONLY_PTS 0x2
+#define PTS_BOTH_PTS 0x3
+#define PTS_BOTH_DTS 0x1
+
 #define STREAM_TYPE_AUDIO_AAC       0x0f
 #define STREAM_TYPE_VIDEO_H264      0x1b
 
@@ -48,10 +52,12 @@ extern "C" {
 #endif /* __cplusplus */
 
 int64_t get_pcr(const pcr_t* pcr);
+void update_pcr(pcr_t* pcr, int64_t pcr_val);
 void set_pcr(pcr_t* pcr, int64_t pcr_val);
 
 int64_t get_pts(const pts_t* pts);
-void set_pts(pts_t* pts, int64_t pts_val);
+void update_pts(pts_t* pts, int64_t pts_val);
+void set_pts(pts_t* pts, int indicator, int64_t pts_val);
 
 int64_t get_pts_from_packet(const byte_t* packet, int size);
 
