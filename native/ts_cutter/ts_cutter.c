@@ -312,6 +312,30 @@ void calc_duration_after(frame_info_t* frames, int frame_count)
 	}
 }
 
+bool_t frame_has_pcr(const byte_t* packet_offset)
+{
+	const mpeg_ts_header_t* ts_header;
+	const mpeg_ts_adaptation_field_t* adapt_field;
+	int adapt_size;
+
+	ts_header = packet_offset;
+	packet_offset += sizeof_mpeg_ts_header;
+	if (!mpeg_ts_header_get_adaptationFieldExist(ts_header))
+	{
+		return FALSE;
+	}
+	
+	adapt_field = (const mpeg_ts_adaptation_field_t*)packet_offset;
+	adapt_size = 1 + mpeg_ts_adaptation_field_get_adaptationFieldLength(adapt_field);
+	
+	if (mpeg_ts_adaptation_field_get_pcrFlag(adapt_field) && adapt_size >= sizeof_mpeg_ts_adaptation_field + sizeof_pcr)
+	{			
+		return TRUE;
+	}
+	
+	return FALSE;
+}
+
 void reset_timestamps(timestamps_t* timestamps)
 {
 	timestamps->pcr = -1;
@@ -533,7 +557,7 @@ typedef struct {
 	int right_iframe_offset;	
 } bounding_iframes_t;
 
-bool_t get_bounding_iframes(frame_info_t* frames, int frame_count, bool_t is_video, int cut_offset, bounding_iframes_t* result)
+bool_t get_bounding_iframes(frame_info_t* frames, int frame_count, const byte_t* source_buf, bool_t is_video, int cut_offset, bounding_iframes_t* result)
 {
 	frame_info_t* frames_end = frames + frame_count;
 	frame_info_t* cur_frame;
@@ -548,9 +572,9 @@ bool_t get_bounding_iframes(frame_info_t* frames, int frame_count, bool_t is_vid
 		{
 			continue;
 		}
-	
+		
 		// we care only about iframes
-		if (!cur_frame->is_iframe)
+		if (!cur_frame->is_iframe || !frame_has_pcr(source_buf + cur_frame->pos))
 		{
 			frame_offset += cur_frame->duration;
 			continue;
@@ -661,7 +685,7 @@ int main( int argc, char *argv[] )
 	
 	has_video_audio_frames(source_frames, source_frame_count, &has_video, &has_audio);
 	
-	if (!get_bounding_iframes(source_frames, source_frame_count, has_video, opts.cut_offset, &bounding_iframes))
+	if (!get_bounding_iframes(source_frames, source_frame_count, source_buf, has_video, opts.cut_offset, &bounding_iframes))
 	{
 		printf("Failed to get bounding iframes\n");
 		goto cleanup;
