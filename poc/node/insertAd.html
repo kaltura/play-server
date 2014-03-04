@@ -1,0 +1,74 @@
+<html>
+<head>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
+<script>
+function insertAd() {
+  var videoTag = document.getElementById("video");
+  var console = document.getElementById("output");
+  var uid = '@UID@';
+
+  if (video.currentTime == 0) {
+    console.innerHTML="<b>Failed</b>: couldn't get video player position";
+    return;
+  }
+
+  $.ajax({
+    url: "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=" + uid + "&currentTime=" + video.currentTime + "&adSlotDuration=" + window.adSlotDuration,
+  }).done(function( data ) {
+        console.innerHTML="<b>Done</b>: " + data;
+  }).fail(function( data ) {
+        console.innerHTML="<b>Failed</b>: " + data.responseText;
+  });
+}
+
+function startAdInsertTimer() {
+	var interval = Math.floor((Math.random() * 20000) + 30000);		// 30 - 50 seconds
+	setTimeout(function() {
+		insertAd();
+		startAdInsertTimer();
+	}, interval);
+}
+
+function start() {
+  var origUrl = document.getElementById("origUrl");
+  var entryId = document.getElementById("entryId");
+  var adSlotDuration = document.getElementById("adSlotDuration");
+  var autoAdInsert = document.getElementById("autoAdInsert");
+  window.entryId = entryId.value;
+  window.adSlotDuration = adSlotDuration.value;
+
+  var stitchedUrl = '@EXTERNAL_URL@/masterstitch.m3u8?entryId=' + window.entryId + '&url=' + encodeURIComponent(origUrl.value);
+
+  $.ajax({
+    url: "@EXTERNAL_URL@/shortUrl.js?url=" + encodeURIComponent(stitchedUrl),
+  }).done(function( data ) {
+	var uid = '@UID@';
+
+	document.write(
+		'<p><b>Original</b>: ' + origUrl.value + '</p>' +
+		'<p><b>Stitched</b>: ' + stitchedUrl + '</p>' +
+		'<p><b>Short URL</b>: ' + data + '</p>' +
+		'<video id="video" height="300" width="400" autoplay controls>' +
+		'<source src="@EXTERNAL_URL@/masterproxy.m3u8?uid=' + uid + '&url=' + encodeURIComponent(origUrl.value) + '"/>' +
+		'</video>' +
+		'<button onclick="insertAd()">Insert Ad</button>' +
+		'<p id="output"/>');
+	if (autoAdInsert.value)
+		startAdInsertTimer();
+  }).fail(function( data ) {
+	document.write(
+		'<p>failed to get short url</p>');
+  }); 
+}
+</script>
+</head>
+<body>
+  <form>
+    URL: <input type="text" value="http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8" id="origUrl" size="60"><br>
+    Entry id: <input type="text" value="abcd" id="entryId" size="10"><br>
+	Ad slot length: <input type="text" value="5" id="adSlotDuration" size="10"><br>
+	<input type="checkbox" id="autoAdInsert" checked>Auto ad insertion<br>
+    <input type="button" value="start" onclick="start();" id="startbtn">
+  </form>
+</body>
+</html>
