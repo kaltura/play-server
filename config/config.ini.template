@@ -8,6 +8,7 @@ verifySSL = false
 
 [cloud]
 domain = @CLOUD_HOSTNAME@
+; domainPort = 80
 internalDomain = @CLOUD_HOSTNAME@
 httpPort = 80
 secret = @CLOUD_SECRET@
