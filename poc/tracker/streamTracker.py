@@ -26,12 +26,13 @@ MINIMUM_RUN_PERIOD = 60
 CYCLE_INTERVAL = 2
 
 def writeOutput(msg):
-	global lastTimestamp, logFile
+	global lastTimestamp
 	curTimestamp = time.time()
 	duration = curTimestamp - lastTimestamp
 	lastTimestamp = curTimestamp
 	for curLine in msg.split('\n'):
-		logFile.write('%s [%s] [%s] %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), duration, sessionId, curLine))
+		sys.stdout.write('%s [%s] [%s] %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), duration, sessionId, curLine))
+		sys.stdout.flush()
 
 def md5(buf):
 	m = hashlib.md5()
@@ -212,7 +213,8 @@ class ManifestStitcher:
 				videoKey = 'preAd-%s-%s' % (liveStreamUrlHash, self.cuePointId)
 				if not videoMemcache.videoExistsInMemcache(memcache, videoKey):
 					cutTsFiles(videoKey, buffer, self.adStartOffset, 'left')
-			elif (self.adCurOffset + curSegmentDuration <= self.adEndOffset and 
+			
+			if (self.adCurOffset + curSegmentDuration <= self.adEndOffset and 
 				self.adCurOffset + curSegmentDuration + nextSegmentDuration > self.adEndOffset):
 				# create post ad ts
 				videoKey = 'postAd-%s-%s' % (liveStreamUrlHash, self.cuePointId)
@@ -247,8 +249,6 @@ class ManifestStitcher:
 	
 sessionId = random.getrandbits(32)
 lastTimestamp = time.time()
-
-logFile = file(os.path.join(os.path.dirname(__file__), 'streamTracker.log'), 'a')
 
 # parse the command line
 if len(sys.argv) != 2:
@@ -335,4 +335,3 @@ while time.time() < startTime + MINIMUM_RUN_PERIOD or memcache.get(trackerRequir
 		time.sleep(sleepTime)
 
 writeOutput('Quitting...')
-logFile.close()

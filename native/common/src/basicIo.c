@@ -1,6 +1,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include "basicIo.h"
 
 bool_t walk_command_output(const char* cmd, walk_output_callback_t callback, void* context)
@@ -15,7 +16,7 @@ bool_t walk_command_output(const char* cmd, walk_output_callback_t callback, voi
 	fp = popen(cmd, "r");
 	if (fp == NULL) 
 	{
-		printf("Failed to run command %s\n", cmd);
+		printf("Failed to run command %s, errno=%d\n", cmd, errno);
 		return FALSE;
 	}
 
@@ -52,7 +53,7 @@ byte_t* read_files(char** files, int file_count, size_t* read_size)
 	{
 		if (stat(files[cur_file], &st) == -1)
 		{
-			printf("stat failed, file=%s\n", files[cur_file]);
+			printf("stat failed, file=%s, errno=%d\n", files[cur_file], errno);
 			goto cleanup;
 		}
 		file_sizes[cur_file] = st.st_size;
@@ -72,13 +73,13 @@ byte_t* read_files(char** files, int file_count, size_t* read_size)
 		fp = fopen(files[cur_file], "rb");
 		if (fp == NULL)
 		{
-			printf("fopen failed, file=%s\n", files[cur_file]);
+			printf("fopen failed, file=%s, errno=%d\n", files[cur_file], errno);
 			goto cleanup;
 		}
 		
 		if (fread(read_pos, 1, file_sizes[cur_file], fp) != file_sizes[cur_file])
 		{
-			printf("fread failed\n");
+			printf("fread failed, errno=%d\n", errno);
 			goto cleanup;
 		}
 		read_pos += file_sizes[cur_file];
@@ -109,7 +110,7 @@ bool_t write_file(const char* output_file, const dynamic_buffer_t* segments, int
 	fp = fopen(output_file, "wb");
 	if (fp == NULL)
 	{
-		printf("Failed to open file for writing, file=%s\n", output_file);
+		printf("Failed to open file for writing, file=%s, errno=%d\n", output_file, errno);
 		return FALSE;
 	}
 	
@@ -117,7 +118,7 @@ bool_t write_file(const char* output_file, const dynamic_buffer_t* segments, int
 	{
 		if (fwrite(segments[i].data, 1, segments[i].write_pos, fp) != segments[i].write_pos)
 		{
-			printf("Failed to write to file, file=%s\n", output_file);
+			printf("Failed to write to file, file=%s, errno=%d\n", output_file, errno);
 			fclose(fp);
 			return FALSE;
 		}

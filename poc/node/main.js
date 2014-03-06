@@ -24,11 +24,9 @@ const SERVER_EXTERNAL_URL = 'http://lbd.kaltura.com:1337';
 const START_TRACKER_URL = 'http://localhost:' + LOCAL_SERVER_PORT;
 const MEMCACHE_URL = 'localhost:11211';
 
-const STREAM_TRACKER_SCRIPT = __dirname + '/../tracker/streamTracker.py';
-const STREAM_TRACKER_LOG = __dirname + '/../tracker/streamTracker.log';
+const STREAM_TRACKER_SCRIPT = __dirname + '/../tracker/streamTracker.sh';
 
-const PREPARE_AD_SCRIPT = __dirname + '/../tracker/prepareAd.py';
-const PREPARE_AD_LOG = __dirname + '/../tracker/prepareAd.log';
+const PREPARE_AD_SCRIPT = __dirname + '/../tracker/prepareAd.sh';
 
 const SERVER_SECRET = 'Angry birds !!!';
 
@@ -93,6 +91,7 @@ function md5(str) {
 }
 
 function errorResponse(res, statusCode, body) {
+	console.log('Error code ' + statusCode + ' : ' + body);
 	res.writeHead(statusCode, {'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*'});
 	res.end(body);
 }
@@ -295,6 +294,7 @@ function processMasterStitch(params, res) {
 			getHttpUrl(params.url, function (urlData) {
 				cb({statusCode:200, body:stitchMasterM3U8(urlData, {entryId: params.entryId})});
 			}, function (err) {
+				console.log('Error : ' + err);
 				cb({statusCode:400, body:err});
 			})
 		},
@@ -362,14 +362,10 @@ function prepareAdForEntry(adUrl, adId, entryId) {
 			var outputKey = 'ad-' + encodingParamsId + '-' + adId;
 			var cmdArgs = [PREPARE_AD_SCRIPT, adUrl, outputKey, encodingParams];
 
-			var out = fs.openSync(PREPARE_AD_LOG, 'a');
-			var err = fs.openSync(PREPARE_AD_LOG, 'a');
+			console.log('Spawning: sh ' + cmdArgs.join(' '));
 
-			console.log('Spawning: python ' + cmdArgs.join(' '));
-
-			var child = spawn('python', cmdArgs, {
+			var child = spawn('sh', cmdArgs, {
 				detached: true,
-				stdio: ['ignore', out, err]
 			});
 
 			//child.unref();		// only supported in new versions of node
@@ -496,8 +492,7 @@ function processFlavorProxy(queryParams, res) {
 		res.writeHead(200, {'Content-Type': 'application/vnd.apple.mpegurl'});
 		res.end(urlData);
 	}, function (err) {
-		res.writeHead(400, {'Content-Type': 'text/plain'});
-		res.end('Failed to get original URL');
+		errorResponse(res, 400, 'Failed to get original URL');
 	});
 }
 
@@ -589,18 +584,14 @@ function processStartTracker(queryParams, res) {
 	
 	var cmdArgs = [STREAM_TRACKER_SCRIPT, queryParams.params];
 
-	var out = fs.openSync(STREAM_TRACKER_LOG, 'a');
-    var err = fs.openSync(STREAM_TRACKER_LOG, 'a');
-	 
-	console.log('Spawning: python ' + cmdArgs.join(' '));
+	console.log('Spawning: sh ' + cmdArgs.join(' '));
 	
-	var child = spawn('python', cmdArgs, {
+	var child = spawn('sh', cmdArgs, {
 		detached: true,
-		stdio: ['ignore', out, err]
 	});
 
 	//child.unref();		// only supported in new versions of node
-
+	
 	res.writeHead(200, {'Content-Type': 'text/plain'});
 	res.end('tracker started');
 }

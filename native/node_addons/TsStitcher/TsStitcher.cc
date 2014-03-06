@@ -502,10 +502,26 @@ NAN_METHOD(BuildLayout) {
 			return NanThrowTypeError("Invalid metadata buffer (2)");
 		}
 	}
-	
+		
 	if (!args[4]->IsNumber() || !args[5]->IsNumber()) 
 	{
 		return NanThrowTypeError("Arguments 5-6 must be numbers");
+	}
+
+	// check for mandatory buffers
+	if (argBuffers[STATE_PRE_AD] == NULL)
+	{
+		return NanThrowTypeError("Pre-ad segment must not be null");
+	}
+
+	if (argBuffers[STATE_PAD] == NULL)
+	{
+		return NanThrowTypeError("Pad segment must not be null");
+	}
+	
+	if (argBuffers[STATE_POST_AD] == NULL && args[5]->NumberValue() == 0)
+	{
+		return NanThrowTypeError("Post-ad segment must not be null in the last segment");
 	}
 	
 	// build the layout
