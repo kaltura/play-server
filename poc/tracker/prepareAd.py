@@ -13,28 +13,35 @@ FFMPEG_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffmpeg-2.1.sh'
 MEMCACHE_HOST = 'localhost'
 MEMCACHE_PORT = 11211
 
+# XXXX TODO share this code (copied from streamTracker)
+
+def writeOutput(msg):
+	global lastTimestamp
+	curTimestamp = time.time()
+	duration = curTimestamp - lastTimestamp
+	lastTimestamp = curTimestamp
+	for curLine in msg.split('\n'):
+		sys.stdout.write('%s [%s] [%s] %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), duration, sessionId, curLine))
+		sys.stdout.flush()
+
 # parse the command line
 if len(sys.argv) < 4:
 	print 'Usage:\n\tpython prepareAd.py <ad url> <output key> <encoding params>'
 	sys.exit(1)
 
-adUrl = sys.argv[1]
-outputKey = sys.argv[2]
-encodingParams = ' '.join(map(lambda x: "'%s'" % x, sys.argv[3:]))
-
+def quoteArgs(cmdArg):
+	if cmdArg.endswith("'") or cmdArg.endswith('"'):
+		return cmdArg
+	return "'%s'" % cmdArg
+	
 sessionId = random.getrandbits(32)
 lastTimestamp = time.time()
-logFile = file(os.path.join(os.path.dirname(__file__), 'prepareAd.log'), 'a')
 
-def writeOutput(msg):
-	global lastTimestamp, logFile
-	curTimestamp = time.time()
-	duration = curTimestamp - lastTimestamp
-	lastTimestamp = curTimestamp
-	for curLine in msg.split('\n'):
-		logFile.write('%s [%s] [%s] %s\n' % (time.strftime('%Y-%m-%d %H:%M:%S'), duration, sessionId, curLine))
+adUrl = sys.argv[1]
+outputKey = sys.argv[2]
+encodingParams = ' '.join(map(quoteArgs, sys.argv[3:]))
 
-# XXXX TODO share this code (copied from streamTracker)
+writeOutput('started, url=%s key=%s encoding-params=%s' % (adUrl, outputKey, encodingParams))
 
 tempDownloadPath = os.path.join(tempfile.gettempdir(), 'downloadedTS')
 
@@ -78,4 +85,4 @@ executeCommand(cmdLine)
 # save to memcache
 videoMemcache.addVideoToMemcache(memcache, outputKey, tempFileName, True)
 
-logFile.close()
+writeOutput('done')
