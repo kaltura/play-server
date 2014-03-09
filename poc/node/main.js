@@ -15,7 +15,7 @@ var extend = require('util')._extend;
 var memcached = require('memcached');
 var memcachedbin = require('./memcachedbin');			// XXXXX TODO fix memcache library so that we won't need 2 instances
 var crypto = require('crypto');
-var spawn = require('child_process').spawn;
+var exec = require('child_process').exec;
 var fs = require('fs');
 
 // parameters
@@ -341,6 +341,63 @@ function parseCookies(request) {
     return list;
 }
 
+function doMemcacheMultiTouch(memcache, keys, curIndex, lifetime, callback) {
+	if (curIndex >= keys.length) {
+		callback(null);
+		return;
+	}
+	
+	memcache.touch(keys[curIndex], lifetime, function (err) {
+		if (err)
+			callback(err);
+		else
+			doMemcacheMultiTouch(memcache, keys, curIndex + 1, lifetime, callback);
+	});
+}
+
+function memcacheMultiTouch(memcache, keys, lifetime, callback) {
+	doMemcacheMultiTouch(memcache, keys, 0, lifetime, callback);
+}
+
+function prepareAdExclusive(encodingParams, adUrl, outputKey) {
+	memcache.add(outputKey + '-lock', '', 60, function (err) {
+		if (err)
+			return;		// someone else grabbed the lock
+			
+		// start the ad preparation script
+		var cmdLine = ['sh', PREPARE_AD_SCRIPT, adUrl, outputKey, encodingParams].join(' ');
+
+		console.log('Executing: ' + cmdLine);
+
+		var child = exec(cmdLine, function (error, stdout, stderr) { });
+		child = null;
+	});
+}
+
+function prepareAdFlavor(encodingParams, adUrl, adId) {
+	var encodingParamsId = md5(encodingParams);
+	var outputKey = 'ad-' + encodingParamsId + '-' + adId;
+	
+	memcachebin.get(outputKey + '-metadata', function (err, metadata) {
+		if (err || !metadata) {
+			prepareAdExclusive(encodingParams, adUrl, outputKey);
+			return;
+		}
+		
+		var requiredKeys = [outputKey + '-metadata', outputKey + '-header'];		
+		var chunkCount = stitcher.getChunkCount(metadata);
+		for (var i = 0; i < chunkCount; i++) {
+			requiredKeys.push(outputKey + '-' + i);
+		}
+		
+		memcacheMultiTouch(memcache, requiredKeys, 0, function (err) {
+			if (err) {
+				prepareAdExclusive(encodingParams, adUrl, outputKey);
+			}
+		});
+	});
+}
+
 function prepareAdForEntry(adUrl, adId, entryId) {
 	// XXXX TODO add lock
 	memcache.get('ffmpegParams-' + entryId, function (err, data) {
@@ -356,19 +413,7 @@ function prepareAdForEntry(adUrl, adId, entryId) {
 			if (!ffmpegParams[i])
 				continue;
 
-			// start the ad preparation script
-			var encodingParams = ffmpegParams[i];
-			var encodingParamsId = md5(encodingParams);
-			var outputKey = 'ad-' + encodingParamsId + '-' + adId;
-			var cmdArgs = [PREPARE_AD_SCRIPT, adUrl, outputKey, encodingParams];
-
-			console.log('Spawning: sh ' + cmdArgs.join(' '));
-
-			var child = spawn('sh', cmdArgs, {
-				detached: true,
-			});
-
-			//child.unref();		// only supported in new versions of node
+			prepareAdFlavor(ffmpegParams[i], adUrl, adId);
 		}
 	});
 }
@@ -582,15 +627,12 @@ function processStartTracker(queryParams, res) {
 		errorResponse(res, 403, 'Forbidden\n');
 	}
 	
-	var cmdArgs = [STREAM_TRACKER_SCRIPT, queryParams.params];
+	var cmdLine = ['sh', STREAM_TRACKER_SCRIPT, queryParams.params].join(' ');
 
-	console.log('Spawning: sh ' + cmdArgs.join(' '));
+	console.log('Executing: ' + cmdLine);
 	
-	var child = spawn('sh', cmdArgs, {
-		detached: true,
-	});
-
-	//child.unref();		// only supported in new versions of node
+	var child = exec(cmdLine, function (error, stdout, stderr) { });
+	child = null;
 	
 	res.writeHead(200, {'Content-Type': 'text/plain'});
 	res.end('tracker started');
