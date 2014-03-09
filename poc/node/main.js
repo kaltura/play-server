@@ -15,7 +15,7 @@ var extend = require('util')._extend;
 var memcached = require('memcached');
 var memcachedbin = require('./memcachedbin');			// XXXXX TODO fix memcache library so that we won't need 2 instances
 var crypto = require('crypto');
-var spawn = require('child_process').spawn;
+var exec = require('child_process').exec;
 var fs = require('fs');
 
 // parameters
@@ -24,11 +24,9 @@ const SERVER_EXTERNAL_URL = 'http://lbd.kaltura.com:1337';
 const START_TRACKER_URL = 'http://localhost:' + LOCAL_SERVER_PORT;
 const MEMCACHE_URL = 'localhost:11211';
 
-const STREAM_TRACKER_SCRIPT = __dirname + '/../tracker/streamTracker.py';
-const STREAM_TRACKER_LOG = __dirname + '/../tracker/streamTracker.log';
+const STREAM_TRACKER_SCRIPT = __dirname + '/../tracker/streamTracker.sh';
 
-const PREPARE_AD_SCRIPT = __dirname + '/../tracker/prepareAd.py';
-const PREPARE_AD_LOG = __dirname + '/../tracker/prepareAd.log';
+const PREPARE_AD_SCRIPT = __dirname + '/../tracker/prepareAd.sh';
 
 const SERVER_SECRET = 'Angry birds !!!';
 
@@ -93,6 +91,7 @@ function md5(str) {
 }
 
 function errorResponse(res, statusCode, body) {
+	console.log('Error code ' + statusCode + ' : ' + body);
 	res.writeHead(statusCode, {'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*'});
 	res.end(body);
 }
@@ -295,6 +294,7 @@ function processMasterStitch(params, res) {
 			getHttpUrl(params.url, function (urlData) {
 				cb({statusCode:200, body:stitchMasterM3U8(urlData, {entryId: params.entryId})});
 			}, function (err) {
+				console.log('Error : ' + err);
 				cb({statusCode:400, body:err});
 			})
 		},
@@ -341,6 +341,63 @@ function parseCookies(request) {
     return list;
 }
 
+function doMemcacheMultiTouch(memcache, keys, curIndex, lifetime, callback) {
+	if (curIndex >= keys.length) {
+		callback(null);
+		return;
+	}
+	
+	memcache.touch(keys[curIndex], lifetime, function (err) {
+		if (err)
+			callback(err);
+		else
+			doMemcacheMultiTouch(memcache, keys, curIndex + 1, lifetime, callback);
+	});
+}
+
+function memcacheMultiTouch(memcache, keys, lifetime, callback) {
+	doMemcacheMultiTouch(memcache, keys, 0, lifetime, callback);
+}
+
+function prepareAdExclusive(encodingParams, adUrl, outputKey) {
+	memcache.add(outputKey + '-lock', '', 60, function (err) {
+		if (err)
+			return;		// someone else grabbed the lock
+			
+		// start the ad preparation script
+		var cmdLine = ['sh', PREPARE_AD_SCRIPT, adUrl, outputKey, encodingParams].join(' ');
+
+		console.log('Executing: ' + cmdLine);
+
+		var child = exec(cmdLine, function (error, stdout, stderr) { });
+		child = null;
+	});
+}
+
+function prepareAdFlavor(encodingParams, adUrl, adId) {
+	var encodingParamsId = md5(encodingParams);
+	var outputKey = 'ad-' + encodingParamsId + '-' + adId;
+	
+	memcachebin.get(outputKey + '-metadata', function (err, metadata) {
+		if (err || !metadata) {
+			prepareAdExclusive(encodingParams, adUrl, outputKey);
+			return;
+		}
+		
+		var requiredKeys = [outputKey + '-metadata', outputKey + '-header'];		
+		var chunkCount = stitcher.getChunkCount(metadata);
+		for (var i = 0; i < chunkCount; i++) {
+			requiredKeys.push(outputKey + '-' + i);
+		}
+		
+		memcacheMultiTouch(memcache, requiredKeys, 0, function (err) {
+			if (err) {
+				prepareAdExclusive(encodingParams, adUrl, outputKey);
+			}
+		});
+	});
+}
+
 function prepareAdForEntry(adUrl, adId, entryId) {
 	// XXXX TODO add lock
 	memcache.get('ffmpegParams-' + entryId, function (err, data) {
@@ -356,23 +413,7 @@ function prepareAdForEntry(adUrl, adId, entryId) {
 			if (!ffmpegParams[i])
 				continue;
 
-			// start the ad preparation script
-			var encodingParams = ffmpegParams[i];
-			var encodingParamsId = md5(encodingParams);
-			var outputKey = 'ad-' + encodingParamsId + '-' + adId;
-			var cmdArgs = [PREPARE_AD_SCRIPT, adUrl, outputKey, encodingParams];
-
-			var out = fs.openSync(PREPARE_AD_LOG, 'a');
-			var err = fs.openSync(PREPARE_AD_LOG, 'a');
-
-			console.log('Spawning: python ' + cmdArgs.join(' '));
-
-			var child = spawn('python', cmdArgs, {
-				detached: true,
-				stdio: ['ignore', out, err]
-			});
-
-			//child.unref();		// only supported in new versions of node
+			prepareAdFlavor(ffmpegParams[i], adUrl, adId);
 		}
 	});
 }
@@ -496,8 +537,7 @@ function processFlavorProxy(queryParams, res) {
 		res.writeHead(200, {'Content-Type': 'application/vnd.apple.mpegurl'});
 		res.end(urlData);
 	}, function (err) {
-		res.writeHead(400, {'Content-Type': 'text/plain'});
-		res.end('Failed to get original URL');
+		errorResponse(res, 400, 'Failed to get original URL');
 	});
 }
 
@@ -587,20 +627,13 @@ function processStartTracker(queryParams, res) {
 		errorResponse(res, 403, 'Forbidden\n');
 	}
 	
-	var cmdArgs = [STREAM_TRACKER_SCRIPT, queryParams.params];
+	var cmdLine = ['sh', STREAM_TRACKER_SCRIPT, queryParams.params].join(' ');
 
-	var out = fs.openSync(STREAM_TRACKER_LOG, 'a');
-    var err = fs.openSync(STREAM_TRACKER_LOG, 'a');
-	 
-	console.log('Spawning: python ' + cmdArgs.join(' '));
+	console.log('Executing: ' + cmdLine);
 	
-	var child = spawn('python', cmdArgs, {
-		detached: true,
-		stdio: ['ignore', out, err]
-	});
-
-	//child.unref();		// only supported in new versions of node
-
+	var child = exec(cmdLine, function (error, stdout, stderr) { });
+	child = null;
+	
 	res.writeHead(200, {'Content-Type': 'text/plain'});
 	res.end('tracker started');
 }

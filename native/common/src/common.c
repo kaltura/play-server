@@ -6,6 +6,8 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <stdio.h>
 #include "common.h"
 
 double microtime()
@@ -14,6 +16,7 @@ double microtime()
 
 	if (gettimeofday(&tp, NULL)) 
 	{
+		printf("gettimeofday failed, errno=%d", errno);
 		return 0;
 	}
 

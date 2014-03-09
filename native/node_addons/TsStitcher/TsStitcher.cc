@@ -502,10 +502,26 @@ NAN_METHOD(BuildLayout) {
 			return NanThrowTypeError("Invalid metadata buffer (2)");
 		}
 	}
-	
+		
 	if (!args[4]->IsNumber() || !args[5]->IsNumber()) 
 	{
 		return NanThrowTypeError("Arguments 5-6 must be numbers");
+	}
+
+	// check for mandatory buffers
+	if (argBuffers[STATE_PRE_AD] == NULL)
+	{
+		return NanThrowTypeError("Pre-ad segment must not be null");
+	}
+
+	if (argBuffers[STATE_PAD] == NULL)
+	{
+		return NanThrowTypeError("Pad segment must not be null");
+	}
+	
+	if (argBuffers[STATE_POST_AD] == NULL && args[5]->NumberValue() == 0)
+	{
+		return NanThrowTypeError("Post-ad segment must not be null in the last segment");
 	}
 	
 	// build the layout
@@ -595,10 +611,40 @@ NAN_METHOD(ProcessChunk) {
 	NanReturnValue(result);
 }
 
+NAN_METHOD(GetChunkCount) {
+	NanScope();
+
+	// validate input
+	if (args.Length() < 1) 
+	{
+		return NanThrowTypeError("Function requires one argument");
+	}
+	
+	if (!args[0]->IsObject())
+	{
+		return NanThrowTypeError("Argument must be buffer");
+	}
+		
+	v8::Handle<v8::Object> inputObject = args[0]->ToObject();
+	if (!Buffer::HasInstance(inputObject))
+	{
+		return NanThrowTypeError("Argument must be buffer");
+	}
+	
+	if (Buffer::Length(inputObject) < sizeof(MetadataHeader))
+	{
+		return NanThrowTypeError("Invalid metadata buffer");
+	}
+	
+	Local<Number> result = Number::New(((MetadataHeader*)Buffer::Data(inputObject))->chunkCount);
+	NanReturnValue(result);
+}
+
 void init(Handle<Object> exports) 
 {
 	exports->Set(String::NewSymbol("buildLayout"), FunctionTemplate::New(BuildLayout)->GetFunction());
 	exports->Set(String::NewSymbol("processChunk"), FunctionTemplate::New(ProcessChunk)->GetFunction());
+	exports->Set(String::NewSymbol("getChunkCount"), FunctionTemplate::New(GetChunkCount)->GetFunction());
 }
 
 NODE_MODULE(TsStitcher, init)

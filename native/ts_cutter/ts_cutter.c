@@ -3,7 +3,6 @@
 gcc ../common/src/basicIo.c ../common/src/common.c ../common/src/dynamicBuffer.c ../common/src/ffprobe.c ../common/src/mpegTs.c ts_cutter.c -o ts_cutter -I../common/include -Wall
 
 	Test command line:
-gcc ts_cutter.c -Wall -o ts_cutter
 ./ts_cutter /tmp/ts_cutter_test.ts /web/content/shared/bin/ffmpeg-2.1-bin/ffmpeg-2.1.sh /web/content/shared/bin/ffmpeg-2.1-bin/ffprobe-2.1.sh 6182200000 right /opt/kaltura/app/alpha/web/erankTest/1208f27d347eb1e16b8ebda99f321f53-1.ts
 
 */
@@ -13,6 +12,7 @@ gcc ts_cutter.c -Wall -o ts_cutter
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <stdio.h>
 #include "dynamicBuffer.h"
 #include "basicIo.h"
@@ -33,7 +33,7 @@ int get_required_bitrate(const char* input_file, int duration)
 
 	if (stat(input_file, &st) == -1)
 	{
-		printf("stat failed, file=%s\n", input_file);
+		printf("stat failed, file=%s, errno=%d\n", input_file, errno);
 		return 0;
 	}
 		
@@ -83,14 +83,8 @@ bool_t clip_with_ffmpeg(
 	
 	if (has_audio)
 	{
-		if (seek_offset > 0)
-		{
-			acodec = "-acodec libfdk_aac";
-		}
-		else
-		{
-			acodec = "-acodec copy";
-		}
+		// always retranscode the audio - for short segments 'acodec copy' may generate a corrupt file
+		acodec = "-acodec libfdk_aac";
 	}
 	else
 	{
@@ -720,14 +714,14 @@ int main( int argc, char *argv[] )
 	fd = mkstemp(bounded_section_file);
 	if (fd == -1)
 	{
-		printf("Failed create temp file (1)\n");
+		printf("Failed to create temp file (1), errno=%d\n", errno);
 		goto cleanup;
 	}
 	close(fd);
 	
 	if (!save_ts_portion(bounded_section_file, source_buf, bounding_iframes.left_iframe->pos, bounding_iframes.right_iframe->pos, FALSE))
 	{
-		printf("Failed save bounded region to temp file\n");
+		printf("Failed to save bounded region to temp file\n");
 		goto cleanup;
 	}
 	
@@ -735,7 +729,7 @@ int main( int argc, char *argv[] )
 	fd = mkstemp(clipped_section_file);
 	if (fd == -1)
 	{
-		printf("Failed create temp file (2)\n");
+		printf("Failed to create temp file (2), errno=%d\n", errno);
 		goto cleanup;
 	}
 	close(fd);
