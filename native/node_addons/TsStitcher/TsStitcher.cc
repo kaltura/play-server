@@ -611,10 +611,40 @@ NAN_METHOD(ProcessChunk) {
 	NanReturnValue(result);
 }
 
+NAN_METHOD(GetChunkCount) {
+	NanScope();
+
+	// validate input
+	if (args.Length() < 1) 
+	{
+		return NanThrowTypeError("Function requires one argument");
+	}
+	
+	if (!args[0]->IsObject())
+	{
+		return NanThrowTypeError("Argument must be buffer");
+	}
+		
+	v8::Handle<v8::Object> inputObject = args[0]->ToObject();
+	if (!Buffer::HasInstance(inputObject))
+	{
+		return NanThrowTypeError("Argument must be buffer");
+	}
+	
+	if (Buffer::Length(inputObject) < sizeof(MetadataHeader))
+	{
+		return NanThrowTypeError("Invalid metadata buffer");
+	}
+	
+	Local<Number> result = Number::New(((MetadataHeader*)Buffer::Data(inputObject))->chunkCount);
+	NanReturnValue(result);
+}
+
 void init(Handle<Object> exports) 
 {
 	exports->Set(String::NewSymbol("buildLayout"), FunctionTemplate::New(BuildLayout)->GetFunction());
 	exports->Set(String::NewSymbol("processChunk"), FunctionTemplate::New(ProcessChunk)->GetFunction());
+	exports->Set(String::NewSymbol("getChunkCount"), FunctionTemplate::New(GetChunkCount)->GetFunction());
 }
 
 NODE_MODULE(TsStitcher, init)
