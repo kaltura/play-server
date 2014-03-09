@@ -386,7 +386,7 @@ function prepareAdFlavor(encodingParams, adUrl, adId) {
 		
 		var requiredKeys = [outputKey + '-metadata', outputKey + '-header'];		
 		var chunkCount = stitcher.getChunkCount(metadata);
-		for (var i = 0; i < chunkCount.chunkCount; i++) {
+		for (var i = 0; i < chunkCount; i++) {
 			requiredKeys.push(outputKey + '-' + i);
 		}
 		
