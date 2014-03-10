@@ -1,10 +1,8 @@
 #include <climits>
 #include "nan.h"
 #include "dynamicBuffer.h"
+#include "mpegTsMetadata.h"
 #include "mpegTs.h"
-
-#define NO_TIMESTAMP -1
-#define NO_OFFSET 0xff
 
 using namespace v8;
 using namespace node;
@@ -23,12 +21,6 @@ typedef struct {
 } OutputPacket;
 
 typedef enum {
-	CODEC_VIDEO,
-	CODEC_AUDIO,
-	CODEC_COUNT
-} CodecType;
-
-typedef enum {
 	STATE_PRE_AD,
 	STATE_AD,
 	STATE_PAD,
@@ -42,32 +34,6 @@ typedef enum {
 	STATE_INVALID,
 } LayoutState;
 
-typedef struct {
-	int64_t PCR;
-	int64_t PTS;
-	int64_t DTS;
-} TSTimestamps;
-
-typedef struct {
-	uint32_t tsHeaderSize;
-	uint32_t tsFileSize;
-	uint32_t chunkCount;
-	uint32_t frameCount;
-	uint32_t hasVideo;
-	uint32_t hasAudio;
-	TSTimestamps timestamps[CODEC_COUNT];
-} MetadataHeader;
-
-typedef struct {
-	uint32_t pos;
-	uint32_t size;
-	uint32_t duration;
-	uint8_t isVideo;
-	uint8_t pcrOffset;
-	uint8_t ptsOffset;
-	uint8_t dtsOffset;
-} FrameInfo;
-
 bool buildLayoutImpl(
 	dynamic_buffer_t* result,
 	void* preAdMetadata,
@@ -77,34 +43,34 @@ bool buildLayoutImpl(
 	int32_t outputStart,
 	int32_t outputEnd)
 {
-	MetadataHeader* preAdHeader = (MetadataHeader*)preAdMetadata;
-	MetadataHeader* adHeader = (MetadataHeader*)adMetadata;
-	MetadataHeader* blackHeader = (MetadataHeader*)blackMetadata;
-	MetadataHeader* postAdHeader = (MetadataHeader*)postAdMetadata;
-	FrameInfo* preAdTSFrames = 	(FrameInfo*)(preAdHeader + 1);
-	FrameInfo* adTSFrames = 	(FrameInfo*)(adHeader + 1);
-	FrameInfo* blackTSFrames = 	(FrameInfo*)(blackHeader + 1);
-	FrameInfo* postAdTSFrames = (FrameInfo*)(postAdHeader + 1);
+	metadata_header_t* preAdHeader = (metadata_header_t*)preAdMetadata;
+	metadata_header_t* adHeader = (metadata_header_t*)adMetadata;
+	metadata_header_t* blackHeader = (metadata_header_t*)blackMetadata;
+	metadata_header_t* postAdHeader = (metadata_header_t*)postAdMetadata;
+	metadata_frame_info_t* preAdTSFrames = 	(metadata_frame_info_t*)(preAdHeader + 1);
+	metadata_frame_info_t* adTSFrames = 	(metadata_frame_info_t*)(adHeader + 1);
+	metadata_frame_info_t* blackTSFrames = 	(metadata_frame_info_t*)(blackHeader + 1);
+	metadata_frame_info_t* postAdTSFrames = (metadata_frame_info_t*)(postAdHeader + 1);
 	int32_t videoAdSlotEndPos = INT_MAX;
 	int32_t audioAdSlotEndPos = INT_MAX;
 	
 	if (postAdHeader != NULL)
 	{
-		videoAdSlotEndPos = (int32_t)((postAdHeader->timestamps[CODEC_VIDEO].PTS - preAdHeader->timestamps[CODEC_VIDEO].PTS) & ((1LL << 33) - 1));
-		audioAdSlotEndPos = (int32_t)((postAdHeader->timestamps[CODEC_AUDIO].PTS - preAdHeader->timestamps[CODEC_AUDIO].PTS) & ((1LL << 33) - 1));
+		videoAdSlotEndPos = (int32_t)((postAdHeader->timestamps[MEDIA_TYPE_VIDEO].pts - preAdHeader->timestamps[MEDIA_TYPE_VIDEO].pts) & ((1LL << 33) - 1));
+		audioAdSlotEndPos = (int32_t)((postAdHeader->timestamps[MEDIA_TYPE_AUDIO].pts - preAdHeader->timestamps[MEDIA_TYPE_AUDIO].pts) & ((1LL << 33) - 1));
 	}
 		
 	int curState = STATE_PRE_AD;		// ++ doesn't work for enums in cpp
 	uint32_t frameIndex = 0;	
 	bool outputFrames = false;
 	bool wroteHeader = false;
-	int32_t curPos[CODEC_COUNT] = { 0 };
-	TSTimestamps timestamps[CODEC_COUNT];
+	int32_t curPos[MEDIA_TYPE_COUNT] = { 0 };
+	timestamps_t timestamps[MEDIA_TYPE_COUNT];
 	memcpy(&timestamps, preAdHeader->timestamps, sizeof(timestamps));
-	int mainCodec = (preAdHeader->hasVideo ? CODEC_VIDEO : CODEC_AUDIO);
+	int mainMediaType = ((preAdHeader->video_pid != 0) ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);
 	
-	FrameInfo* nextFrame;
-	CodecType codecType;
+	metadata_frame_info_t* nextFrame;
+	int mediaType;
 	bool foundFrame;
 	bool tryVideo;
 	bool tryAudio;
@@ -120,11 +86,11 @@ bool buildLayoutImpl(
 	
 	for (;;)
 	{
-		if (curPos[mainCodec] > outputEnd)
+		if (curPos[mainMediaType] > outputEnd)
 		{
 			break;
 		}
-		else if (curPos[mainCodec] >= outputStart)
+		else if (curPos[mainMediaType] >= outputStart)
 		{
 			outputFrames = true;
 		}
@@ -134,7 +100,7 @@ bool buildLayoutImpl(
 		switch (curState)
 		{
 		case STATE_PRE_AD:
-			if (frameIndex < preAdHeader->frameCount)
+			if (frameIndex < preAdHeader->frame_count)
 			{
 				nextFrame = &preAdTSFrames[frameIndex];
 				foundFrame = true;
@@ -148,23 +114,23 @@ bool buildLayoutImpl(
 		case STATE_AD:
 			if (adHeader != NULL)
 			{
-				tryVideo = adHeader->hasVideo;
-				tryAudio = adHeader->hasAudio;
-				while (frameIndex < adHeader->frameCount && (tryVideo || tryAudio))
+				tryVideo = (adHeader->video_pid != 0);
+				tryAudio = (adHeader->audio_pid != 0);
+				while (frameIndex < adHeader->frame_count && (tryVideo || tryAudio))
 				{
 					nextFrame = &adTSFrames[frameIndex];
-					if (tryVideo && nextFrame->isVideo)
+					if (tryVideo && nextFrame->media_type == MEDIA_TYPE_VIDEO)
 					{
-						if (curPos[CODEC_VIDEO] + (int32_t)nextFrame->duration <= videoAdSlotEndPos)
+						if (curPos[MEDIA_TYPE_VIDEO] + (int32_t)nextFrame->duration <= videoAdSlotEndPos)
 						{
 							foundFrame = true;
 							break;
 						}
 						tryVideo = false;
 					}
-					else if (tryAudio && !nextFrame->isVideo)
+					else if (tryAudio && nextFrame->media_type == MEDIA_TYPE_AUDIO)
 					{
-						if (curPos[CODEC_AUDIO] + (int32_t)nextFrame->duration <= audioAdSlotEndPos)
+						if (curPos[MEDIA_TYPE_AUDIO] + (int32_t)nextFrame->duration <= audioAdSlotEndPos)
 						{
 							foundFrame = true;
 							break;
@@ -182,25 +148,25 @@ bool buildLayoutImpl(
 			/* fallthrough */
 		
 		case STATE_PAD:
-			tryVideo = blackHeader->hasVideo;
-			tryAudio = blackHeader->hasAudio;
+			tryVideo = (blackHeader->video_pid != 0);
+			tryAudio = (blackHeader->audio_pid != 0);
 			while (tryVideo || tryAudio)
 			{
-				if (frameIndex >= blackHeader->frameCount)
-					frameIndex -= blackHeader->frameCount;
+				if (frameIndex >= blackHeader->frame_count)
+					frameIndex -= blackHeader->frame_count;
 				nextFrame = &blackTSFrames[frameIndex];
-				if (tryVideo && nextFrame->isVideo)
+				if (tryVideo && nextFrame->media_type == MEDIA_TYPE_VIDEO)
 				{
-					if (curPos[CODEC_VIDEO] + (int32_t)nextFrame->duration <= videoAdSlotEndPos)
+					if (curPos[MEDIA_TYPE_VIDEO] + (int32_t)nextFrame->duration <= videoAdSlotEndPos)
 					{
 						foundFrame = true;
 						break;
 					}
 					tryVideo = false;
 				}
-				else if (tryAudio && !nextFrame->isVideo)
+				else if (tryAudio && nextFrame->media_type == MEDIA_TYPE_AUDIO)
 				{
-					if (curPos[CODEC_AUDIO] + (int32_t)nextFrame->duration <= audioAdSlotEndPos)
+					if (curPos[MEDIA_TYPE_AUDIO] + (int32_t)nextFrame->duration <= audioAdSlotEndPos)
 					{
 						foundFrame = true;
 						break;
@@ -217,7 +183,7 @@ bool buildLayoutImpl(
 			/* fallthrough */
 
 		case STATE_POST_AD:
-			if (frameIndex < postAdHeader->frameCount)
+			if (frameIndex < postAdHeader->frame_count)
 			{
 				nextFrame = &postAdTSFrames[frameIndex];
 				foundFrame = true;
@@ -228,7 +194,7 @@ bool buildLayoutImpl(
 		if (!foundFrame)
 			break;
 			
-		codecType = nextFrame->isVideo ? CODEC_VIDEO : CODEC_AUDIO;
+		mediaType = nextFrame->media_type;
 		
 		if (outputFrames)
 		{
@@ -250,9 +216,9 @@ bool buildLayoutImpl(
 			outputPacket.pos = nextFrame->pos;
 			outputPacket.size = nextFrame->size;
 			outputPacket.state = curState;
-			if (timestamps[codecType].PCR != NO_TIMESTAMP && nextFrame->pcrOffset != NO_OFFSET)
+			if (timestamps[mediaType].pcr != NO_TIMESTAMP && nextFrame->timestamp_offsets.pcr != NO_OFFSET)
 			{
-				outputPacket.pcrOffset = nextFrame->pcrOffset;
+				outputPacket.pcrOffset = nextFrame->timestamp_offsets.pcr;
 				outputPacket.layoutSize += sizeof(pcr);
 			}
 			else
@@ -260,9 +226,9 @@ bool buildLayoutImpl(
 				outputPacket.pcrOffset = NO_OFFSET;
 			}
 			
-			if (timestamps[codecType].PTS != NO_TIMESTAMP && nextFrame->ptsOffset != NO_OFFSET)
+			if (timestamps[mediaType].pts != NO_TIMESTAMP && nextFrame->timestamp_offsets.pts != NO_OFFSET)
 			{
-				outputPacket.ptsOffset = nextFrame->ptsOffset;
+				outputPacket.ptsOffset = nextFrame->timestamp_offsets.pts;
 				outputPacket.layoutSize += sizeof(pts);
 			}
 			else
@@ -270,9 +236,9 @@ bool buildLayoutImpl(
 				outputPacket.ptsOffset = NO_OFFSET;
 			}
 
-			if (timestamps[codecType].DTS != NO_TIMESTAMP && nextFrame->dtsOffset != NO_OFFSET)
+			if (timestamps[mediaType].dts != NO_TIMESTAMP && nextFrame->timestamp_offsets.dts != NO_OFFSET)
 			{
-				outputPacket.dtsOffset = nextFrame->dtsOffset;
+				outputPacket.dtsOffset = nextFrame->timestamp_offsets.dts;
 				outputPacket.layoutSize += sizeof(pts);
 			}
 			else
@@ -288,7 +254,7 @@ bool buildLayoutImpl(
 			// output the timestamps
 			if (outputPacket.pcrOffset != NO_OFFSET)
 			{
-				set_pcr(pcr, timestamps[codecType].PCR);
+				set_pcr(pcr, timestamps[mediaType].pcr);
 				if (!append_buffer(result, &pcr, sizeof(pcr)))
 				{
 					// XXXX handle this
@@ -296,7 +262,7 @@ bool buildLayoutImpl(
 			}
 			if (outputPacket.ptsOffset != NO_OFFSET)
 			{
-				set_pts(pts, nextFrame->dtsOffset != NO_OFFSET ? PTS_BOTH_PTS : PTS_ONLY_PTS, timestamps[codecType].PTS);
+				set_pts(pts, nextFrame->timestamp_offsets.dts != NO_OFFSET ? PTS_BOTH_PTS : PTS_ONLY_PTS, timestamps[mediaType].pts);
 				if (!append_buffer(result, &pts, sizeof(pts)))
 				{
 					// XXXX handle this
@@ -304,7 +270,7 @@ bool buildLayoutImpl(
 			}
 			if (outputPacket.dtsOffset != NO_OFFSET)
 			{
-				set_pts(pts, PTS_BOTH_DTS, timestamps[codecType].DTS);
+				set_pts(pts, PTS_BOTH_DTS, timestamps[mediaType].dts);
 				if (!append_buffer(result, &pts, sizeof(pts)))
 				{
 					// XXXX handle this
@@ -313,13 +279,13 @@ bool buildLayoutImpl(
 		}
 		
 		// update timestamps, pos and frame index
-		if (timestamps[codecType].PCR != NO_TIMESTAMP)
-			timestamps[codecType].PCR += nextFrame->duration;
-		if (timestamps[codecType].PTS != NO_TIMESTAMP)
-			timestamps[codecType].PTS += nextFrame->duration;
-		if (timestamps[codecType].DTS != NO_TIMESTAMP)
-			timestamps[codecType].DTS += nextFrame->duration;
-		curPos[codecType] += nextFrame->duration;
+		if (timestamps[mediaType].pcr != NO_TIMESTAMP)
+			timestamps[mediaType].pcr += nextFrame->duration;
+		if (timestamps[mediaType].pts != NO_TIMESTAMP)
+			timestamps[mediaType].pts += nextFrame->duration;
+		if (timestamps[mediaType].dts != NO_TIMESTAMP)
+			timestamps[mediaType].dts += nextFrame->duration;
+		curPos[mediaType] += nextFrame->duration;
 		frameIndex++;
 	}
 	
@@ -491,13 +457,13 @@ NAN_METHOD(BuildLayout) {
 		}
 		
 		size_t curLength = Buffer::Length(curObject);
-		if (curLength < sizeof(MetadataHeader))
+		if (curLength < sizeof(metadata_header_t))
 		{
 			return NanThrowTypeError("Invalid metadata buffer (1)");
 		}
 		
 		argBuffers[i] = Buffer::Data(curObject);
-		if (curLength < sizeof(MetadataHeader) + ((MetadataHeader*)argBuffers[i])->frameCount * sizeof(FrameInfo))
+		if (curLength < sizeof(metadata_header_t) + ((metadata_header_t*)argBuffers[i])->frame_count * sizeof(metadata_frame_info_t))
 		{
 			return NanThrowTypeError("Invalid metadata buffer (2)");
 		}
@@ -631,12 +597,12 @@ NAN_METHOD(GetChunkCount) {
 		return NanThrowTypeError("Argument must be buffer");
 	}
 	
-	if (Buffer::Length(inputObject) < sizeof(MetadataHeader))
+	if (Buffer::Length(inputObject) < sizeof(metadata_header_t))
 	{
 		return NanThrowTypeError("Invalid metadata buffer");
 	}
 	
-	Local<Number> result = Number::New(((MetadataHeader*)Buffer::Data(inputObject))->chunkCount);
+	Local<Number> result = Number::New(((metadata_header_t*)Buffer::Data(inputObject))->chunk_count);
 	NanReturnValue(result);
 }
 

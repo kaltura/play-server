@@ -1,4 +1,3 @@
-import videoMemcache
 import tempfile
 import memcache
 import commands
@@ -10,6 +9,8 @@ import sys
 import os
 
 FFMPEG_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffmpeg-2.1.sh'
+FFPROBE_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffprobe-2.1.sh'
+TS_PREPARER_PATH = os.path.join(os.path.dirname(__file__), '../../native/ts_preparer/ts_preparer')
 MEMCACHE_HOST = 'localhost'
 MEMCACHE_PORT = 11211
 
@@ -83,6 +84,7 @@ cmdLine = ' '.join([FFMPEG_PATH, ' -i %s ' % sourceFile, encodingParams, ' -y %s
 executeCommand(cmdLine)
 
 # save to memcache
-videoMemcache.addVideoToMemcache(memcache, outputKey, tempFileName, True)
+cmdLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, tempFileName, FFPROBE_PATH, MEMCACHE_HOST, MEMCACHE_PORT, 0, outputKey]))
+executeCommand(cmdLine)
 
 writeOutput('done')

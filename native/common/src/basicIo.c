@@ -31,7 +31,7 @@ bool_t walk_command_output(const char* cmd, walk_output_callback_t callback, voi
 	return TRUE;
 }
 
-byte_t* read_files(char** files, int file_count, size_t* read_size)
+byte_t* read_files(const char** files, int file_count, size_t* read_size)
 {
 	struct stat st;
 	size_t total_size = 0;
@@ -101,6 +101,13 @@ cleanup:
 	free(file_sizes);
 	return result;
 }	
+
+byte_t* read_file(const char* input_file, size_t* read_size)
+{
+	const char* files[1];
+	files[0] = input_file;
+	return read_files(files, 1, read_size);
+}
 
 bool_t write_file(const char* output_file, const dynamic_buffer_t* segments, int segment_count)
 {
