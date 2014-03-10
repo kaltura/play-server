@@ -28,8 +28,5 @@ make
 Installation
 =============
 make install
-
-add the SO to the loader search path
-        echo /usr/local/lib > /etc/ld.so.conf.d/id3.conf
-        ldconfig
+ldconfig				# refresh loader cache
 

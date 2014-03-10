@@ -50,8 +50,8 @@ typedef struct {
 void stream_walker_init(stream_walker_state_t* state, packetizer_callback_t callback, void* callback_context)
 {
 	memset(state, 0, sizeof(*state));
-	state->initial_video_pts = -1;
-	state->initial_audio_pts = -1;
+	state->initial_video_pts = NO_TIMESTAMP;
+	state->initial_audio_pts = NO_TIMESTAMP;
 	ts_packetizer_init(&state->packetizer_state, callback, callback_context);
 }
 
@@ -90,11 +90,11 @@ bool_t stream_walker_packet_data_callback(void* context, int cur_pid, const byte
 {
 	stream_walker_state_t* state = (stream_walker_state_t*)context;
 	
-	if (cur_pid == state->audio_pid && state->initial_audio_pts == -1)
+	if (cur_pid == state->audio_pid && state->initial_audio_pts == NO_TIMESTAMP)
 	{
 		state->initial_audio_pts = get_pts_from_packet(packet, size);
 	}
-	else if (cur_pid == state->video_pid && state->initial_video_pts == -1)
+	else if (cur_pid == state->video_pid && state->initial_video_pts == NO_TIMESTAMP)
 	{
 		state->initial_video_pts = get_pts_from_packet(packet, size);
 	}

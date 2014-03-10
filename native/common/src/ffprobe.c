@@ -67,7 +67,7 @@ int get_frames_callback(void* context, const char* line)
 	return 0;
 }
 
-frame_info_t* get_frames(const char* ffprobe_bin, char** files, int file_count, int* frame_count)
+frame_info_t* get_frames(const char* ffprobe_bin, const char** files, int file_count, int* frame_count)
 {
 	get_frames_state_t state = { { 0 } };
 	char *command;
@@ -107,4 +107,11 @@ frame_info_t* get_frames(const char* ffprobe_bin, char** files, int file_count, 
 	
 	*frame_count = state.result.write_pos / sizeof(frame_info_t);
 	return (frame_info_t*)state.result.data;
+}
+
+frame_info_t* get_frames_single(const char* ffprobe_bin, const char* input_file, int* frame_count)
+{
+	const char* files[1];
+	files[0] = input_file;
+	return get_frames(ffprobe_bin, files, 1, frame_count);
 }

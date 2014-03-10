@@ -12,7 +12,8 @@ extern "C" {
 
 bool_t walk_command_output(const char* cmd, walk_output_callback_t callback, void* context);
 
-byte_t* read_files(char** files, int file_count, size_t* read_size);
+byte_t* read_file(const char* input_file, size_t* read_size);
+byte_t* read_files(const char** files, int file_count, size_t* read_size);
 bool_t write_file(const char* output_file, const dynamic_buffer_t* segments, int segment_count);
 bool_t write_file_single(const char* output_file, byte_t* buffer, int len);
 

@@ -17,7 +17,8 @@ typedef struct {
 extern "C" {
 #endif /* __cplusplus */
 
-frame_info_t* get_frames(const char* ffprobe_bin, char** files, int file_count, int* frame_count);
+frame_info_t* get_frames(const char* ffprobe_bin, const char** files, int file_count, int* frame_count);
+frame_info_t* get_frames_single(const char* ffprobe_bin, const char* input_file, int* frame_count);
 
 #ifdef __cplusplus
 }
