@@ -1,0 +1,33 @@
+#ifndef __MPEGTSSTREAMINFO_H__
+#define __MPEGTSSTREAMINFO_H__
+
+#include <stdint.h>
+
+#define STREAMS_INFO_HASH_SIZE (31)			// chosen since common pids (0, 4095, 4096, 256, 257, 258) do not collide
+
+#define INVALID_PID (-1)
+#define INVALID_CONTINUITY_COUNTER (0xFF)
+
+typedef struct {
+	int pid;
+	uint8_t start_cc;
+	uint8_t end_cc;
+	uint16_t padding;
+} stream_info_t;
+
+typedef struct {
+	stream_info_t data[STREAMS_INFO_HASH_SIZE];
+} streams_info_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+void streams_info_hash_init(streams_info_t* hash);
+stream_info_t* streams_info_hash_get(streams_info_t* hash, int pid);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+#endif // __MPEGTSSTREAMINFO_H__

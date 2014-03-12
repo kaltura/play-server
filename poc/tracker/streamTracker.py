@@ -244,6 +244,7 @@ class ManifestStitcher:
 				'streamHash': liveStreamUrlHash,
 				'encodingParamsId': encodingParamsId,
 				'cuePointId': self.cuePointId,
+				'segmentIndex': seg1 - self.adStartSegment,
 				'outputStart': self.adCurOffset,
 				'outputEnd': outputEnd,
 				}
