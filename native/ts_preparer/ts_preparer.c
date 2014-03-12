@@ -1,7 +1,7 @@
 /*
 
 To compile (TODO create Makefile):
-	gcc ../common/src/basicIo.c ../common/src/common.c ../common/src/dynamicBuffer.c ../common/src/ffprobe.c ../common/src/mpegTs.c ts_preparer.c -o ts_preparer -I../common/include -Wall -lmemcached
+	gcc ../common/src/basicIo.c ../common/src/common.c ../common/src/dynamicBuffer.c ../common/src/ffprobe.c ../common/src/mpegTs.c ../common/src/mpegTsStreamInfo.c ts_preparer.c -o ts_preparer -I../common/include -Wall -lmemcached
 
 Test command line:
 	./ts_preparer /tmp/downloadedTS/postAd-e69fa096bd0736fef2a93923163822a6-abcd139435656.ts /web/content/shared/bin/ffmpeg-2.1-bin/ffprobe-2.1.sh localhost 11211 1000 mukkaukk
@@ -26,6 +26,36 @@ Install libmemcached:
 #include "mpegTs.h"
 
 #define MAX_KEY_POSTFIX_SIZE (20)
+
+bool_t get_streams_info(
+	const byte_t* file_data, 
+	size_t file_size,
+	streams_info_t* streams_info)
+{
+	const byte_t* cur_pos;
+	const byte_t* end_pos = file_data + file_size;
+	stream_info_t* cur_info;
+	
+	end_pos -= TS_PACKET_LENGTH - 1;		// in case the input is somehow not a multiple of packets, avoid overflow
+	
+	streams_info_hash_init(streams_info);
+
+	for (cur_pos = file_data; cur_pos < end_pos; cur_pos += TS_PACKET_LENGTH)
+	{
+		cur_info = streams_info_hash_get(streams_info, mpeg_ts_header_get_PID(cur_pos));
+		if (cur_info == NULL)
+		{
+			printf("Failed to allocate a slot in the stream info hash table\n");
+			return FALSE;
+		}
+		
+		cur_info->end_cc = mpeg_ts_header_get_continuityCounter(cur_pos);
+		if (cur_info->start_cc == INVALID_CONTINUITY_COUNTER)
+			cur_info->start_cc = cur_info->end_cc;
+	}
+	
+	return TRUE;
+}
 
 bool_t prepare_ts_data(
 	const byte_t* file_data, 
@@ -52,9 +82,9 @@ bool_t prepare_ts_data(
 	memset(&durations, 0, sizeof(durations));
 	memset(&metadata_header, 0, sizeof(metadata_header));
 	
-	for (i = 0; i < ARRAY_ENTRIES(metadata_header.timestamps); i++)
+	for (i = 0; i < ARRAY_ENTRIES(metadata_header.media_info); i++)
 	{
-		reset_timestamps(&metadata_header.timestamps[i]);
+		reset_timestamps(&metadata_header.media_info[i].timestamps);
 	}
 
 	// pre-allocate the buffers to avoid the need to realloc them later
@@ -95,16 +125,7 @@ bool_t prepare_ts_data(
 
 		// update audio / video pids
 		cur_pid = mpeg_ts_header_get_PID(start_pos);
-		switch (cur_frame->media_type)
-		{
-		case MEDIA_TYPE_AUDIO:
-			metadata_header.audio_pid = cur_pid;
-			break;
-			
-		case MEDIA_TYPE_VIDEO:
-			metadata_header.video_pid = cur_pid;
-			break;
-		}
+		metadata_header.media_info[cur_frame->media_type].pid = cur_pid;
 
 		// copy the packet while filtering only the relevant stream id
 		for (cur_packet = start_pos; cur_packet < end_pos; cur_packet += TS_PACKET_LENGTH)
@@ -135,7 +156,7 @@ bool_t prepare_ts_data(
 		
 		// update timestamps
 		get_timestamps(start_pos, &cur_frame_info.timestamp_offsets, &cur_timestamps);		
-		target_timestamps = &metadata_header.timestamps[cur_frame->media_type];
+		target_timestamps = &metadata_header.media_info[cur_frame->media_type].timestamps;
 		
 		if (target_timestamps->pcr == NO_TIMESTAMP && cur_timestamps.pcr != NO_TIMESTAMP)
 		{
@@ -154,16 +175,24 @@ bool_t prepare_ts_data(
 	}
 
 	// use the pts in case a dts was not found
-	for (i = 0; i < ARRAY_ENTRIES(metadata_header.timestamps); i++)
+	for (i = 0; i < ARRAY_ENTRIES(metadata_header.media_info); i++)
 	{
-		if (metadata_header.timestamps[i].pts != NO_TIMESTAMP && metadata_header.timestamps[i].dts == NO_TIMESTAMP)
+		if (metadata_header.media_info[i].timestamps.pts != NO_TIMESTAMP && metadata_header.media_info[i].timestamps.dts == NO_TIMESTAMP)
 		{
-			metadata_header.timestamps[i].dts = metadata_header.timestamps[i].pts;
+			metadata_header.media_info[i].timestamps.dts = metadata_header.media_info[i].timestamps.pts;
 		}
+	}
+	
+	if (!get_streams_info(file_data, file_size, &metadata_header.streams_info))
+	{
+		return FALSE;
 	}
 
 	// update the metadata header
-	memcpy(metadata_header.durations, PS(durations));
+	for (i = 0; i < ARRAY_ENTRIES(metadata_header.media_info); i++)
+	{
+		metadata_header.media_info[i].duration = durations[i];
+	}
 	memcpy(output_metadata->data, PS(metadata_header));
 	
 	return TRUE;

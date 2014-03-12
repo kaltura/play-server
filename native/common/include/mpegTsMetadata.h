@@ -3,17 +3,22 @@
 
 #define FILE_CHUNK_SIZE (2500 * TS_PACKET_LENGTH)
 
+#include "mpegTsStreamInfo.h"
 #include "mpegTs.h"
+
+typedef struct {
+	int pid;
+	int duration;
+	timestamps_t timestamps;
+} media_info_t;
 
 typedef struct {
 	uint32_t chunk_count;
 	uint32_t frame_count;
 	uint32_t ts_header_size;
 	uint32_t ts_file_size;
-	int audio_pid;
-	int video_pid;
-	int durations[MEDIA_TYPE_COUNT];
-	timestamps_t timestamps[MEDIA_TYPE_COUNT];
+	media_info_t media_info[MEDIA_TYPE_COUNT];
+	streams_info_t streams_info;
 	/* metadata_frame_info_t frames[frame_count] */
 } metadata_header_t;
 

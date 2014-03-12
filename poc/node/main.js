@@ -764,6 +764,7 @@ function processStitchSegment(queryParams, res) {
 						adMetadata,
 						blackMetadata,
 						postAdMetadata,
+						parseInt(queryParams.segmentIndex),
 						parseInt(queryParams.outputStart),
 						parseInt(queryParams.outputEnd));
 						
