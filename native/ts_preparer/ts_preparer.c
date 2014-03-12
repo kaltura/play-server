@@ -27,20 +27,18 @@ Install libmemcached:
 
 #define MAX_KEY_POSTFIX_SIZE (20)
 
-bool_t get_streams_info(
-	const byte_t* file_data, 
-	size_t file_size,
-	streams_info_t* streams_info)
+bool_t update_streams_info(
+	streams_info_t* streams_info,
+	const byte_t* buffer, 
+	size_t size)
 {
 	const byte_t* cur_pos;
-	const byte_t* end_pos = file_data + file_size;
+	const byte_t* end_pos = buffer + size;
 	stream_info_t* cur_info;
 	
 	end_pos -= TS_PACKET_LENGTH - 1;		// in case the input is somehow not a multiple of packets, avoid overflow
 	
-	streams_info_hash_init(streams_info);
-
-	for (cur_pos = file_data; cur_pos < end_pos; cur_pos += TS_PACKET_LENGTH)
+	for (cur_pos = buffer; cur_pos < end_pos; cur_pos += TS_PACKET_LENGTH)
 	{
 		cur_info = streams_info_hash_get(streams_info, mpeg_ts_header_get_PID(cur_pos));
 		if (cur_info == NULL)
@@ -182,8 +180,16 @@ bool_t prepare_ts_data(
 			metadata_header.media_info[i].timestamps.dts = metadata_header.media_info[i].timestamps.pts;
 		}
 	}
+
+	// calculate continuity counters info
+	streams_info_hash_init(&metadata_header.streams_info);
+
+	if (!update_streams_info(&metadata_header.streams_info, file_data, metadata_header.ts_header_size))
+	{
+		return FALSE;
+	}
 	
-	if (!get_streams_info(file_data, file_size, &metadata_header.streams_info))
+	if (!update_streams_info(&metadata_header.streams_info, output_data->data, output_data->write_pos))
 	{
 		return FALSE;
 	}
