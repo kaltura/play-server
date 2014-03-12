@@ -74,7 +74,7 @@ NAN_METHOD(BuildLayout) {
 	dynamic_buffer_t dynBuffer;
 	memset(&dynBuffer, 0, sizeof(dynBuffer));
 	
-	buildLayoutImpl(
+	build_layout_impl(
 		&dynBuffer,
 		argBuffers[0],
 		argBuffers[1],
@@ -122,47 +122,39 @@ NAN_METHOD(ProcessChunk) {
 	}
 	
 	// parse the state
-	OutputState outputState;
+	output_state_t outputState;
 	memset(&outputState, 0, sizeof(outputState));
 	Local<Object> inputState = args[2].As<Object>();
-	outputState.layoutPos = 		inputState->Get(String::NewSymbol("layoutPos"))->NumberValue();
-	outputState.chunkType = 		inputState->Get(String::NewSymbol("chunkType"))->NumberValue();
-	outputState.chunkStartOffset = 	inputState->Get(String::NewSymbol("chunkStartOffset"))->NumberValue();
+	outputState.layout_pos = 		inputState->Get(String::NewSymbol("layoutPos"))->NumberValue();
+	outputState.chunk_type = 		inputState->Get(String::NewSymbol("chunkType"))->NumberValue();
+	outputState.chunk_start_offset = 	inputState->Get(String::NewSymbol("chunkStartOffset"))->NumberValue();
 
 	// process the chunk
-	uint32_t chunkOutputStart = 0;
-	uint32_t chunkOutputEnd = 0;
-	byte_t* outputBufferData = NULL;
-	size_t outputBufferSize = 0;
-	bool_t moreDataNeeded = TRUE;
+	process_output_t processResult;
 
-	processChunkImpl(
+	process_chunk_impl(
 		(byte_t*)Buffer::Data(args[0]->ToObject()),
 		Buffer::Length(args[0]->ToObject()),
 		(byte_t*)Buffer::Data(args[1]->ToObject()),
 		Buffer::Length(args[1]->ToObject()),
 		&outputState,
-		&chunkOutputStart,
-		&chunkOutputEnd, 
-		&outputBufferData,
-		&outputBufferSize,
-		&moreDataNeeded);
+		&processResult);
 	
 	// update the state
-	inputState->Set(String::NewSymbol("layoutPos"), Number::New(outputState.layoutPos));
-	inputState->Set(String::NewSymbol("chunkType"), Number::New(outputState.chunkType));
-	inputState->Set(String::NewSymbol("chunkStartOffset"), Number::New(outputState.chunkStartOffset));
+	inputState->Set(String::NewSymbol("layoutPos"), Number::New(outputState.layout_pos));
+	inputState->Set(String::NewSymbol("chunkType"), Number::New(outputState.chunk_type));
+	inputState->Set(String::NewSymbol("chunkStartOffset"), Number::New(outputState.chunk_start_offset));
 	
 	// output the result
 	Local<Object> result = Object::New();
-	result->Set(String::NewSymbol("chunkOutputStart"), Number::New(chunkOutputStart));
-	result->Set(String::NewSymbol("chunkOutputEnd"), Number::New(chunkOutputEnd));
-	result->Set(String::NewSymbol("moreDataNeeded"), Boolean::New(moreDataNeeded));
+	result->Set(String::NewSymbol("chunkOutputStart"), Number::New(processResult.chunk_output_start));
+	result->Set(String::NewSymbol("chunkOutputEnd"), Number::New(processResult.chunk_output_end));
+	result->Set(String::NewSymbol("moreDataNeeded"), Boolean::New(processResult.more_data_needed));
 
-	if (outputBufferData != NULL)
+	if (processResult.output_buffer != NULL)
 	{
-		Local<Object> outputBuffer = NanNewBufferHandle((char*)outputBufferData, outputBufferSize);
-		free(outputBufferData);
+		Local<Object> outputBuffer = NanNewBufferHandle((char*)processResult.output_buffer, processResult.output_buffer_size);
+		free(processResult.output_buffer);
 
 		result->Set(String::NewSymbol("outputBuffer"), outputBuffer);
 	}

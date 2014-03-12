@@ -13,44 +13,48 @@ typedef enum {
 	STATE_PRE_AD_HEADER,
 	
 	STATE_INVALID,
-} LayoutState;
+} layout_state_t;
+
+typedef struct {
+	uint32_t layout_pos;
+	int chunk_type;
+	uint32_t chunk_start_offset;
+} output_state_t;
+
+typedef struct {
+	uint32_t chunk_output_start;
+	uint32_t chunk_output_end;
+	byte_t* output_buffer;
+	size_t output_buffer_size;
+	bool_t more_data_needed;
+} process_output_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-typedef struct {
-	uint32_t layoutPos;
-	int chunkType;
-	uint32_t chunkStartOffset;
-} OutputState;
-
-bool_t buildLayoutImpl(
+bool_t build_layout_impl(
 	dynamic_buffer_t* result,
-	void* preAdMetadata,
-	void* adMetadata,
-	void* blackMetadata,
-	void* postAdMetadata,
-	int32_t segmentIndex,
-	int32_t outputStart,
-	int32_t outputEnd);
+	void* pre_ad_metadata,
+	void* ad_metadata,
+	void* black_metadata,
+	void* post_ad_metadata,
+	int32_t segment_index,
+	int32_t output_start,
+	int32_t output_end);
 	
-void processChunkImpl(
+void process_chunk_impl(
 	// input
-	byte_t* layoutBuffer,
-	uint32_t layoutSize,
+	byte_t* layout_buffer,
+	uint32_t layout_size,
 	
 	// inout
-	byte_t* chunkBuffer,
-	uint32_t chunkSize,
-	OutputState* outputState,
+	byte_t* chunk_buffer,
+	uint32_t chunk_size,
+	output_state_t* output_state,
 	
 	// output
-	uint32_t* chunkOutputStart,
-	uint32_t* chunkOutputEnd,
-	byte_t** outputBuffer,
-	size_t* outputBufferSize,
-	bool_t* moreDataNeeded);
+	process_output_t* output);
 
 bool_t is_metadata_buffer_valid(const void* buffer, size_t size);
 

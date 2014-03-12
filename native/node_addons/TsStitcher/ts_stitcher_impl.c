@@ -7,17 +7,17 @@
 #include "mpegTs.h"
 
 typedef struct {
-	streams_info_t streamsInfo;
-} OutputHeader;
+	streams_info_t streams_info;
+} output_header_t;
 
 typedef struct {
-	uint32_t layoutSize;
+	uint32_t layout_size;
 	uint32_t pos;
 	uint32_t size;
 	uint8_t state;
-	uint8_t pcrOffset;
-	uint8_t ptsOffset;
-	uint8_t dtsOffset;
+	uint8_t pcr_offset;
+	uint8_t pts_offset;
+	uint8_t dts_offset;
 	uint16_t pid;
 	uint8_t last_packet;
 	uint8_t padding;
@@ -25,62 +25,62 @@ typedef struct {
 	/*uint8_t pcr[sizeof_pcr];
 	uint8_t pts[sizeof_pts];
 	uint8_t dts[sizeof_pts];*/
-} OutputPacket;
+} output_packet_t;
 
-bool_t buildLayoutImpl(
+bool_t build_layout_impl(
 	dynamic_buffer_t* result,
-	void* preAdMetadata,
-	void* adMetadata,
-	void* blackMetadata,
-	void* postAdMetadata,
-	int32_t segmentIndex,
-	int32_t outputStart,
-	int32_t outputEnd)
+	void* pre_ad_metadata,
+	void* ad_metadata,
+	void* black_metadata,
+	void* post_ad_metadata,
+	int32_t segment_index,
+	int32_t output_start,
+	int32_t output_end)
 {
-	metadata_header_t* preAdHeader = (metadata_header_t*)preAdMetadata;
-	metadata_header_t* adHeader = (metadata_header_t*)adMetadata;
-	metadata_header_t* blackHeader = (metadata_header_t*)blackMetadata;
-	metadata_header_t* postAdHeader = (metadata_header_t*)postAdMetadata;
-	metadata_frame_info_t* preAdTSFrames = 	(metadata_frame_info_t*)(preAdHeader + 1);
-	metadata_frame_info_t* adTSFrames = 	(metadata_frame_info_t*)(adHeader + 1);
-	metadata_frame_info_t* blackTSFrames = 	(metadata_frame_info_t*)(blackHeader + 1);
-	metadata_frame_info_t* postAdTSFrames = (metadata_frame_info_t*)(postAdHeader + 1);
-	int32_t videoAdSlotEndPos = INT_MAX;
-	int32_t audioAdSlotEndPos = INT_MAX;
+	metadata_header_t* pre_ad_header = (metadata_header_t*)pre_ad_metadata;
+	metadata_header_t* ad_header = (metadata_header_t*)ad_metadata;
+	metadata_header_t* black_header = (metadata_header_t*)black_metadata;
+	metadata_header_t* post_ad_header = (metadata_header_t*)post_ad_metadata;
+	metadata_frame_info_t* pre_ad_ts_frames = 	(metadata_frame_info_t*)(pre_ad_header + 1);
+	metadata_frame_info_t* ad_ts_frames = 	(metadata_frame_info_t*)(ad_header + 1);
+	metadata_frame_info_t* black_ts_frames = 	(metadata_frame_info_t*)(black_header + 1);
+	metadata_frame_info_t* post_ad_ts_frames = (metadata_frame_info_t*)(post_ad_header + 1);
+	int32_t video_ad_slot_end_pos = INT_MAX;
+	int32_t audio_ad_slot_end_pos = INT_MAX;
 	
-	if (postAdHeader != NULL)
+	if (post_ad_header != NULL)
 	{
-		videoAdSlotEndPos = (int32_t)((postAdHeader->media_info[MEDIA_TYPE_VIDEO].timestamps.pts - preAdHeader->media_info[MEDIA_TYPE_VIDEO].timestamps.pts) & ((1LL << 33) - 1));
-		audioAdSlotEndPos = (int32_t)((postAdHeader->media_info[MEDIA_TYPE_AUDIO].timestamps.pts - preAdHeader->media_info[MEDIA_TYPE_AUDIO].timestamps.pts) & ((1LL << 33) - 1));
+		video_ad_slot_end_pos = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts) & ((1LL << 33) - 1));
+		audio_ad_slot_end_pos = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts) & ((1LL << 33) - 1));
 	}
 		
-	int curState = STATE_PRE_AD;		// ++ doesn't work for enums in cpp
-	uint32_t frameIndex = 0;	
-	bool_t outputFrames = FALSE;
-	bool_t wroteHeader = FALSE;
-	int32_t curPos[MEDIA_TYPE_COUNT] = { 0 };
+	int cur_state = STATE_PRE_AD;		// ++ doesn't work for enums in cpp
+	uint32_t frame_index = 0;	
+	bool_t output_frames = FALSE;
+	bool_t wrote_header = FALSE;
+	int32_t cur_pos[MEDIA_TYPE_COUNT] = { 0 };
 	timestamps_t timestamps[MEDIA_TYPE_COUNT];
-	timestamps[MEDIA_TYPE_VIDEO] = preAdHeader->media_info[MEDIA_TYPE_VIDEO].timestamps;
-	timestamps[MEDIA_TYPE_AUDIO] = preAdHeader->media_info[MEDIA_TYPE_AUDIO].timestamps;
-	int mainMediaType = ((preAdHeader->media_info[MEDIA_TYPE_VIDEO].pid != 0) ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);
+	timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
+	timestamps[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps;
+	int main_media_type = ((pre_ad_header->media_info[MEDIA_TYPE_VIDEO].pid != 0) ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);
 	
-	metadata_frame_info_t* nextFrame;
-	int mediaType;
-	bool_t foundFrame;
-	bool_t tryVideo;
-	bool_t tryAudio;
-	OutputPacket outputPacket;
+	metadata_frame_info_t* next_frame;
+	int media_type;
+	bool_t found_frame;
+	bool_t try_video;
+	bool_t try_audio;
+	output_packet_t output_packet;
 	uint8_t pcr[sizeof_pcr];
 	uint8_t pts[sizeof_pts];	
-	memset(&outputPacket, 0, sizeof(outputPacket));
+	memset(&output_packet, 0, sizeof(output_packet));
 	
-	uint32_t lastPacketPos[MEDIA_TYPE_COUNT] = { 0 };
+	uint32_t last_packet_pos[MEDIA_TYPE_COUNT] = { 0 };
 	
 	// calculate the output header
-	OutputHeader outputHeader;
-	outputHeader.streamsInfo = preAdHeader->streams_info;
-	stream_info_t* streams_data = outputHeader.streamsInfo.data;
-	bool_t isMediaPid;
+	output_header_t output_header;
+	output_header.streams_info = pre_ad_header->streams_info;
+	stream_info_t* streams_data = output_header.streams_info.data;
+	bool_t is_media_pid;
 	int i;
 	
 	for (i = 0; i < STREAMS_INFO_HASH_SIZE; i++)
@@ -88,13 +88,13 @@ bool_t buildLayoutImpl(
 		if (streams_data[i].pid == INVALID_PID)
 			continue;
 	
-		isMediaPid = streams_data[i].pid != 0 && 
-			(preAdHeader->media_info[MEDIA_TYPE_VIDEO].pid == streams_data[i].pid || 
-			 preAdHeader->media_info[MEDIA_TYPE_AUDIO].pid == streams_data[i].pid);
+		is_media_pid = streams_data[i].pid != 0 && 
+			(pre_ad_header->media_info[MEDIA_TYPE_VIDEO].pid == streams_data[i].pid || 
+			 pre_ad_header->media_info[MEDIA_TYPE_AUDIO].pid == streams_data[i].pid);
 					 
-		if (!isMediaPid)
+		if (!is_media_pid)
 		{
-			int cc_shift = segmentIndex * (streams_data[i].end_cc + 1 - streams_data[i].start_cc);
+			int cc_shift = segment_index * (streams_data[i].end_cc + 1 - streams_data[i].start_cc);
 			streams_data[i].start_cc += cc_shift;
 			streams_data[i].end_cc += cc_shift;
 		}
@@ -103,216 +103,216 @@ bool_t buildLayoutImpl(
 			streams_data[i].end_cc = streams_data[i].start_cc - 1;
 		}
 		
-		if (outputEnd == 0)
+		if (output_end == 0)
 		{		
-			streams_data[i].end_cc = postAdHeader->streams_info.data[i].end_cc;
+			streams_data[i].end_cc = post_ad_header->streams_info.data[i].end_cc;
 		}
 		
 		streams_data[i].start_cc &= 0x0F;
 		streams_data[i].end_cc &= 0x0F;		
 	}
 	
-	if (!append_buffer(result, PS(outputHeader)))
+	if (!append_buffer(result, PS(output_header)))
 	{
 		// XXXX handle this
 	}	
 	
-	if (!outputEnd)
+	if (!output_end)
 	{
-		outputEnd = INT_MAX;
+		output_end = INT_MAX;
 	}
 	
 	for (;;)
 	{
-		if (curPos[mainMediaType] > outputEnd)
+		if (cur_pos[main_media_type] > output_end)
 		{
 			break;
 		}
-		else if (curPos[mainMediaType] >= outputStart)
+		else if (cur_pos[main_media_type] >= output_start)
 		{
-			outputFrames = TRUE;
+			output_frames = TRUE;
 		}
 		
-		foundFrame = FALSE;
+		found_frame = FALSE;
 		
-		switch (curState)
+		switch (cur_state)
 		{
 		case STATE_PRE_AD:
-			if (frameIndex < preAdHeader->frame_count)
+			if (frame_index < pre_ad_header->frame_count)
 			{
-				nextFrame = &preAdTSFrames[frameIndex];
-				foundFrame = TRUE;
+				next_frame = &pre_ad_ts_frames[frame_index];
+				found_frame = TRUE;
 				break;
 			}
 
-			curState++;
-			frameIndex = 0;
+			cur_state++;
+			frame_index = 0;
 			/* fallthrough */
 		
 		case STATE_AD:
-			if (adHeader != NULL)
+			if (ad_header != NULL)
 			{
-				tryVideo = (adHeader->media_info[MEDIA_TYPE_VIDEO].pid != 0);
-				tryAudio = (adHeader->media_info[MEDIA_TYPE_AUDIO].pid != 0);
-				while (frameIndex < adHeader->frame_count && (tryVideo || tryAudio))
+				try_video = (ad_header->media_info[MEDIA_TYPE_VIDEO].pid != 0);
+				try_audio = (ad_header->media_info[MEDIA_TYPE_AUDIO].pid != 0);
+				while (frame_index < ad_header->frame_count && (try_video || try_audio))
 				{
-					nextFrame = &adTSFrames[frameIndex];
-					if (tryVideo && nextFrame->media_type == MEDIA_TYPE_VIDEO)
+					next_frame = &ad_ts_frames[frame_index];
+					if (try_video && next_frame->media_type == MEDIA_TYPE_VIDEO)
 					{
-						if (curPos[MEDIA_TYPE_VIDEO] + (int32_t)nextFrame->duration <= videoAdSlotEndPos)
+						if (cur_pos[MEDIA_TYPE_VIDEO] + (int32_t)next_frame->duration <= video_ad_slot_end_pos)
 						{
-							foundFrame = TRUE;
+							found_frame = TRUE;
 							break;
 						}
-						tryVideo = FALSE;
+						try_video = FALSE;
 					}
-					else if (tryAudio && nextFrame->media_type == MEDIA_TYPE_AUDIO)
+					else if (try_audio && next_frame->media_type == MEDIA_TYPE_AUDIO)
 					{
-						if (curPos[MEDIA_TYPE_AUDIO] + (int32_t)nextFrame->duration <= audioAdSlotEndPos)
+						if (cur_pos[MEDIA_TYPE_AUDIO] + (int32_t)next_frame->duration <= audio_ad_slot_end_pos)
 						{
-							foundFrame = TRUE;
+							found_frame = TRUE;
 							break;
 						}
-						tryAudio = FALSE;
+						try_audio = FALSE;
 					}
-					frameIndex++;
+					frame_index++;
 				}
-				if (foundFrame)
+				if (found_frame)
 					break;
 			}
 			
-			curState++;
-			frameIndex = 0;
+			cur_state++;
+			frame_index = 0;
 			/* fallthrough */
 		
 		case STATE_PAD:
-			tryVideo = (blackHeader->media_info[MEDIA_TYPE_VIDEO].pid != 0);
-			tryAudio = (blackHeader->media_info[MEDIA_TYPE_AUDIO].pid != 0);
-			while (tryVideo || tryAudio)
+			try_video = (black_header->media_info[MEDIA_TYPE_VIDEO].pid != 0);
+			try_audio = (black_header->media_info[MEDIA_TYPE_AUDIO].pid != 0);
+			while (try_video || try_audio)
 			{
-				if (frameIndex >= blackHeader->frame_count)
-					frameIndex -= blackHeader->frame_count;
-				nextFrame = &blackTSFrames[frameIndex];
-				if (tryVideo && nextFrame->media_type == MEDIA_TYPE_VIDEO)
+				if (frame_index >= black_header->frame_count)
+					frame_index -= black_header->frame_count;
+				next_frame = &black_ts_frames[frame_index];
+				if (try_video && next_frame->media_type == MEDIA_TYPE_VIDEO)
 				{
-					if (curPos[MEDIA_TYPE_VIDEO] + (int32_t)nextFrame->duration <= videoAdSlotEndPos)
+					if (cur_pos[MEDIA_TYPE_VIDEO] + (int32_t)next_frame->duration <= video_ad_slot_end_pos)
 					{
-						foundFrame = TRUE;
+						found_frame = TRUE;
 						break;
 					}
-					tryVideo = FALSE;
+					try_video = FALSE;
 				}
-				else if (tryAudio && nextFrame->media_type == MEDIA_TYPE_AUDIO)
+				else if (try_audio && next_frame->media_type == MEDIA_TYPE_AUDIO)
 				{
-					if (curPos[MEDIA_TYPE_AUDIO] + (int32_t)nextFrame->duration <= audioAdSlotEndPos)
+					if (cur_pos[MEDIA_TYPE_AUDIO] + (int32_t)next_frame->duration <= audio_ad_slot_end_pos)
 					{
-						foundFrame = TRUE;
+						found_frame = TRUE;
 						break;
 					}
-					tryAudio = FALSE;
+					try_audio = FALSE;
 				}
-				frameIndex++;
+				frame_index++;
 			}
-			if (foundFrame)
+			if (found_frame)
 				break;
 				
-			curState++;
-			frameIndex = 0;
+			cur_state++;
+			frame_index = 0;
 			/* fallthrough */
 
 		case STATE_POST_AD:
-			if (frameIndex < postAdHeader->frame_count)
+			if (frame_index < post_ad_header->frame_count)
 			{
-				nextFrame = &postAdTSFrames[frameIndex];
-				foundFrame = TRUE;
+				next_frame = &post_ad_ts_frames[frame_index];
+				found_frame = TRUE;
 				break;
 			}
 		}
 		
-		if (!foundFrame)
+		if (!found_frame)
 			break;
 			
-		mediaType = nextFrame->media_type;
+		media_type = next_frame->media_type;
 		
-		if (outputFrames)
+		if (output_frames)
 		{
 			// output the ts header
-			if (!wroteHeader)
+			if (!wrote_header)
 			{
-				outputPacket.layoutSize = sizeof(outputPacket);
-				outputPacket.state = STATE_PRE_AD_HEADER;
-				if (!append_buffer(result, &outputPacket, sizeof(outputPacket)))
+				output_packet.layout_size = sizeof(output_packet);
+				output_packet.state = STATE_PRE_AD_HEADER;
+				if (!append_buffer(result, &output_packet, sizeof(output_packet)))
 				{
 					// XXXX handle this
 				}
 
-				wroteHeader = TRUE;
+				wrote_header = TRUE;
 			}
 		
 			// output the packet
-			outputPacket.layoutSize = sizeof(outputPacket);
-			outputPacket.pos = nextFrame->pos;
-			outputPacket.size = nextFrame->size;
-			outputPacket.state = curState;
-			if (timestamps[mediaType].pcr != NO_TIMESTAMP && nextFrame->timestamp_offsets.pcr != NO_OFFSET)
+			output_packet.layout_size = sizeof(output_packet);
+			output_packet.pos = next_frame->pos;
+			output_packet.size = next_frame->size;
+			output_packet.state = cur_state;
+			if (timestamps[media_type].pcr != NO_TIMESTAMP && next_frame->timestamp_offsets.pcr != NO_OFFSET)
 			{
-				outputPacket.pcrOffset = nextFrame->timestamp_offsets.pcr;
-				outputPacket.layoutSize += sizeof(pcr);
+				output_packet.pcr_offset = next_frame->timestamp_offsets.pcr;
+				output_packet.layout_size += sizeof(pcr);
 			}
 			else
 			{
-				outputPacket.pcrOffset = NO_OFFSET;
+				output_packet.pcr_offset = NO_OFFSET;
 			}
 			
-			if (timestamps[mediaType].pts != NO_TIMESTAMP && nextFrame->timestamp_offsets.pts != NO_OFFSET)
+			if (timestamps[media_type].pts != NO_TIMESTAMP && next_frame->timestamp_offsets.pts != NO_OFFSET)
 			{
-				outputPacket.ptsOffset = nextFrame->timestamp_offsets.pts;
-				outputPacket.layoutSize += sizeof(pts);
+				output_packet.pts_offset = next_frame->timestamp_offsets.pts;
+				output_packet.layout_size += sizeof(pts);
 			}
 			else
 			{
-				outputPacket.ptsOffset = NO_OFFSET;
+				output_packet.pts_offset = NO_OFFSET;
 			}
 
-			if (timestamps[mediaType].dts != NO_TIMESTAMP && nextFrame->timestamp_offsets.dts != NO_OFFSET)
+			if (timestamps[media_type].dts != NO_TIMESTAMP && next_frame->timestamp_offsets.dts != NO_OFFSET)
 			{
-				outputPacket.dtsOffset = nextFrame->timestamp_offsets.dts;
-				outputPacket.layoutSize += sizeof(pts);
+				output_packet.dts_offset = next_frame->timestamp_offsets.dts;
+				output_packet.layout_size += sizeof(pts);
 			}
 			else
 			{
-				outputPacket.dtsOffset = NO_OFFSET;
+				output_packet.dts_offset = NO_OFFSET;
 			}
 			
-			outputPacket.pid = preAdHeader->media_info[mediaType].pid;
+			output_packet.pid = pre_ad_header->media_info[media_type].pid;
 			
-			lastPacketPos[mediaType] = result->write_pos;
+			last_packet_pos[media_type] = result->write_pos;
 				
-			if (!append_buffer(result, &outputPacket, sizeof(outputPacket)))
+			if (!append_buffer(result, &output_packet, sizeof(output_packet)))
 			{
 				// XXXX handle this
 			}
 			
 			// output the timestamps
-			if (outputPacket.pcrOffset != NO_OFFSET)
+			if (output_packet.pcr_offset != NO_OFFSET)
 			{
-				set_pcr(pcr, timestamps[mediaType].pcr);
+				set_pcr(pcr, timestamps[media_type].pcr);
 				if (!append_buffer(result, &pcr, sizeof(pcr)))
 				{
 					// XXXX handle this
 				}
 			}
-			if (outputPacket.ptsOffset != NO_OFFSET)
+			if (output_packet.pts_offset != NO_OFFSET)
 			{
-				set_pts(pts, nextFrame->timestamp_offsets.dts != NO_OFFSET ? PTS_BOTH_PTS : PTS_ONLY_PTS, timestamps[mediaType].pts);
+				set_pts(pts, next_frame->timestamp_offsets.dts != NO_OFFSET ? PTS_BOTH_PTS : PTS_ONLY_PTS, timestamps[media_type].pts);
 				if (!append_buffer(result, &pts, sizeof(pts)))
 				{
 					// XXXX handle this
 				}
 			}
-			if (outputPacket.dtsOffset != NO_OFFSET)
+			if (output_packet.dts_offset != NO_OFFSET)
 			{
-				set_pts(pts, PTS_BOTH_DTS, timestamps[mediaType].dts);
+				set_pts(pts, PTS_BOTH_DTS, timestamps[media_type].dts);
 				if (!append_buffer(result, &pts, sizeof(pts)))
 				{
 					// XXXX handle this
@@ -321,23 +321,23 @@ bool_t buildLayoutImpl(
 		}
 		
 		// update timestamps, pos and frame index
-		if (timestamps[mediaType].pcr != NO_TIMESTAMP)
-			timestamps[mediaType].pcr += nextFrame->duration;
-		if (timestamps[mediaType].pts != NO_TIMESTAMP)
-			timestamps[mediaType].pts += nextFrame->duration;
-		if (timestamps[mediaType].dts != NO_TIMESTAMP)
-			timestamps[mediaType].dts += nextFrame->duration;
-		curPos[mediaType] += nextFrame->duration;
-		frameIndex++;
+		if (timestamps[media_type].pcr != NO_TIMESTAMP)
+			timestamps[media_type].pcr += next_frame->duration;
+		if (timestamps[media_type].pts != NO_TIMESTAMP)
+			timestamps[media_type].pts += next_frame->duration;
+		if (timestamps[media_type].dts != NO_TIMESTAMP)
+			timestamps[media_type].dts += next_frame->duration;
+		cur_pos[media_type] += next_frame->duration;
+		frame_index++;
 	}
 	
 	// mark the last packet of each media type
-	for (i = 0; i < (int)ARRAY_ENTRIES(lastPacketPos); i++)
+	for (i = 0; i < (int)ARRAY_ENTRIES(last_packet_pos); i++)
 	{
-		if (lastPacketPos[i] == 0)
+		if (last_packet_pos[i] == 0)
 			continue;
 			
-		((OutputPacket*)(result->data + lastPacketPos[i]))->last_packet = TRUE;
+		((output_packet_t*)(result->data + last_packet_pos[i]))->last_packet = TRUE;
 	}
 	
 	return TRUE;
@@ -409,146 +409,139 @@ void fix_continuity_counters(streams_info_t* streams_info, byte_t* buffer, uint3
 	}
 }
 
-void processChunkImpl(
+void process_chunk_impl(
 	// input
-	byte_t* layoutBuffer,
-	uint32_t layoutSize,
+	byte_t* layout_buffer,
+	uint32_t layout_size,
 	
 	// inout
-	byte_t* chunkBuffer,
-	uint32_t chunkSize,
-	OutputState* outputState,
+	byte_t* chunk_buffer,
+	uint32_t chunk_size,
+	output_state_t* output_state,
 	
 	// output
-	uint32_t* chunkOutputStart,
-	uint32_t* chunkOutputEnd,
-	byte_t** outputBuffer,
-	size_t* outputBufferSize,
-	bool_t* moreDataNeeded)
+	process_output_t* output)
 {
-	OutputHeader* outputHeader = (OutputHeader*)layoutBuffer;
-	OutputPacket* curPacket;
-	byte_t* curPos = layoutBuffer + outputState->layoutPos;
-	byte_t* endPos = layoutBuffer + layoutSize;
-	byte_t* packetChunkPos;
-	bool_t firstOutput = TRUE;
-	uint32_t packetStartOffset;
-	uint32_t packetEndOffset;
-	uint32_t curOffset;
+	output_header_t* output_header = (output_header_t*)layout_buffer;
+	output_packet_t* cur_packet;
+	byte_t* cur_pos = layout_buffer + output_state->layout_pos;
+	byte_t* end_pos = layout_buffer + layout_size;
+	byte_t* packet_chunk_pos;
+	bool_t first_output = TRUE;
+	uint32_t packet_start_offset;
+	uint32_t packet_end_offset;
+	uint32_t cur_offset;
 	
-	*chunkOutputStart = 0;
-	*chunkOutputEnd = 0;
-	*outputBuffer = NULL;
-	*outputBufferSize = 0;
-	*moreDataNeeded = TRUE;
+	memset(output, 0, sizeof(*output));
+	output->more_data_needed = TRUE;
 	
-	if (chunkSize == 0)
+	if (chunk_size == 0)
 	{
 		// first call - init state
-		curPacket = (OutputPacket*)(layoutBuffer + sizeof(OutputHeader));
-		outputState->layoutPos = sizeof(OutputHeader);
-		outputState->chunkType = curPacket->state;
-		outputState->chunkStartOffset = curPacket->pos;
+		cur_packet = (output_packet_t*)(layout_buffer + sizeof(output_header_t));
+		output_state->layout_pos = sizeof(output_header_t);
+		output_state->chunk_type = cur_packet->state;
+		output_state->chunk_start_offset = cur_packet->pos;
 		return;
 	}
 	
-	while (curPos + sizeof(OutputPacket) <= endPos)
+	while (cur_pos + sizeof(output_packet_t) <= end_pos)
 	{	
-		curPacket = (OutputPacket*)curPos;
-		if (curPos + curPacket->layoutSize > endPos)
+		cur_packet = (output_packet_t*)cur_pos;
+		if (cur_pos + cur_packet->layout_size > end_pos)
 			break;		// unexpected - the layout buffer is invalid
 
-		curPos += sizeof(*curPacket);
+		cur_pos += sizeof(*cur_packet);
 		
-		if (curPacket->state == outputState->chunkType &&
-			curPacket->state == STATE_PRE_AD_HEADER)
+		if (cur_packet->state == output_state->chunk_type &&
+			cur_packet->state == STATE_PRE_AD_HEADER)
 		{
 			// got a header buffer - output it as is, and move to the next packet
-			fix_continuity_counters(&outputHeader->streamsInfo, chunkBuffer, chunkSize);
-			*chunkOutputEnd = chunkSize;
-			outputState->layoutPos += curPacket->layoutSize;
-			curPos = layoutBuffer + outputState->layoutPos;
+			fix_continuity_counters(&output_header->streams_info, chunk_buffer, chunk_size);
+			output->chunk_output_end = chunk_size;
+			output_state->layout_pos += cur_packet->layout_size;
+			cur_pos = layout_buffer + output_state->layout_pos;
 			continue;
 		}
 		
-		if (curPacket->state != outputState->chunkType || 
-			curPacket->pos + curPacket->size <= outputState->chunkStartOffset || 
-			curPacket->pos >= outputState->chunkStartOffset + chunkSize)
+		if (cur_packet->state != output_state->chunk_type || 
+			cur_packet->pos + cur_packet->size <= output_state->chunk_start_offset || 
+			cur_packet->pos >= output_state->chunk_start_offset + chunk_size)
 		{
 			// nothing to output from this chunk
-			outputState->chunkType = curPacket->state;
-			outputState->chunkStartOffset = curPacket->pos;
+			output_state->chunk_type = cur_packet->state;
+			output_state->chunk_start_offset = cur_packet->pos;
 			return;
 		}
 				
 		// update output offsets
-		packetStartOffset = (curPacket->pos > outputState->chunkStartOffset ? curPacket->pos - outputState->chunkStartOffset : 0);
-		packetEndOffset = MIN(curPacket->pos + curPacket->size - outputState->chunkStartOffset, chunkSize);
+		packet_start_offset = (cur_packet->pos > output_state->chunk_start_offset ? cur_packet->pos - output_state->chunk_start_offset : 0);
+		packet_end_offset = MIN(cur_packet->pos + cur_packet->size - output_state->chunk_start_offset, chunk_size);
 
-		if (firstOutput)
+		if (first_output)
 		{
-			*chunkOutputStart = packetStartOffset;
-			firstOutput = FALSE;
+			output->chunk_output_start = packet_start_offset;
+			first_output = FALSE;
 		}
-		else if (packetStartOffset != *chunkOutputEnd)
+		else if (packet_start_offset != output->chunk_output_end)
 		{
 			// the packet is not adjacent to the last packet, write whatever we have so far first
-			*moreDataNeeded = FALSE;
+			output->more_data_needed = FALSE;
 			return;
 		}
-		*chunkOutputEnd = packetEndOffset;
+		output->chunk_output_end = packet_end_offset;
 		
 		// update timestamps
-		if (curPacket->pos >= outputState->chunkStartOffset)
+		if (cur_packet->pos >= output_state->chunk_start_offset)
 		{
-			packetChunkPos = chunkBuffer + curPacket->pos - outputState->chunkStartOffset;
-			if (curPacket->pcrOffset != NO_OFFSET)
+			packet_chunk_pos = chunk_buffer + cur_packet->pos - output_state->chunk_start_offset;
+			if (cur_packet->pcr_offset != NO_OFFSET)
 			{
-				memcpy(packetChunkPos + curPacket->pcrOffset, curPos, sizeof_pcr);
-				curPos += sizeof_pcr;
+				memcpy(packet_chunk_pos + cur_packet->pcr_offset, cur_pos, sizeof_pcr);
+				cur_pos += sizeof_pcr;
 			}
-			if (curPacket->ptsOffset != NO_OFFSET)
+			if (cur_packet->pts_offset != NO_OFFSET)
 			{
-				memcpy(packetChunkPos + curPacket->ptsOffset, curPos, sizeof_pts);
-				curPos += sizeof_pts;
+				memcpy(packet_chunk_pos + cur_packet->pts_offset, cur_pos, sizeof_pts);
+				cur_pos += sizeof_pts;
 			}
-			if (curPacket->dtsOffset != NO_OFFSET)
+			if (cur_packet->dts_offset != NO_OFFSET)
 			{
-				memcpy(packetChunkPos + curPacket->dtsOffset, curPos, sizeof_pts);
-				curPos += sizeof_pts;
+				memcpy(packet_chunk_pos + cur_packet->dts_offset, cur_pos, sizeof_pts);
+				cur_pos += sizeof_pts;
 			}
 		}
 
 		// update continuity counters and PID
-		stream_info_t* stream_info = streams_info_hash_get(&outputHeader->streamsInfo, curPacket->pid);
-		for (curOffset = packetStartOffset; curOffset < packetEndOffset; curOffset += TS_PACKET_LENGTH)
+		stream_info_t* stream_info = streams_info_hash_get(&output_header->streams_info, cur_packet->pid);
+		for (cur_offset = packet_start_offset; cur_offset < packet_end_offset; cur_offset += TS_PACKET_LENGTH)
 		{
-			byte_t* curTSPacket = chunkBuffer + curOffset;
+			byte_t* cur_ts_packet = chunk_buffer + cur_offset;
 			
-			mpeg_ts_header_set_PID(curTSPacket, curPacket->pid);
+			mpeg_ts_header_set_PID(cur_ts_packet, cur_packet->pid);
 			
 			if (stream_info != NULL)
 			{
 				stream_info->start_cc &= 0x0F;
-				mpeg_ts_header_set_continuityCounter(curTSPacket, stream_info->start_cc);
+				mpeg_ts_header_set_continuityCounter(cur_ts_packet, stream_info->start_cc);
 				stream_info->start_cc++;
 			}
 		}
 				
 		// update layout position
-		if (curPacket->pos + curPacket->size == *chunkOutputEnd + outputState->chunkStartOffset)
+		if (cur_packet->pos + cur_packet->size == output->chunk_output_end + output_state->chunk_start_offset)
 		{
 			// finished the packet
-			outputState->layoutPos += curPacket->layoutSize;
-			curPos = layoutBuffer + outputState->layoutPos;
+			output_state->layout_pos += cur_packet->layout_size;
+			cur_pos = layout_buffer + output_state->layout_pos;
 			
-			if (curPacket->last_packet)
+			if (cur_packet->last_packet)
 			{
-				*outputBuffer = create_null_packets(stream_info, outputBufferSize);
-				if (*outputBuffer != NULL)
+				output->output_buffer = create_null_packets(stream_info, &output->output_buffer_size);
+				if (output->output_buffer != NULL)
 				{
 					// output the null packets before continuing
-					*moreDataNeeded = FALSE;
+					output->more_data_needed = FALSE;
 					return;
 				}
 			}
@@ -556,12 +549,12 @@ void processChunkImpl(
 		else
 		{
 			// need the next chunk to complete the packet
-			outputState->chunkStartOffset += chunkSize;
+			output_state->chunk_start_offset += chunk_size;
 			return;
 		}
 	}
 	
-	outputState->chunkType = STATE_INVALID;
+	output_state->chunk_type = STATE_INVALID;
 }
 
 bool_t is_metadata_buffer_valid(const void* buffer, size_t size)
