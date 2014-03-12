@@ -36,9 +36,6 @@ const STATE_AD = 1;
 const STATE_PAD = 2;
 const STATE_POST_AD = 3;
 const STATE_PRE_AD_HEADER = 4;
-const STATE_AD_HEADER = 5;
-const STATE_PAD_HEADER = 6;
-const STATE_POST_AD_HEADER = 7;
 
 // NOTE: the following constants must match videoMemcache.py
 const TS_PACKET_LENGTH = 188;
@@ -687,6 +684,11 @@ function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, ad
 			console.log('writing ' + processResult.chunkOutputStart + '..' + processResult.chunkOutputEnd);
 			res.write(curChunk.slice(processResult.chunkOutputStart, processResult.chunkOutputEnd));
 		}
+		
+		if (processResult.outputBuffer) {
+			console.log('writing extra buffer of size ' + processResult.outputBuffer.length);
+			res.write(processResult.outputBuffer);
+		}
 	} while (!processResult.moreDataNeeded);
 	
 	curChunk = null;		// no longer need the chunk
@@ -709,17 +711,7 @@ function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, ad
 		break;
 	case STATE_PRE_AD_HEADER:
 		videoKey = preAdKey + '-header';
-		break;
-	case STATE_AD_HEADER:
-		videoKey = adKey + '-header';
-		break;
-	case STATE_PAD_HEADER:
-		videoKey = blackKey + '-header';
-		break;
-	case STATE_POST_AD_HEADER:
-		videoKey = postAdKey + '-header';
-		break;
-		
+		break;		
 	default:
 		console.log('request completed');
 		res.end();

@@ -22,7 +22,8 @@ typedef struct {
 	uint8_t ptsOffset;
 	uint8_t dtsOffset;
 	uint16_t pid;
-	uint16_t padding;
+	uint8_t last_packet;
+	uint8_t padding;
 	
 	/*uint8_t pcr[sizeof_pcr];
 	uint8_t pts[sizeof_pts];
@@ -36,9 +37,6 @@ typedef enum {
 	STATE_POST_AD,
 	
 	STATE_PRE_AD_HEADER,
-	STATE_AD_HEADER,
-	STATE_PAD_HEADER,
-	STATE_POST_AD_HEADER,
 	
 	STATE_INVALID,
 } LayoutState;
@@ -90,6 +88,8 @@ bool buildLayoutImpl(
 	uint8_t pts[sizeof_pts];	
 	memset(&outputPacket, 0, sizeof(outputPacket));
 	
+	uint32_t lastPacketPos[MEDIA_TYPE_COUNT] = { 0 };
+	
 	// calculate the output header
 	OutputHeader outputHeader;
 	outputHeader.streamsInfo = preAdHeader->streams_info;
@@ -112,14 +112,14 @@ bool buildLayoutImpl(
 			streams_data[i].start_cc += cc_shift;
 			streams_data[i].end_cc += cc_shift;
 		}
+		else
+		{
+			streams_data[i].end_cc = streams_data[i].start_cc - 1;
+		}
 		
 		if (outputEnd == 0)
 		{		
 			streams_data[i].end_cc = postAdHeader->streams_info.data[i].end_cc;
-		}
-		else if (isMediaPid)
-		{
-			streams_data[i].end_cc = streams_data[i].start_cc - 1;
 		}
 		
 		streams_data[i].start_cc &= 0x0F;
@@ -254,7 +254,7 @@ bool buildLayoutImpl(
 			if (!wroteHeader)
 			{
 				outputPacket.layoutSize = sizeof(outputPacket);
-				outputPacket.state = curState + STATE_PRE_AD_HEADER - STATE_PRE_AD;
+				outputPacket.state = STATE_PRE_AD_HEADER;
 				if (!append_buffer(result, &outputPacket, sizeof(outputPacket)))
 				{
 					// XXXX handle this
@@ -299,6 +299,8 @@ bool buildLayoutImpl(
 			}
 			
 			outputPacket.pid = preAdHeader->media_info[mediaType].pid;
+			
+			lastPacketPos[mediaType] = result->write_pos;
 				
 			if (!append_buffer(result, &outputPacket, sizeof(outputPacket)))
 			{
@@ -343,6 +345,15 @@ bool buildLayoutImpl(
 		frameIndex++;
 	}
 	
+	// mark the last packet of each media type
+	for (i = 0; i < (int)ARRAY_ENTRIES(lastPacketPos); i++)
+	{
+		if (lastPacketPos[i] == 0)
+			continue;
+			
+		((OutputPacket*)(result->data + lastPacketPos[i]))->last_packet = TRUE;
+	}
+	
 	return true;
 }
 
@@ -352,79 +363,79 @@ typedef struct {
 	uint32_t chunkStartOffset;
 } OutputState;
 
-// TODO XXX fix mpeg ts continuity counters
-
-byte_t* create_null_packets(streams_info_t* streams_info, size_t* result_buffer_size)
+byte_t* create_null_packets(stream_info_t* stream_info, size_t* result_buffer_size)
 {
-	const char null_packet_header[] = { 0x47, 0x00, 0x00, 0x00, 0xB7, 0x00 };
-	stream_info_t* streams_data = streams_info->data;
-	byte_t* null_packets_offset;
-	byte_t* null_packets;
+	static const char null_packet_header[] = { 0x47, 0x00, 0x00, 0x30, 0xB7, 0x00 };
+	byte_t* cur_pos;
+	byte_t* end_pos;
+	byte_t* result;
 	size_t buffer_size;
-	int null_packet_count = 0;
-	int cur_packet_count;
-	int i;
+	int packet_count;
 
 	*result_buffer_size = 0;
 	
-	for (i = 0; i < STREAMS_INFO_HASH_SIZE; i++)
-	{
-		if (streams_data[i].pid == INVALID_PID)
-			continue;
-
-		streams_data[i].start_cc &= 0x0F;
-		null_packet_count += (streams_data[i].end_cc - streams_data[i].start_cc) & 0x0F;
-	}
-	
-	if (null_packet_count == 0)
+	stream_info->start_cc &= 0x0F;
+	packet_count = (stream_info->end_cc - stream_info->start_cc + 1) & 0x0F;
+	if (packet_count == 0)
 	{
 		return NULL;
 	}
 	
-	buffer_size = null_packet_count * TS_PACKET_LENGTH;
+	buffer_size = packet_count * TS_PACKET_LENGTH;
 	
-	null_packets = (byte_t*)malloc(buffer_size);
-	if (null_packets == NULL)
+	result = (byte_t*)malloc(buffer_size);
+	if (result == NULL)
 	{
 		return NULL;
 	}
 	
-	memset(null_packets, 0xFF, buffer_size);
+	memset(result, 0xFF, buffer_size);
 
-	null_packets_offset = null_packets;
+	end_pos = result + buffer_size;
 	
-	for (i = 0; i < STREAMS_INFO_HASH_SIZE; i++)
+	for (cur_pos = result; cur_pos < end_pos; cur_pos += TS_PACKET_LENGTH)
 	{
-		if (streams_data[i].pid == INVALID_PID)
-			continue;
+		memcpy(cur_pos, PS(null_packet_header));
 		
-		cur_packet_count = (streams_data[i].end_cc - streams_data[i].start_cc) & 0x0F;
-		for (i = 0; i < cur_packet_count; i++)
-		{
-			memcpy(null_packets_offset, PS(null_packet_header));
-			
-			mpeg_ts_header_set_PID(null_packets_offset, streams_data[i].pid);
-			
-			streams_data[i].start_cc &= 0x0F;
-			mpeg_ts_header_set_continuityCounter(null_packets_offset, streams_data[i].start_cc);
-			streams_data[i].start_cc++;
-			
-			null_packets_offset += TS_PACKET_LENGTH;
-		}
+		mpeg_ts_header_set_PID(cur_pos, stream_info->pid);
+		
+		stream_info->start_cc &= 0x0F;
+		mpeg_ts_header_set_continuityCounter(cur_pos, stream_info->start_cc);
+		stream_info->start_cc++;
 	}
 	
 	*result_buffer_size = buffer_size;
 	
-	return null_packets;
+	return result;
+}
+
+void fix_continuity_counters(streams_info_t* streams_info, byte_t* buffer, uint32_t size)
+{
+	stream_info_t* stream_info;
+	byte_t* end_pos = buffer + size;
+	byte_t* cur_pos;
+	
+	for (cur_pos = buffer; cur_pos < end_pos; cur_pos += TS_PACKET_LENGTH)
+	{
+		stream_info = streams_info_hash_get(streams_info, mpeg_ts_header_get_PID(cur_pos));
+		if (stream_info == NULL)
+		{
+			continue;
+		}
+		
+		stream_info->start_cc &= 0x0F;
+		mpeg_ts_header_set_continuityCounter(cur_pos, stream_info->start_cc);
+		stream_info->start_cc++;		
+	}
 }
 
 void processChunkImpl(
 	// input
-	char* layoutBuffer,
+	byte_t* layoutBuffer,
 	uint32_t layoutSize,
 	
 	// inout
-	char* chunkBuffer,
+	byte_t* chunkBuffer,
 	uint32_t chunkSize,
 	OutputState* outputState,
 	
@@ -437,9 +448,9 @@ void processChunkImpl(
 {
 	OutputHeader* outputHeader = (OutputHeader*)layoutBuffer;
 	OutputPacket* curPacket;
-	char* curPos = layoutBuffer + outputState->layoutPos;
-	char* endPos = layoutBuffer + layoutSize;
-	char* packetChunkPos;
+	byte_t* curPos = layoutBuffer + outputState->layoutPos;
+	byte_t* endPos = layoutBuffer + layoutSize;
+	byte_t* packetChunkPos;
 	bool firstOutput = true;
 	uint32_t packetStartOffset;
 	uint32_t packetEndOffset;
@@ -453,7 +464,7 @@ void processChunkImpl(
 	if (chunkSize == 0)
 	{
 		// first call - init state
-		curPacket = (OutputPacket*)layoutBuffer;
+		curPacket = (OutputPacket*)(layoutBuffer + sizeof(OutputHeader));
 		outputState->layoutPos = sizeof(OutputHeader);
 		outputState->chunkType = curPacket->state;
 		outputState->chunkStartOffset = curPacket->pos;
@@ -469,9 +480,10 @@ void processChunkImpl(
 		curPos += sizeof(*curPacket);
 		
 		if (curPacket->state == outputState->chunkType &&
-			curPacket->state >= STATE_PRE_AD_HEADER)
+			curPacket->state == STATE_PRE_AD_HEADER)
 		{
 			// got a header buffer - output it as is, and move to the next packet
+			fix_continuity_counters(&outputHeader->streamsInfo, chunkBuffer, chunkSize);
 			*chunkOutputEnd = chunkSize;
 			outputState->layoutPos += curPacket->layoutSize;
 			curPos = layoutBuffer + outputState->layoutPos;
@@ -530,7 +542,7 @@ void processChunkImpl(
 		stream_info_t* stream_info = streams_info_hash_get(&outputHeader->streamsInfo, curPacket->pid);
 		for (uint32_t curOffset = packetStartOffset; curOffset < packetEndOffset; curOffset += TS_PACKET_LENGTH)
 		{
-			char* curTSPacket = chunkBuffer + curOffset;
+			byte_t* curTSPacket = chunkBuffer + curOffset;
 			
 			mpeg_ts_header_set_PID(curTSPacket, curPacket->pid);
 			
@@ -548,6 +560,17 @@ void processChunkImpl(
 			// finished the packet
 			outputState->layoutPos += curPacket->layoutSize;
 			curPos = layoutBuffer + outputState->layoutPos;
+			
+			if (curPacket->last_packet)
+			{
+				*outputBuffer = create_null_packets(stream_info, outputBufferSize);
+				if (*outputBuffer != NULL)
+				{
+					// output the null packets before continuing
+					*moreDataNeeded = false;
+					return;
+				}
+			}
 		}
 		else
 		{
@@ -556,8 +579,6 @@ void processChunkImpl(
 			return;
 		}
 	}
-
-	*outputBuffer = create_null_packets(&outputHeader->streamsInfo, outputBufferSize);
 	
 	outputState->chunkType = STATE_INVALID;
 }
@@ -698,9 +719,9 @@ NAN_METHOD(ProcessChunk) {
 	bool moreDataNeeded = true;
 
 	processChunkImpl(
-		Buffer::Data(args[0]->ToObject()),
+		(byte_t*)Buffer::Data(args[0]->ToObject()),
 		Buffer::Length(args[0]->ToObject()),
-		Buffer::Data(args[1]->ToObject()),
+		(byte_t*)Buffer::Data(args[1]->ToObject()),
 		Buffer::Length(args[1]->ToObject()),
 		&outputState,
 		&chunkOutputStart,
