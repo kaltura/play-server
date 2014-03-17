@@ -1,5 +1,4 @@
 import ffmpegTSParams
-import videoMemcache
 import tempfile
 import commands
 import memcache
@@ -12,7 +11,8 @@ import json
 import sys
 import os
 
-TS_CUTTER_PATH = os.path.dirname(__file__) + '/../../native/ts_cutter/ts_cutter'
+TS_CUTTER_PATH = os.path.join(os.path.dirname(__file__), '../../native/ts_cutter/ts_cutter')
+TS_PREPARER_PATH = os.path.join(os.path.dirname(__file__), '../../native/ts_preparer/ts_preparer')
 FFPROBE_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffprobe-2.1.sh'
 FFMPEG_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffmpeg-2.1.sh'
 
@@ -53,6 +53,20 @@ def executeCommand(cmdLine):
 	startTime = time.time()
   	writeOutput(commands.getoutput(cmdLine))
 	writeOutput('command took %s' % (time.time() - startTime))
+
+def addVideoToMemcache(fileName, outputKey):
+	cmdLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, fileName, FFPROBE_PATH, MEMCACHE_HOST, MEMCACHE_PORT, 0, outputKey]))
+	executeCommand(cmdLine)
+
+def videoExistsInMemcache(memcache, key):
+	metadata = memcache.get('%s-metadata' % key)
+	if metadata == None:
+		return False
+	chunkCount = struct.parse('L', metadata[:4])[0]
+	for curChunk in xrange(chunkCount):
+		if not memcache.touch('%s-%s' % (key, curChunk)):
+			return False
+	return True
 	
 def cutTsFiles(videoKey, buffer, position, portion):
 	# parse buffer
@@ -75,7 +89,7 @@ def cutTsFiles(videoKey, buffer, position, portion):
 	# XXXX TODO - can get the video metadata from ts_cutter instead of running ffprobe here
 	
 	# save the result to memcache
-	videoMemcache.addVideoToMemcache(memcache, videoKey, outputFile, False)
+	addVideoToMemcache(outputFile, videoKey)
 	
 def parseM3U8(streamData):
 	header = {}
@@ -211,14 +225,14 @@ class ManifestStitcher:
 			if self.adCurOffset == 0:
 				# create pre ad ts
 				videoKey = 'preAd-%s-%s' % (liveStreamUrlHash, self.cuePointId)
-				if not videoMemcache.videoExistsInMemcache(memcache, videoKey):
+				if not videoExistsInMemcache(memcache, videoKey):
 					cutTsFiles(videoKey, buffer, self.adStartOffset, 'left')
 			
 			if (self.adCurOffset + curSegmentDuration <= self.adEndOffset and 
 				self.adCurOffset + curSegmentDuration + nextSegmentDuration > self.adEndOffset):
 				# create post ad ts
 				videoKey = 'postAd-%s-%s' % (liveStreamUrlHash, self.cuePointId)
-				if not videoMemcache.videoExistsInMemcache(memcache, videoKey):
+				if not videoExistsInMemcache(memcache, videoKey):
 					cutTsFiles(videoKey, buffer, self.adEndOffset - self.adCurOffset, 'right')
 
 			if self.adCurOffset > self.adEndOffset:
@@ -230,6 +244,7 @@ class ManifestStitcher:
 				'streamHash': liveStreamUrlHash,
 				'encodingParamsId': encodingParamsId,
 				'cuePointId': self.cuePointId,
+				'segmentIndex': seg1 - self.adStartSegment,
 				'outputStart': self.adCurOffset,
 				'outputEnd': outputEnd,
 				}
@@ -300,12 +315,12 @@ memcache.append(ffmpegParamsKey, '%s\n' % tsEncodingParams, RESULT_MANIFEST_EXPI
 
 # generate black video if needed
 blackVideoKey = 'black-%s' % encodingParamsId
-if not videoMemcache.videoExistsInMemcache(memcache, blackVideoKey):
+if not videoExistsInMemcache(memcache, blackVideoKey):
 	# TODO: implement the video metadata extraction natively (required for ad & black)
 	tempFileName = os.path.join(tempDownloadPath, blackVideoKey + '.ts')
 	cmdLine = ' '.join([FFMPEG_PATH, blackTSEncodingParams, ' -y %s' % tempFileName])
 	executeCommand(cmdLine)
-	videoMemcache.addVideoToMemcache(memcache, blackVideoKey, tempFileName, True)
+	addVideoToMemcache(tempFileName, blackVideoKey)
 
 # main loop
 manifestStitcher = ManifestStitcher()

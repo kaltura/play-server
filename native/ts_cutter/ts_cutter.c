@@ -306,123 +306,21 @@ void calc_duration_after(frame_info_t* frames, int frame_count)
 	}
 }
 
-bool_t frame_has_pcr(const byte_t* packet_offset)
-{
-	const mpeg_ts_header_t* ts_header;
-	const mpeg_ts_adaptation_field_t* adapt_field;
-	int adapt_size;
-
-	ts_header = packet_offset;
-	packet_offset += sizeof_mpeg_ts_header;
-	if (!mpeg_ts_header_get_adaptationFieldExist(ts_header))
-	{
-		return FALSE;
-	}
-	
-	adapt_field = (const mpeg_ts_adaptation_field_t*)packet_offset;
-	adapt_size = 1 + mpeg_ts_adaptation_field_get_adaptationFieldLength(adapt_field);
-	
-	if (mpeg_ts_adaptation_field_get_pcrFlag(adapt_field) && adapt_size >= sizeof_mpeg_ts_adaptation_field + sizeof_pcr)
-	{			
-		return TRUE;
-	}
-	
-	return FALSE;
-}
-
-void reset_timestamps(timestamps_t* timestamps)
-{
-	timestamps->pcr = -1;
-	timestamps->pts = -1;
-	timestamps->dts = -1;
-}
-
 void get_frame_timestamps(const byte_t* packet_offset, timestamps_t* timestamps)
 {
-	const byte_t* packet_end = packet_offset + TS_PACKET_LENGTH;
-	const mpeg_ts_header_t* ts_header;
-	const mpeg_ts_adaptation_field_t* adapt_field;
-	int adapt_size;
-	const pes_optional_header_t* pes_optional_header;
-
-	reset_timestamps(timestamps);
+	timestamp_offsets_t timestamp_offsets;
 	
-	ts_header = packet_offset;
-	packet_offset += sizeof_mpeg_ts_header;
-	if (mpeg_ts_header_get_adaptationFieldExist(ts_header))
-	{
-		adapt_field = (const mpeg_ts_adaptation_field_t*)packet_offset;
-		adapt_size = 1 + mpeg_ts_adaptation_field_get_adaptationFieldLength(adapt_field);
-		
-		if (mpeg_ts_adaptation_field_get_pcrFlag(adapt_field) && adapt_size >= sizeof_mpeg_ts_adaptation_field + sizeof_pcr)
-		{			
-			timestamps->pcr = get_pcr(packet_offset + sizeof_mpeg_ts_adaptation_field);
-		}
-
-		packet_offset += adapt_size;
-	}
-	
-	if (packet_offset + sizeof_pes_header + sizeof_pes_optional_header < packet_end &&
-		pes_header_get_prefix(packet_offset) == PES_MARKER)
-	{
-		packet_offset += sizeof_pes_header;
-		pes_optional_header = packet_offset;
-		packet_offset += sizeof_pes_optional_header;
-
-		if (pes_optional_header_get_ptsFlag(pes_optional_header))
-		{
-			timestamps->pts = get_pts(packet_offset);
-			packet_offset += sizeof_pts;
-			if (pes_optional_header_get_dtsFlag(pes_optional_header))
-			{
-				timestamps->dts = get_pts(packet_offset);
-			}
-		}
-	}
+	get_timestamp_offsets(packet_offset, &timestamp_offsets);
+	get_timestamps(packet_offset, &timestamp_offsets, timestamps);
 }
 
 void set_frame_timestamps(byte_t* packet_offset, timestamps_t* timestamps, int timestamp_offset)
 {
-	const byte_t* packet_end = packet_offset + TS_PACKET_LENGTH;
-	const mpeg_ts_header_t* ts_header;
-	const mpeg_ts_adaptation_field_t* adapt_field;
-	int adapt_size;
-	const pes_optional_header_t* pes_optional_header;
+	timestamp_offsets_t timestamp_offsets;
 	
-	ts_header = packet_offset;
-	packet_offset += sizeof_mpeg_ts_header;
-	if (mpeg_ts_header_get_adaptationFieldExist(ts_header))
-	{
-		adapt_field = (const mpeg_ts_adaptation_field_t*)packet_offset;
-		adapt_size = 1 + mpeg_ts_adaptation_field_get_adaptationFieldLength(adapt_field);
-		
-		if (mpeg_ts_adaptation_field_get_pcrFlag(adapt_field) && adapt_size >= sizeof_mpeg_ts_adaptation_field + sizeof_pcr)
-		{
-			update_pcr(packet_offset + sizeof_mpeg_ts_adaptation_field, timestamps->pcr + timestamp_offset);
-		}
-
-		packet_offset += adapt_size;
-	}
-	
-	if (packet_offset + sizeof_pes_header + sizeof_pes_optional_header < packet_end &&
-		pes_header_get_prefix(packet_offset) == PES_MARKER)
-	{
-		packet_offset += sizeof_pes_header;
-		pes_optional_header = packet_offset;
-		packet_offset += sizeof_pes_optional_header;
-
-		if (pes_optional_header_get_ptsFlag(pes_optional_header))
-		{
-			update_pts(packet_offset, timestamps->pts + timestamp_offset);
-			packet_offset += sizeof_pts;
-			if (pes_optional_header_get_dtsFlag(pes_optional_header))
-			{
-				update_pts(packet_offset, timestamps->dts + timestamp_offset);
-			}
-		}
-	}
+	get_timestamp_offsets(packet_offset, &timestamp_offsets);
+	update_timestamps(packet_offset, &timestamp_offsets, timestamps, timestamp_offset);
 }
-
 
 void fix_timestamps(
 	byte_t* target, frame_info_t* target_frames, int target_frame_count, 
@@ -456,21 +354,21 @@ void fix_timestamps(
 		cur_offsets = offsets + cur_frame->media_type;
 		get_frame_timestamps(reference + cur_frame->pos, &cur_timestamps);
 		
-		if (cur_timestamps.pcr != -1)
+		if (cur_timestamps.pcr != NO_TIMESTAMP)
 			cur_offsets->pcr = cur_timestamps.pcr - cur_frame->relative_duration;
 
-		if (cur_timestamps.pts != -1)
+		if (cur_timestamps.pts != NO_TIMESTAMP)
 			cur_offsets->pts = cur_timestamps.pts - cur_frame->relative_duration;
 
-		if (cur_timestamps.dts != -1)
+		if (cur_timestamps.dts != NO_TIMESTAMP)
 			cur_offsets->dts = cur_timestamps.dts - cur_frame->relative_duration;
 	}
 	
 	// if dts offset was not found, use pts offset
-	if (offsets[MEDIA_TYPE_VIDEO].dts == -1)
+	if (offsets[MEDIA_TYPE_VIDEO].dts == NO_TIMESTAMP)
 		offsets[MEDIA_TYPE_VIDEO].dts = offsets[MEDIA_TYPE_VIDEO].pts;
 
-	if (offsets[MEDIA_TYPE_AUDIO].dts == -1)
+	if (offsets[MEDIA_TYPE_AUDIO].dts == NO_TIMESTAMP)
 		offsets[MEDIA_TYPE_AUDIO].dts = offsets[MEDIA_TYPE_AUDIO].pts;
 
 	printf("Video offsets: PCR=%" PRId64 " PTS=%" PRId64 " DTS=%" PRId64 "\n", offsets[MEDIA_TYPE_VIDEO].pcr, offsets[MEDIA_TYPE_VIDEO].pts, offsets[MEDIA_TYPE_VIDEO].dts);
@@ -490,11 +388,11 @@ typedef struct {
 	const char* ffprobe_bin;
 	int cut_offset;
 	bool_t left_portion;
-	char** input_files;
+	const char** input_files;
 	int file_count;
 } command_line_options_t;
 
-bool_t parse_command_line(command_line_options_t* opts, int argc, char *argv[])
+bool_t parse_command_line(command_line_options_t* opts, int argc, const char *argv[])
 {
 	if (argc < 7)
 	{
@@ -622,7 +520,7 @@ bool_t get_bounding_iframes(frame_info_t* frames, int frame_count, const byte_t*
 	return TRUE;
 }
 
-int main( int argc, char *argv[] )
+int main( int argc, const char *argv[] )
 {
 	command_line_options_t opts;
 	
@@ -651,7 +549,7 @@ int main( int argc, char *argv[] )
 	byte_t* last_pmt_packet;
 	char bounded_section_file[] = TEMP_FILE_PATTERN;
 	char clipped_section_file[] = TEMP_FILE_PATTERN;
-	char* clipped_section_file_array[] = { clipped_section_file };
+	const char* clipped_section_file_array[] = { clipped_section_file };
 	int return_code = 1;
 	int fd;
 
