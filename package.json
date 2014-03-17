@@ -1,0 +1,8 @@
+{
+	"name": "kaltura-play-server",
+	"version": "0.0.1",
+	"dependencies": {
+		"node-ini": ">=1.0.0",
+		"memcached": ">=0.2.8"
+	}
+}
