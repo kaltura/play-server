@@ -1,7 +1,7 @@
 #ifndef __MPEGTS_STREAM_WALKER_H__
 #define __MPEGTS_STREAM_WALKER_H__
 
-#include "mpegTs.h"
+#include "mpegTsPacketizer.h"
 
 typedef struct {
 	int audio_pid;
