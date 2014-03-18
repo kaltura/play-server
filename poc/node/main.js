@@ -51,6 +51,7 @@ const START_TRACKER_URI = '/startAdTracker.js';
 const AD_SEGMENT_REDIRECT_URI = '/adRedirect.ts';
 const STITCH_SEGMENT_URI = '/stitchSegment.ts';
 const SHORT_URL_URI = '/shortUrl.js';
+const NOTIFY_ERROR_URI = '/notifyError.js';
 
 const AD_REQUEST_URL = 'http://dogusns-f.akamaihd.net/i/DOGUS_STAR/StarTV/Program/osesturkiye/suvedilara.mp4/segment1_0_av.ts?e=e933a313f6018d5d';
 
@@ -214,7 +215,7 @@ function startTrackers(urlsToTrack) {
 	});
 }
 
-function stitchMasterM3U8(manifest, baseParams) {
+function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 	var attributes = {};
 	var split = manifest.split('\n');
 	var result = '';
@@ -232,6 +233,7 @@ function stitchMasterM3U8(manifest, baseParams) {
 				lastUsedSegmentKey: 'lastUsedSegment-' + baseParams.entryId,
 				ffmpegParamsKey: 'ffmpegParams-' + baseParams.entryId,
 				adSegmentRedirectUrl: SERVER_EXTERNAL_URL + AD_SEGMENT_REDIRECT_URI,
+				entryId: baseParams.entryId
 			};
 			if (attributes['BANDWIDTH'])
 				trackerParams['bitrate'] = attributes['BANDWIDTH'];
@@ -245,6 +247,7 @@ function stitchMasterM3U8(manifest, baseParams) {
 			
 			var flavorStitchParams = {
 				entryId: baseParams.entryId,
+				masterUrl: masterUrl, 
 				trackerRequiredKey: trackerParams['trackerRequiredKey'],
 				trackerOutputKey: trackerParams['trackerOutputKey']
 			};
@@ -289,7 +292,7 @@ function processMasterStitch(params, res) {
 	simpleCache(params.url, 60, 
 		function (cb) {		// calcFunc
 			getHttpUrl(params.url, function (urlData) {
-				cb({statusCode:200, body:stitchMasterM3U8(urlData, {entryId: params.entryId})});
+				cb({statusCode:200, body:stitchMasterM3U8(params.url, urlData, {entryId: params.entryId})});
 			}, function (err) {
 				console.log('Error : ' + err);
 				cb({statusCode:400, body:err});
@@ -302,7 +305,7 @@ function processMasterStitch(params, res) {
 	);
 }
 
-function readTrackerOutput(res, trackerOutputKey, responseHeaders, attempts) {
+function readTrackerOutput(res, trackerOutputKey, masterUrl, entryId, responseHeaders, attempts) {
 	memcache.get(trackerOutputKey, function (err, data) {
 		if (err) {
 			errorResponse(res, 400, 'error getting tracker output');
@@ -317,11 +320,17 @@ function readTrackerOutput(res, trackerOutputKey, responseHeaders, attempts) {
 		
 		if (attempts <= 0) {
 			errorResponse(res, 400, 'timed out waiting for tracker output');
+			
+			// reload the master url and start any trackers that died
+			getHttpUrl(masterUrl, function (urlData) {
+				stitchMasterM3U8(masterUrl, urlData, {entryId: entryId});
+			}, function (err) {});
+			
 			return;
 		}
 		
 		setTimeout(function () {
-			readTrackerOutput(res, trackerOutputKey, responseHeaders, attempts - 1);
+			readTrackerOutput(res, trackerOutputKey, masterUrl, responseHeaders, attempts - 1);
 		}, 100);
 	});
 }
@@ -422,7 +431,8 @@ function processFlavorStitch(params, cookies, res) {
 	}
 		
 	// get ads allocated to the user
-	var allocatedAds = cookies.allocatedAds;
+	var allocatedAdsCookieName = 'allocatedAds_' + params.entryId;
+	var allocatedAds = cookies[allocatedAdsCookieName];
 	console.log('allocated ads ' + allocatedAds);
 	if (allocatedAds)
 		allocatedAds = JSON.parse(allocatedAds);
@@ -438,6 +448,7 @@ function processFlavorStitch(params, cookies, res) {
 		
 		var adPositions = JSON.parse(data);
 		var adsToPrepare = [];
+		var newAllocatedAds = {};
 		var i = 0;
 		
 		// find which ads should be prepared
@@ -452,17 +463,20 @@ function processFlavorStitch(params, cookies, res) {
 				
 				adsToPrepare.push({adUrl: adUrl, adId: adId, entryId: params.entryId});
 				
-				allocatedAds[adPosition.cuePointId] = adId;
+				newAllocatedAds[adPosition.cuePointId] = adId;
+			}
+			else {
+				newAllocatedAds[adPosition.cuePointId] = allocatedAds[adPosition.cuePointId];
 			}
 		}
 		
 		// update the allocated ads cookie and return the m3u8 to the client
 		var responseHeaders = {
 			'Content-Type': 'application/vnd.apple.mpegurl',
-			'Set-Cookie': 	'allocatedAds=' + escape(JSON.stringify(allocatedAds))
+			'Set-Cookie': 	allocatedAdsCookieName + '=' + escape(JSON.stringify(newAllocatedAds))
 		};
 			
-		readTrackerOutput(res, params.trackerOutputKey, responseHeaders, 30);
+		readTrackerOutput(res, params.trackerOutputKey, params.masterUrl, params.entryId, responseHeaders, 30);
 
 		// mark the tracker as required
 		memcache.set(params.trackerRequiredKey, '1', 600, function (err) {});
@@ -652,7 +666,8 @@ function processInsertAdPage(res) {
 }
 
 function processAdSegmentRedirect(queryParams, cookies, res) {
-	var allocatedAds = cookies.allocatedAds;
+	var allocatedAdsCookieName = 'allocatedAds_' + queryParams.entryId;		// XXX add to the params
+	var allocatedAds = cookies[allocatedAdsCookieName];
 	if (allocatedAds)
 		allocatedAds = JSON.parse(allocatedAds);
 	else
@@ -674,6 +689,13 @@ function processAdSegmentRedirect(queryParams, cookies, res) {
 }
 
 function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, adKey, blackKey, postAdKey, res) {
+	if (!curChunk) {
+		// not much to do about this since we already returned the response headers
+		console.log('failed to get chunk from memcache');
+		res.end();
+		return;
+	}
+	
 	do {
 		var processResult = stitcher.processChunk(
 			outputLayout,
@@ -739,12 +761,28 @@ function processStitchSegment(queryParams, res) {
 		memcachebin.get(adKey + '-metadata', function (err, adMetadata) {
 			memcachebin.get(blackKey + '-metadata', function (err, blackMetadata) {
 				memcachebin.get(postAdKey + '-metadata', function (err, postAdMetadata) {
-				
+								
 					console.log('preAdKey ' + preAdKey);
 					console.log('adKey ' + adKey);
 					console.log('blackKey ' + blackKey);
 					console.log('postAdKey ' + postAdKey);
 					
+					if (!preAdMetadata) {
+						errorResponse(res, 400, 'failed to get pre ad segment from memcache ' + preAdKey);
+						return;
+					}
+
+					if (!blackMetadata) {
+						errorResponse(res, 400, 'failed to get black segment from memcache ' + blackKey);
+						return;
+					}
+
+					var outputEnd = parseInt(queryParams.outputEnd);
+					if (!postAdMetadata && outputEnd == 0) {
+						errorResponse(res, 400, 'failed to get post ad segment from memcache ' + postAdKey);
+						return;
+					}
+				
 					if (adMetadata == null)
 						console.log('adMetadata is null');
 					else
@@ -778,11 +816,36 @@ function processStitchSegment(queryParams, res) {
 var shortUrls = {};
 var shortUrlCounter = 1;
 
+function getDateTime() {
+
+    var date = new Date();
+
+    var hour = date.getHours();
+    hour = (hour < 10 ? "0" : "") + hour;
+
+    var min  = date.getMinutes();
+    min = (min < 10 ? "0" : "") + min;
+
+    var sec  = date.getSeconds();
+    sec = (sec < 10 ? "0" : "") + sec;
+
+    var year = date.getFullYear();
+
+    var month = date.getMonth() + 1;
+    month = (month < 10 ? "0" : "") + month;
+
+    var day  = date.getDate();
+    day = (day < 10 ? "0" : "") + day;
+
+    return year + "/" + month + "/" + day + " " + hour + ":" + min + ":" + sec;
+
+}
+
 function handleHttpRequest(req, res) {
 	var parsedUrl = url.parse(req.url);
 	var queryParams = querystring.parse(parsedUrl.query);
 	
-	console.log('request ' + parsedUrl.path);
+	console.log(getDateTime() + ' request ' + parsedUrl.path);
 	console.dir(req.headers);
 	
 	switch (parsedUrl.pathname) {
@@ -826,16 +889,37 @@ function handleHttpRequest(req, res) {
 		res.end(SERVER_EXTERNAL_URL + shortUri);		
 		break;
 		
+	case NOTIFY_ERROR_URI:
+		
+		var cmdLine = "python " + __dirname + "/../utils/debug/debugStream.py '" + queryParams.url + "' /tmp/tstDebug/x.m3u8";
+
+		console.log('Executing: ' + cmdLine);
+
+		var child = exec(cmdLine, function (error, stdout, stderr) { });
+		child = null;
+		
+		break;
+		
 	case '/':
 		processInsertAdPage(res);
 		break;
 				
 	default:
 		if (shortUrls[parsedUrl.pathname]) {
-			res.writeHead(302, {
+			/*res.writeHead(302, {
 				'Location': shortUrls[parsedUrl.pathname]
 			});
-			res.end();
+			res.end();*/
+			fs.readFile(__dirname + '/debugPlay.html', 'utf8', function (err, data) {
+				if (err) {
+					errorFileNotFound(res);
+					return;
+				}
+				
+				res.writeHead(200, {'Content-Type': 'text/html'});
+				res.end(data.replace(/@VIDEO_URL@/g, shortUrls[parsedUrl.pathname]).replace(/@EXTERNAL_URL@/g, SERVER_EXTERNAL_URL));
+			});
+			
 			break;
 		}
 	

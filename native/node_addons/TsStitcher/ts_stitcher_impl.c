@@ -27,59 +27,15 @@ typedef struct {
 	uint8_t dts[sizeof_pts];*/
 } output_packet_t;
 
-bool_t build_layout_impl(
-	dynamic_buffer_t* result,
-	void* pre_ad_metadata,
-	void* ad_metadata,
-	void* black_metadata,
-	void* post_ad_metadata,
+void init_output_header(
+	output_header_t* output_header, 
+	metadata_header_t* pre_ad_header, 
+	metadata_header_t* post_ad_header, 
 	int32_t segment_index,
-	int32_t output_start,
 	int32_t output_end)
 {
-	metadata_header_t* pre_ad_header = (metadata_header_t*)pre_ad_metadata;
-	metadata_header_t* ad_header = (metadata_header_t*)ad_metadata;
-	metadata_header_t* black_header = (metadata_header_t*)black_metadata;
-	metadata_header_t* post_ad_header = (metadata_header_t*)post_ad_metadata;
-	metadata_frame_info_t* pre_ad_ts_frames = 	(metadata_frame_info_t*)(pre_ad_header + 1);
-	metadata_frame_info_t* ad_ts_frames = 	(metadata_frame_info_t*)(ad_header + 1);
-	metadata_frame_info_t* black_ts_frames = 	(metadata_frame_info_t*)(black_header + 1);
-	metadata_frame_info_t* post_ad_ts_frames = (metadata_frame_info_t*)(post_ad_header + 1);
-	int32_t video_ad_slot_end_pos = INT_MAX;
-	int32_t audio_ad_slot_end_pos = INT_MAX;
-	
-	if (post_ad_header != NULL)
-	{
-		video_ad_slot_end_pos = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts) & ((1LL << 33) - 1));
-		audio_ad_slot_end_pos = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts) & ((1LL << 33) - 1));
-	}
-		
-	int cur_state = STATE_PRE_AD;		// ++ doesn't work for enums in cpp
-	uint32_t frame_index = 0;	
-	bool_t output_frames = FALSE;
-	bool_t wrote_header = FALSE;
-	int32_t cur_pos[MEDIA_TYPE_COUNT] = { 0 };
-	timestamps_t timestamps[MEDIA_TYPE_COUNT];
-	timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
-	timestamps[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps;
-	int main_media_type = ((pre_ad_header->media_info[MEDIA_TYPE_VIDEO].pid != 0) ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);
-	
-	metadata_frame_info_t* next_frame;
-	int media_type;
-	bool_t found_frame;
-	bool_t try_video;
-	bool_t try_audio;
-	output_packet_t output_packet;
-	uint8_t pcr[sizeof_pcr];
-	uint8_t pts[sizeof_pts];	
-	memset(&output_packet, 0, sizeof(output_packet));
-	
-	uint32_t last_packet_pos[MEDIA_TYPE_COUNT] = { 0 };
-	
-	// calculate the output header
-	output_header_t output_header;
-	output_header.streams_info = pre_ad_header->streams_info;
-	stream_info_t* streams_data = output_header.streams_info.data;
+	output_header->streams_info = pre_ad_header->streams_info;
+	stream_info_t* streams_data = output_header->streams_info.data;
 	bool_t is_media_pid;
 	int i;
 	
@@ -111,7 +67,67 @@ bool_t build_layout_impl(
 		streams_data[i].start_cc &= 0x0F;
 		streams_data[i].end_cc &= 0x0F;		
 	}
+}
+
+bool_t build_layout_impl(
+	dynamic_buffer_t* result,
+	void* pre_ad_metadata,
+	void* ad_metadata,
+	void* black_metadata,
+	void* post_ad_metadata,
+	int32_t segment_index,
+	int32_t output_start,
+	int32_t output_end)
+{
+	// input videos
+	metadata_header_t* pre_ad_header = (metadata_header_t*)pre_ad_metadata;
+	metadata_header_t* ad_header = (metadata_header_t*)ad_metadata;
+	metadata_header_t* black_header = (metadata_header_t*)black_metadata;
+	metadata_header_t* post_ad_header = (metadata_header_t*)post_ad_metadata;
+	metadata_frame_info_t* pre_ad_ts_frames = 	(metadata_frame_info_t*)(pre_ad_header + 1);
+	metadata_frame_info_t* ad_ts_frames = 	(metadata_frame_info_t*)(ad_header + 1);
+	metadata_frame_info_t* black_ts_frames = 	(metadata_frame_info_t*)(black_header + 1);
+	metadata_frame_info_t* post_ad_ts_frames = (metadata_frame_info_t*)(post_ad_header + 1);
+	int32_t video_ad_slot_end_pos = INT_MAX;
+	int32_t audio_ad_slot_end_pos = INT_MAX;
+	int main_media_type = ((pre_ad_header->media_info[MEDIA_TYPE_VIDEO].pid != 0) ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);
 	
+	// current state
+	int cur_state = STATE_PRE_AD;		// ++ doesn't work for enums in cpp
+	uint32_t frame_index = 0;	
+	bool_t output_frames = FALSE;
+	bool_t wrote_header = FALSE;
+	int32_t cur_pos[MEDIA_TYPE_COUNT] = { 0 };
+	timestamps_t timestamps[MEDIA_TYPE_COUNT];
+	uint32_t last_packet_pos[MEDIA_TYPE_COUNT] = { 0 };
+
+	// temporary vars
+	metadata_frame_info_t* next_frame;
+	int media_type;
+	bool_t found_frame;
+	bool_t try_video;
+	bool_t try_audio;
+	output_packet_t output_packet;
+	uint8_t pcr[sizeof_pcr];
+	uint8_t pts[sizeof_pts];	
+	unsigned int i;
+	
+	// init locals
+	if (post_ad_header != NULL)
+	{
+		video_ad_slot_end_pos = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts) & ((1LL << 33) - 1));
+		audio_ad_slot_end_pos = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts) & ((1LL << 33) - 1));
+	}
+		
+	timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
+	timestamps[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps;
+	
+	memset(&output_packet, 0, sizeof(output_packet));
+		
+	// append the output header
+	output_header_t output_header;
+
+	init_output_header(&output_header, pre_ad_header, post_ad_header, segment_index, output_end);
 	if (!append_buffer(result, PS(output_header)))
 	{
 		// XXXX handle this
@@ -124,6 +140,7 @@ bool_t build_layout_impl(
 	
 	for (;;)
 	{
+		// check for output start / end
 		if (cur_pos[main_media_type] > output_end)
 		{
 			break;
@@ -133,6 +150,7 @@ bool_t build_layout_impl(
 			output_frames = TRUE;
 		}
 		
+		// get the next frame to output
 		found_frame = FALSE;
 		
 		switch (cur_state)
@@ -249,11 +267,14 @@ bool_t build_layout_impl(
 				wrote_header = TRUE;
 			}
 		
-			// output the packet
+			// initialize the packet header
 			output_packet.layout_size = sizeof(output_packet);
 			output_packet.pos = next_frame->pos;
 			output_packet.size = next_frame->size;
 			output_packet.state = cur_state;
+			output_packet.pid = pre_ad_header->media_info[media_type].pid;
+			
+			// update layout size according to required timestamps
 			if (timestamps[media_type].pcr != NO_TIMESTAMP && next_frame->timestamp_offsets.pcr != NO_OFFSET)
 			{
 				output_packet.pcr_offset = next_frame->timestamp_offsets.pcr;
@@ -284,8 +305,7 @@ bool_t build_layout_impl(
 				output_packet.dts_offset = NO_OFFSET;
 			}
 			
-			output_packet.pid = pre_ad_header->media_info[media_type].pid;
-			
+			// output the packet
 			last_packet_pos[media_type] = result->write_pos;
 				
 			if (!append_buffer(result, &output_packet, sizeof(output_packet)))
@@ -332,7 +352,7 @@ bool_t build_layout_impl(
 	}
 	
 	// mark the last packet of each media type
-	for (i = 0; i < (int)ARRAY_ENTRIES(last_packet_pos); i++)
+	for (i = 0; i < ARRAY_ENTRIES(last_packet_pos); i++)
 	{
 		if (last_packet_pos[i] == 0)
 			continue;
@@ -424,14 +444,17 @@ void process_chunk_impl(
 {
 	output_header_t* output_header = (output_header_t*)layout_buffer;
 	output_packet_t* cur_packet;
+	stream_info_t* stream_info;
 	byte_t* cur_pos = layout_buffer + output_state->layout_pos;
 	byte_t* end_pos = layout_buffer + layout_size;
 	byte_t* packet_chunk_pos;
+	byte_t* cur_ts_packet;
 	bool_t first_output = TRUE;
 	uint32_t packet_start_offset;
 	uint32_t packet_end_offset;
 	uint32_t cur_offset;
 	
+	// init output
 	memset(output, 0, sizeof(*output));
 	output->more_data_needed = TRUE;
 	
@@ -446,7 +469,8 @@ void process_chunk_impl(
 	}
 	
 	while (cur_pos + sizeof(output_packet_t) <= end_pos)
-	{	
+	{
+		// get current packet from layout buffer
 		cur_packet = (output_packet_t*)cur_pos;
 		if (cur_pos + cur_packet->layout_size > end_pos)
 			break;		// unexpected - the layout buffer is invalid
@@ -456,7 +480,7 @@ void process_chunk_impl(
 		if (cur_packet->state == output_state->chunk_type &&
 			cur_packet->state == STATE_PRE_AD_HEADER)
 		{
-			// got a header buffer - output it as is, and move to the next packet
+			// got a header buffer - output it as a whole, and move to the next packet
 			fix_continuity_counters(&output_header->streams_info, chunk_buffer, chunk_size);
 			output->chunk_output_end = chunk_size;
 			output_state->layout_pos += cur_packet->layout_size;
@@ -491,7 +515,7 @@ void process_chunk_impl(
 		}
 		output->chunk_output_end = packet_end_offset;
 		
-		// update timestamps
+		// update timestamps if we have the beginning of the packet
 		if (cur_packet->pos >= output_state->chunk_start_offset)
 		{
 			packet_chunk_pos = chunk_buffer + cur_packet->pos - output_state->chunk_start_offset;
@@ -513,10 +537,10 @@ void process_chunk_impl(
 		}
 
 		// update continuity counters and PID
-		stream_info_t* stream_info = streams_info_hash_get(&output_header->streams_info, cur_packet->pid);
+		stream_info = streams_info_hash_get(&output_header->streams_info, cur_packet->pid);
 		for (cur_offset = packet_start_offset; cur_offset < packet_end_offset; cur_offset += TS_PACKET_LENGTH)
 		{
-			byte_t* cur_ts_packet = chunk_buffer + cur_offset;
+			cur_ts_packet = chunk_buffer + cur_offset;
 			
 			mpeg_ts_header_set_PID(cur_ts_packet, cur_packet->pid);
 			
@@ -528,32 +552,31 @@ void process_chunk_impl(
 			}
 		}
 				
-		// update layout position
-		if (cur_packet->pos + cur_packet->size == output->chunk_output_end + output_state->chunk_start_offset)
-		{
-			// finished the packet
-			output_state->layout_pos += cur_packet->layout_size;
-			cur_pos = layout_buffer + output_state->layout_pos;
-			
-			if (cur_packet->last_packet)
-			{
-				output->output_buffer = create_null_packets(stream_info, &output->output_buffer_size);
-				if (output->output_buffer != NULL)
-				{
-					// output the null packets before continuing
-					output->more_data_needed = FALSE;
-					return;
-				}
-			}
-		}
-		else
+		if (cur_packet->pos + cur_packet->size != output_state->chunk_start_offset + output->chunk_output_end)
 		{
 			// need the next chunk to complete the packet
 			output_state->chunk_start_offset += chunk_size;
 			return;
 		}
+		
+		// finished the packet
+		output_state->layout_pos += cur_packet->layout_size;
+		cur_pos = layout_buffer + output_state->layout_pos;
+		
+		if (cur_packet->last_packet)
+		{
+			// it's the last packet of the stream - output null packets to adjust the continuity counters
+			output->output_buffer = create_null_packets(stream_info, &output->output_buffer_size);
+			if (output->output_buffer != NULL)
+			{
+				// output the null packets before continuing
+				output->more_data_needed = FALSE;
+				return;
+			}
+		}
 	}
 	
+	// we're done
 	output_state->chunk_type = STATE_INVALID;
 }
 

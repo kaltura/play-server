@@ -1,5 +1,6 @@
 #include <string.h>
 #include "mpegts_stream_walker.h"
+#include "mpegTs.h"
 
 void stream_walker_init(stream_walker_state_t* state, packetizer_callback_t callback, void* callback_context)
 {
