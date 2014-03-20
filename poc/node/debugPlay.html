@@ -1,0 +1,15 @@
+<html>
+<head>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
+<script>
+function failed(e) {
+	$.ajax({
+		url: "@EXTERNAL_URL@/notifyError.js?url=" + encodeURIComponent("@VIDEO_URL@"),
+	});
+}
+</script>
+</head>
+<body>
+<p><video src="@VIDEO_URL@" autoplay controls onerror="failed(event)"></video></p>
+</body>
+</html>

@@ -121,6 +121,9 @@ def getMpegTSEncodingParams(referenceFileName, blackDuration = 10):
 	# get the mediainfo of the source file
 	mediaInfo = MediaInfo()
 	mediaInfo.parse(referenceFileName)
+	
+	if not mediaInfo.hasVideo and not mediaInfo.hasAudio:
+		return (None, None)		# no audio and no video -> file is invalid
 
 	# video codec
 	if mediaInfo.hasVideo:

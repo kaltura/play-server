@@ -1,4 +1,5 @@
 import ffmpegTSParams
+import operator
 import tempfile
 import commands
 import memcache
@@ -6,6 +7,7 @@ import hashlib
 import random
 import base64
 import urllib
+import struct
 import time
 import json
 import sys
@@ -19,7 +21,9 @@ FFMPEG_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffmpeg-2.1.sh'
 MEMCACHE_HOST = 'localhost'
 MEMCACHE_PORT = 11211
 
-RESULT_MANIFEST_EXPIRY = 30
+MAX_DVR_LENGTH = 35 * 60		# XXXX TODO should be per entry
+
+RESULT_MANIFEST_EXPIRY = 20
 EXTRA_DELAY = 4				# measured in segments
 AD_DURATION = 10
 MINIMUM_RUN_PERIOD = 60
@@ -54,15 +58,15 @@ def executeCommand(cmdLine):
   	writeOutput(commands.getoutput(cmdLine))
 	writeOutput('command took %s' % (time.time() - startTime))
 
-def addVideoToMemcache(fileName, outputKey):
-	cmdLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, fileName, FFPROBE_PATH, MEMCACHE_HOST, MEMCACHE_PORT, 0, outputKey]))
+def addVideoToMemcache(fileName, outputKey, expiry = 0):
+	cmdLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, fileName, FFPROBE_PATH, MEMCACHE_HOST, MEMCACHE_PORT, expiry, outputKey]))
 	executeCommand(cmdLine)
 
 def videoExistsInMemcache(memcache, key):
 	metadata = memcache.get('%s-metadata' % key)
 	if metadata == None:
 		return False
-	chunkCount = struct.parse('L', metadata[:4])[0]
+	chunkCount = struct.unpack('=L', metadata[:4])[0]
 	for curChunk in xrange(chunkCount):
 		if not memcache.touch('%s-%s' % (key, curChunk)):
 			return False
@@ -89,7 +93,7 @@ def cutTsFiles(videoKey, buffer, position, portion):
 	# XXXX TODO - can get the video metadata from ts_cutter instead of running ffprobe here
 	
 	# save the result to memcache
-	addVideoToMemcache(outputFile, videoKey)
+	addVideoToMemcache(outputFile, videoKey, MAX_DVR_LENGTH)
 	
 def parseM3U8(streamData):
 	header = {}
@@ -97,6 +101,9 @@ def parseM3U8(streamData):
 	footer = {}
 	segmentInfo = {}
 	lastSequenceNum = None
+	streamData = streamData.strip()
+	if not streamData.startswith('#EXTM3U'):
+		return (None, None, None)
 	m3u8Lines = streamData.split("\n")
 	for m3u8Line in m3u8Lines:
 		m3u8Line = m3u8Line.strip()
@@ -104,7 +111,10 @@ def parseM3U8(streamData):
 			continue
 		if m3u8Line[0] != '#':
 			if lastSequenceNum == None:
-				lastSequenceNum = int(header['EXT-X-MEDIA-SEQUENCE'])
+				if header.has_key('EXT-X-MEDIA-SEQUENCE'):
+					lastSequenceNum = int(header['EXT-X-MEDIA-SEQUENCE'])			# live
+				else:
+					lastSequenceNum = 1												# vod
 			segmentInfo['URL'] = m3u8Line
 			segmentInfo['SEQ'] = lastSequenceNum
 			segments.append(segmentInfo)
@@ -130,7 +140,7 @@ def parseM3U8(streamData):
 			header[key] = value
 			
 		
-	return [header, segments, footer]
+	return (header, segments, footer)
 	
 def buildM3U8(header, segments, footer):
 	result = ''
@@ -163,13 +173,17 @@ class ManifestStitcher:
 		self.adEndOffset = 0
 		self.adCurOffset = 0
 		self.adStartSegment = 0
+		self.lastUsedSegment = None
 
-	def getUpdatedManifest(self, liveStreamUrl, adPositions):
+	def getUpdatedManifest(self, liveStreamUrl, adPositionsKey):
 		# get and parse source stream
 		streamData = urllib.urlopen(liveStreamUrl).read()
 		(header, segments, footer) = parseM3U8(streamData)
+		if segments == None:
+			return (None, None)
 		
 		# parse ad positions
+		adPositions = memcache.gets(adPositionsKey)
 		if adPositions != None:
 			adPositions = json.loads(adPositions)
 		else:
@@ -178,7 +192,7 @@ class ManifestStitcher:
 		# process the segments
 		newResult = []
 		buffer = []
-		lastUsedSegment = None
+		usedCuePoints = set([])
 		
 		# XXX TODO use the extra delay to process segments before they are needed
 		segCount = len(segments) - EXTRA_DELAY
@@ -196,26 +210,30 @@ class ManifestStitcher:
 			
 			# check whether we already mapped this buffer
 			if self.urlTranslations.has_key(url1):
-				newResult.append(self.urlTranslations[url1])
+				(cuePointId, newSegment) = self.urlTranslations[url1]
+				newResult.append(newSegment)
+				usedCuePoints.add(cuePointId)
 				continue
 
-			# check whether we should start an ad
-			if not self.inAdSlot:
-				for adPosition in adPositions:
-					if seg1 + 1 == adPosition['startSegmentId']:
-						self.inAdSlot = True
-						self.cuePointId = str(adPosition['cuePointId'])
-						self.adStartOffset = int((segment1['EXTINF'] + adPosition['startSegmentOffset']) * 90000)
-						self.adEndOffset = self.adStartOffset + int(adPosition['adSlotDuration'] * 90000)
-						self.adCurOffset = 0
-						self.adStartSegment = seg1
-						
-						writeOutput('ad started - cuePoint=%s, adStartOffset=%s, adEndOffset=%s' % (self.cuePointId, self.adStartOffset, self.adEndOffset))
-						break
-						
+			if self.lastUsedSegment == None or seg1 > self.lastUsedSegment:
+				# update the last used segment
+				self.lastUsedSegment = seg1
+				# check whether we should start an ad
+				if not self.inAdSlot:
+					for adPosition in adPositions:
+						if seg1 + 1 == adPosition['startSegmentId']:
+							self.inAdSlot = True
+							self.cuePointId = str(adPosition['cuePointId'])
+							self.adStartOffset = int((segment1['EXTINF'] + adPosition['startSegmentOffset']) * 90000)
+							self.adEndOffset = self.adStartOffset + int(adPosition['adSlotDuration'] * 90000)
+							self.adCurOffset = 0
+							self.adStartSegment = seg1
+							
+							writeOutput('ad started - cuePoint=%s, adStartOffset=%s, adEndOffset=%s' % (self.cuePointId, self.adStartOffset, self.adEndOffset))
+							break
+
 			# not part of ad -> just output it
 			if not self.inAdSlot or seg1 < self.adStartSegment:
-				lastUsedSegment = seg1
 				newResult.append(segment1)
 				continue
 
@@ -247,20 +265,33 @@ class ManifestStitcher:
 				'segmentIndex': seg1 - self.adStartSegment,
 				'outputStart': self.adCurOffset,
 				'outputEnd': outputEnd,
+				'entryId': entryId
 				}
 			segment1['URL'] = '%s?%s' % (adSegmentRedirectUrl, urllib.urlencode(stitchSegmentParams))
 			writeOutput('translating %s to %s' % (url1, repr(segment1)))
-			self.urlTranslations[url1] = segment1
+			self.urlTranslations[url1] = (self.cuePointId, segment1)
 			newResult.append(segment1)
+			usedCuePoints.add(self.cuePointId)
 
 			if self.adCurOffset > self.adEndOffset:
 				self.inAdSlot = False
 				writeOutput('ad ended - cuePoint=%s, adCurOffset=%s, adEndOffset=%s' % (self.cuePointId, self.adCurOffset, self.adEndOffset))
 			else:
 				self.adCurOffset += curSegmentDuration
-				
+
+		# remove unused ad positions from memcache
+		requiredAdPositions = filter(lambda x: x['startSegmentId'] >= segments[0]['SEQ'] or str(x['cuePointId']) in usedCuePoints, adPositions)
+		if len(requiredAdPositions) < len(adPositions):
+			currentCuePoints = set(map(operator.itemgetter('cuePointId'), adPositions))
+			requiredCuePoints = set(map(operator.itemgetter('cuePointId'), requiredAdPositions))
+			writeOutput('Removing unneeded cue points %s' % ','.join(currentCuePoints - requiredCuePoints))
+			requiredAdPositions = json.dumps(requiredAdPositions)
+			memcache.cas(adPositionsKey, requiredAdPositions)
+			
+		# XXXX remove unused urlTranslations
+		
 		# build the final manifest
-		return (buildM3U8(header, newResult, footer), lastUsedSegment)
+		return buildM3U8(header, newResult, footer)
 	
 sessionId = random.getrandbits(32)
 lastTimestamp = time.time()
@@ -279,6 +310,8 @@ except (ValueError, TypeError):
 	writeOutput("Failed to decode params")
 	sys.exit(1)
 
+writeOutput('Params %s' % repr(params))
+
 liveStreamUrl = str(params['url'])
 outputMemcacheKey = str(params['trackerOutputKey'])
 trackerRequiredKey = str(params['trackerRequiredKey'])
@@ -286,6 +319,7 @@ adPositionsKey = str(params['adPositionsKey'])
 lastUsedSegmentKey = str(params['lastUsedSegmentKey'])
 ffmpegParamsKey = str(params['ffmpegParamsKey'])
 adSegmentRedirectUrl = str(params['adSegmentRedirectUrl'])
+entryId = str(params['entryId'])
 
 liveStreamUrlHash = md5(liveStreamUrl)
 
@@ -297,18 +331,22 @@ except OSError:
 	pass
 
 # connect to memcache
-memcache = memcache.Client(['%s:%s' % (MEMCACHE_HOST, MEMCACHE_PORT)])
+memcache = memcache.Client(['%s:%s' % (MEMCACHE_HOST, MEMCACHE_PORT)], cache_cas=True)
 
 # get the M3U8
 streamData = urllib.urlopen(liveStreamUrl).read()
 (header, segments, footer) = parseM3U8(streamData)
-if len(segments) == 0:
+if segments == None or len(segments) == 0:
 	writeOutput('failed to get any TS segments')
 	sys.exit(1)
 	
 # get the encoding params
-firstSegmentPath = getUrl(segments[0]['URL'], '.ts')
-tsEncodingParams, blackTSEncodingParams = ffmpegTSParams.getMpegTSEncodingParams(firstSegmentPath)
+lastSegmentPath = getUrl(segments[-1]['URL'], '.ts')
+tsEncodingParams, blackTSEncodingParams = ffmpegTSParams.getMpegTSEncodingParams(lastSegmentPath)
+if tsEncodingParams == None:
+	writeOutput('failed to get the media info of the last segment')
+	sys.exit(1)
+
 encodingParamsId = md5(tsEncodingParams)
 writeOutput('Encoding params id=%s: %s' % (encodingParamsId, tsEncodingParams))
 memcache.append(ffmpegParamsKey, '%s\n' % tsEncodingParams, RESULT_MANIFEST_EXPIRY)
@@ -327,17 +365,15 @@ manifestStitcher = ManifestStitcher()
 startTime = time.time()
 while time.time() < startTime + MINIMUM_RUN_PERIOD or memcache.get(trackerRequiredKey):
 	cycleStartTime = time.time()
-	# get ad positions
-	adPositions = memcache.get(adPositionsKey)
 	# build stitched manifest
-	(manifest, lastUsedSegment) = manifestStitcher.getUpdatedManifest(liveStreamUrl, adPositions)
+	manifest = manifestStitcher.getUpdatedManifest(liveStreamUrl, adPositionsKey)
 	# update the last used segment in memcache
-	if lastUsedSegment != None:
+	if manifestStitcher.lastUsedSegment != None:
 		# Note: there is a race here between the get & set, but it shouldn't be a problem since trackers
 		#		working on the same entry will more or less synchronized, if they aren't it's a problem anyway...
 		savedLastUsedSegment = memcache.get(lastUsedSegmentKey)
-		if savedLastUsedSegment == None or lastUsedSegment > savedLastUsedSegment:
-			memcache.set(lastUsedSegmentKey, str(lastUsedSegment), RESULT_MANIFEST_EXPIRY)
+		if savedLastUsedSegment == None or manifestStitcher.lastUsedSegment > savedLastUsedSegment:
+			memcache.set(lastUsedSegmentKey, str(manifestStitcher.lastUsedSegment), RESULT_MANIFEST_EXPIRY)
 		
 	# save the result to memcache
 	memcache.set(outputMemcacheKey, manifest, RESULT_MANIFEST_EXPIRY)
