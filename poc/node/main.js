@@ -7,6 +7,8 @@ npm install memcached
 
 */
 
+var formatTime = require('./formatTime');
+var accessLog = require('./accessLog');
 var stitcher = require('../../native/node_addons/TsStitcher/build/Release/TsStitcher');
 var http = require('http');
 var url = require('url');
@@ -89,7 +91,7 @@ function md5(str) {
 }
 
 function errorResponse(res, statusCode, body) {
-	console.log('Error code ' + statusCode + ' : ' + body);
+	res.log('Error code ' + statusCode + ' : ' + body);
 	res.writeHead(statusCode, {'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*'});
 	res.end(body);
 }
@@ -294,7 +296,7 @@ function processMasterStitch(params, res) {
 			getHttpUrl(params.url, function (urlData) {
 				cb({statusCode:200, body:stitchMasterM3U8(params.url, urlData, {entryId: params.entryId})});
 			}, function (err) {
-				console.log('Error : ' + err);
+				res.log('Error : ' + err);
 				cb({statusCode:400, body:err});
 			})
 		},
@@ -304,6 +306,8 @@ function processMasterStitch(params, res) {
 		} 
 	);
 }
+
+var m3u8FileCounter = 1;
 
 function readTrackerOutput(res, trackerOutputKey, masterUrl, entryId, responseHeaders, attempts) {
 	memcache.get(trackerOutputKey, function (err, data) {
@@ -315,6 +319,26 @@ function readTrackerOutput(res, trackerOutputKey, masterUrl, entryId, responseHe
 		if (data) {
 			res.writeHead(200, responseHeaders);
 			res.end(data);
+
+			// print the returned sequence number for debugging purposes
+			var splittedData = data.split('\n');
+			for (var i = 0; i < splittedData.length; i++) {
+				if (splittedData[i].startsWith('#EXT-X-MEDIA-SEQUENCE')) {
+					res.log('sequence is ' + splittedData[i]);
+				}
+			}
+
+			// save the manifest to a file for debugging purposes
+			var outputFileName = "/tmp/manifests/" + (m3u8FileCounter % 10) + ".m3u8";
+			fs.writeFile(outputFileName, data, function(err) {
+				if(err) {
+					res.log(err);
+				} else {
+					res.log("Manifest saved to " + outputFileName);
+				}
+			}); 
+			m3u8FileCounter++;
+			
 			return;
 		}
 		
@@ -429,11 +453,13 @@ function processFlavorStitch(params, cookies, res) {
 		errorMissingParameter(res);
 		return;
 	}
+	
+	// XXX TODO - get the ads only after getting the m3u8 successfully or get the ad from a TS request
 		
 	// get ads allocated to the user
 	var allocatedAdsCookieName = 'allocatedAds_' + params.entryId;
 	var allocatedAds = cookies[allocatedAdsCookieName];
-	console.log('allocated ads ' + allocatedAds);
+	res.log('allocated ads ' + allocatedAds);
 	if (allocatedAds)
 		allocatedAds = JSON.parse(allocatedAds);
 	else
@@ -455,7 +481,7 @@ function processFlavorStitch(params, cookies, res) {
 		for (i = 0; i < adPositions.length; i++) {
 			var adPosition = adPositions[i];
 			if (!allocatedAds[adPosition.cuePointId]) {
-				console.log('requesting ad for user');
+				res.log('requesting ad for user');
 
 				// XXXX TODO get via VAST
 				var adUrl = 'http://www.kaltura.com//content/clientlibs/python/TestCode/DemoVideo.flv';
@@ -623,7 +649,7 @@ function processInsertAd(params, res) {
 			var segmentId = parseInt(data) + Math.floor(currentTime / 10);
 			var segmentOffset = currentTime % 10;
 
-			console.log('inserting ad - segmentId=' + segmentId + ' segmentOffset=' + segmentOffset);
+			res.log('inserting ad - segmentId=' + segmentId + ' segmentOffset=' + segmentOffset);
 			
 			doInsertAd(params.entryId, segmentId, segmentOffset, params.adSlotDuration, res);
 		});
@@ -640,7 +666,7 @@ function processStartTracker(queryParams, res) {
 	
 	var cmdLine = ['sh', STREAM_TRACKER_SCRIPT, queryParams.params].join(' ');
 
-	console.log('Executing: ' + cmdLine);
+	res.log('Executing: ' + cmdLine);
 	
 	var child = exec(cmdLine, function (error, stdout, stderr) { });
 	child = null;
@@ -688,11 +714,12 @@ function processAdSegmentRedirect(queryParams, cookies, res) {
 	res.end();
 }
 
-function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, adKey, blackKey, postAdKey, res) {
+function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, adKey, blackKey, postAdKey, res, tsDebugFile) {
 	if (!curChunk) {
 		// not much to do about this since we already returned the response headers
-		console.log('failed to get chunk from memcache');
+		res.log('failed to get chunk from memcache');
 		res.end();
+		fs.closeSync(tsDebugFile);
 		return;
 	}
 	
@@ -703,13 +730,16 @@ function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, ad
 			outputState);
 				
 		if (processResult.chunkOutputEnd > 0) {
-			console.log('writing ' + processResult.chunkOutputStart + '..' + processResult.chunkOutputEnd);
-			res.write(curChunk.slice(processResult.chunkOutputStart, processResult.chunkOutputEnd));
+			res.log('writing ' + processResult.chunkOutputStart + '..' + processResult.chunkOutputEnd);
+			var curSlice = curChunk.slice(processResult.chunkOutputStart, processResult.chunkOutputEnd);
+			res.write(curSlice);
+			fs.writeSync(tsDebugFile, curSlice, 0, curSlice.length);
 		}
 		
 		if (processResult.outputBuffer) {
-			console.log('writing extra buffer of size ' + processResult.outputBuffer.length);
+			res.log('writing extra buffer of size ' + processResult.outputBuffer.length);
 			res.write(processResult.outputBuffer);
+			fs.writeSync(tsDebugFile, processResult.outputBuffer, 0, processResult.outputBuffer.length);
 		}
 	} while (!processResult.moreDataNeeded);
 	
@@ -735,17 +765,20 @@ function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, ad
 		videoKey = preAdKey + '-header';
 		break;		
 	default:
-		console.log('request completed');
+		res.log('request completed');
+		fs.closeSync(tsDebugFile);
 		res.end();
 		return;
 	}
 
-	console.log('getting ' + videoKey);
+	res.log('getting ' + videoKey);
 	memcachebin.get(videoKey, function (err, curChunk) {
 		outputState.chunkStartOffset = chunkIndex * FILE_CHUNK_SIZE;
-		outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, adKey, blackKey, postAdKey, res);
+		outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, adKey, blackKey, postAdKey, res, tsDebugFile);
 	});
 }
+
+var tsFileCounter = 1;
 
 function processStitchSegment(queryParams, res) {
 	var preAdKey =  'preAd-' + 	queryParams.streamHash +		'-' + queryParams.cuePointId;
@@ -762,10 +795,10 @@ function processStitchSegment(queryParams, res) {
 			memcachebin.get(blackKey + '-metadata', function (err, blackMetadata) {
 				memcachebin.get(postAdKey + '-metadata', function (err, postAdMetadata) {
 								
-					console.log('preAdKey ' + preAdKey);
-					console.log('adKey ' + adKey);
-					console.log('blackKey ' + blackKey);
-					console.log('postAdKey ' + postAdKey);
+					res.log('preAdKey ' + preAdKey);
+					res.log('adKey ' + adKey);
+					res.log('blackKey ' + blackKey);
+					res.log('postAdKey ' + postAdKey);
 					
 					if (!preAdMetadata) {
 						errorResponse(res, 400, 'failed to get pre ad segment from memcache ' + preAdKey);
@@ -784,9 +817,9 @@ function processStitchSegment(queryParams, res) {
 					}
 				
 					if (adMetadata == null)
-						console.log('adMetadata is null');
+						res.log('adMetadata is null');
 					else
-						console.log('adMetadata length ' + adMetadata.length);
+						res.log('adMetadata length ' + adMetadata.length);
 
 					// build the layout of the output TS
 					var outputLayout = stitcher.buildLayout(
@@ -806,7 +839,12 @@ function processStitchSegment(queryParams, res) {
 					
 					// output the TS
 					res.writeHead(200, {'Content-Type': 'video/MP2T'});
-					outputStitchedSegment(outputLayout, {}, new Buffer(0), preAdKey, adKey, blackKey, postAdKey, res);
+					
+					var tsDebugFileName = '/tmp/tsFiles/' + (tsFileCounter % 10) + '.ts';
+					res.log('saving ts file to ' + tsDebugFileName);
+					var tsDebugFile = fs.openSync(tsDebugFileName, 'w');
+					tsFileCounter++;
+					outputStitchedSegment(outputLayout, {}, new Buffer(0), preAdKey, adKey, blackKey, postAdKey, res, tsDebugFile);
 				});
 			});
 		});
@@ -816,37 +854,19 @@ function processStitchSegment(queryParams, res) {
 var shortUrls = {};
 var shortUrlCounter = 1;
 
-function getDateTime() {
-
-    var date = new Date();
-
-    var hour = date.getHours();
-    hour = (hour < 10 ? "0" : "") + hour;
-
-    var min  = date.getMinutes();
-    min = (min < 10 ? "0" : "") + min;
-
-    var sec  = date.getSeconds();
-    sec = (sec < 10 ? "0" : "") + sec;
-
-    var year = date.getFullYear();
-
-    var month = date.getMonth() + 1;
-    month = (month < 10 ? "0" : "") + month;
-
-    var day  = date.getDate();
-    day = (day < 10 ? "0" : "") + day;
-
-    return year + "/" + month + "/" + day + " " + hour + ":" + min + ":" + sec;
-
-}
-
 function handleHttpRequest(req, res) {
+	var sessionId = Math.floor(Math.random() * 0x7fffffff);
+	res.setHeader('x-kaltura-session', sessionId);
+	res.log = function (msg) {
+		console.log(formatTime.getDateTime() + ' [' + sessionId + '] ' + msg);
+	}
+	accessLog(req, res);
+
 	var parsedUrl = url.parse(req.url);
 	var queryParams = querystring.parse(parsedUrl.query);
 	
-	console.log(getDateTime() + ' request ' + parsedUrl.path);
-	console.dir(req.headers);
+	//console.log(getDateTime() + ' request ' + parsedUrl.path);
+	//console.dir(req.headers);
 	
 	switch (parsedUrl.pathname) {
 	case MASTER_STITCH_URI:
@@ -893,7 +913,7 @@ function handleHttpRequest(req, res) {
 		
 		var cmdLine = "python " + __dirname + "/../utils/debug/debugStream.py '" + queryParams.url + "' /tmp/tstDebug/x.m3u8";
 
-		console.log('Executing: ' + cmdLine);
+		res.log('Executing: ' + cmdLine);
 
 		var child = exec(cmdLine, function (error, stdout, stderr) { });
 		child = null;
