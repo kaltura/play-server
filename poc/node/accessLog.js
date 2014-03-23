@@ -61,9 +61,7 @@ function AccessLogWriter(req, res) {
 
 	// hook writeHead in order to save response headers
 	var origWriteHead = res.writeHead;
-	res.writeHead = function (statusCode, reasonPhrase, headers) {
-		var requiredHeaders = PRINTED_RESPONSE_HEADERS;
-		
+	res.writeHead = function (statusCode, reasonPhrase, headers) {		
 		for (var i = 0; i < PRINTED_RESPONSE_HEADERS.length; i++) {
 			var curHeader = PRINTED_RESPONSE_HEADERS[i];
 			savedHeaders[curHeader] = res.getHeader(curHeader);
