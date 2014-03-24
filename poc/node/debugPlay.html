@@ -2,14 +2,40 @@
 <head>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
 <script>
+window.lastCurrentTime = 0;
+window.notifiedError = false;
+
 function failed(e) {
+	if (window.notifiedError) {
+		return;
+	}
+	
+	window.notifiedError = true;
 	$.ajax({
 		url: "@EXTERNAL_URL@/notifyError.js?url=" + encodeURIComponent("@VIDEO_URL@"),
 	});
 }
+window.setInterval(function () {
+	var videoTag = document.getElementById("video");
+	
+	if (videoTag.currentTime != 0) {
+		if (window.lastCurrentTime == videoTag.currentTime && !window.notifiedError) {
+			$.ajax({
+				url: "@EXTERNAL_URL@/notifyError.js?reason=stuck&url=" + encodeURIComponent("@VIDEO_URL@"),
+			});
+			window.notifiedError = true;
+		} else {
+			window.lastCurrentTime = videoTag.currentTime;
+		}
+		
+		$.ajax({
+			url: "@EXTERNAL_URL@/notifyStatus.js?currenttime=" + videoTag.currentTime + "&end=" + videoTag.seekable.end(0)
+		});	
+	}
+}, 30000);
 </script>
 </head>
 <body>
-<p><video src="@VIDEO_URL@" autoplay controls onerror="failed(event)"></video></p>
+<p><video id="video" src="@VIDEO_URL@" autoplay controls onerror="failed(event)"></video></p>
 </body>
 </html>
