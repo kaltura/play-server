@@ -29,74 +29,71 @@ typedef struct {
 
 void init_output_header(
 	output_header_t* output_header, 
-	metadata_header_t* pre_ad_header, 
-	metadata_header_t* post_ad_header, 
+	const metadata_header_t* pre_ad_header, 
+	const metadata_header_t* post_ad_header, 
 	int32_t segment_index,
 	int32_t output_end)
 {
-	output_header->streams_info = pre_ad_header->streams_info;
-	stream_info_t* streams_data = output_header->streams_info.data;
+	stream_info_t* streams_data_start = output_header->streams_info.data;
+	stream_info_t* streams_data_end = streams_data_start + STREAMS_INFO_HASH_SIZE;
+	stream_info_t* streams_data;
 	bool_t is_media_pid;
-	int i;
+
+	output_header->streams_info = pre_ad_header->streams_info;
 	
-	for (i = 0; i < STREAMS_INFO_HASH_SIZE; i++)
+	for (streams_data = streams_data_start; streams_data < streams_data_end; streams_data++)
 	{
-		if (streams_data[i].pid == INVALID_PID)
+		if (streams_data->pid == INVALID_PID)
 			continue;
 	
-		is_media_pid = streams_data[i].pid != 0 && 
-			(pre_ad_header->media_info[MEDIA_TYPE_VIDEO].pid == streams_data[i].pid || 
-			 pre_ad_header->media_info[MEDIA_TYPE_AUDIO].pid == streams_data[i].pid);
+		is_media_pid = streams_data->pid != 0 && 
+			(pre_ad_header->media_info[MEDIA_TYPE_VIDEO].pid == streams_data->pid || 
+			 pre_ad_header->media_info[MEDIA_TYPE_AUDIO].pid == streams_data->pid);
 					 
 		if (!is_media_pid)
 		{
-			int cc_shift = segment_index * (streams_data[i].end_cc + 1 - streams_data[i].start_cc);
-			streams_data[i].start_cc += cc_shift;
-			streams_data[i].end_cc += cc_shift;
+			int cc_shift = segment_index * (streams_data->end_cc + 1 - streams_data->start_cc);
+			streams_data->start_cc += cc_shift;
+			streams_data->end_cc += cc_shift;
 		}
 		else
 		{
-			streams_data[i].end_cc = streams_data[i].start_cc - 1;
+			streams_data->end_cc = streams_data->start_cc - 1;
 		}
 		
 		if (output_end == 0)
 		{		
-			streams_data[i].end_cc = post_ad_header->streams_info.data[i].end_cc;
+			streams_data->end_cc = post_ad_header->streams_info.data[streams_data - streams_data_start].end_cc;
 		}
 		
-		streams_data[i].start_cc &= 0x0F;
-		streams_data[i].end_cc &= 0x0F;		
+		streams_data->start_cc &= 0x0F;
+		streams_data->end_cc &= 0x0F;		
 	}
 }
 
 bool_t build_layout_impl(
 	dynamic_buffer_t* result,
-	void* pre_ad_metadata,
-	void* ad_metadata,
-	void* black_metadata,
-	void* post_ad_metadata,
+	metadata_header_t* pre_ad_header,
+	metadata_header_t* ad_header,
+	metadata_header_t* black_header,
+	metadata_header_t* post_ad_header,
 	int32_t segment_index,
 	int32_t output_start,
 	int32_t output_end)
 {
 	// input videos
-	metadata_header_t* pre_ad_header = (metadata_header_t*)pre_ad_metadata;
-	metadata_header_t* ad_header = (metadata_header_t*)ad_metadata;
-	metadata_header_t* black_header = (metadata_header_t*)black_metadata;
-	metadata_header_t* post_ad_header = (metadata_header_t*)post_ad_metadata;
 	metadata_frame_info_t* pre_ad_ts_frames = 	(metadata_frame_info_t*)(pre_ad_header + 1);
 	metadata_frame_info_t* ad_ts_frames = 	(metadata_frame_info_t*)(ad_header + 1);
 	metadata_frame_info_t* black_ts_frames = 	(metadata_frame_info_t*)(black_header + 1);
 	metadata_frame_info_t* post_ad_ts_frames = (metadata_frame_info_t*)(post_ad_header + 1);
-	int32_t video_ad_slot_end_pos = INT_MAX;
-	int32_t audio_ad_slot_end_pos = INT_MAX;
 	int main_media_type = ((pre_ad_header->media_info[MEDIA_TYPE_VIDEO].pid != 0) ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);
+	int32_t ad_slot_end_pos[MEDIA_TYPE_COUNT];
+	metadata_header_t null_metadata_header;
 	
 	// current state
 	int cur_state = STATE_PRE_AD;		// ++ doesn't work for enums in cpp
 	uint32_t frame_index = 0;	
 	bool_t output_frames = FALSE;
-	bool_t wrote_header = FALSE;
 	int32_t cur_pos[MEDIA_TYPE_COUNT] = { 0 };
 	timestamps_t timestamps[MEDIA_TYPE_COUNT];
 	uint32_t last_packet_pos[MEDIA_TYPE_COUNT] = { 0 };
@@ -104,34 +101,47 @@ bool_t build_layout_impl(
 	// temporary vars
 	metadata_frame_info_t* next_frame;
 	int media_type;
-	bool_t found_frame;
-	bool_t try_video;
-	bool_t try_audio;
+	bool_t try_media_type[MEDIA_TYPE_COUNT];
 	output_packet_t output_packet;
-	uint8_t pcr[sizeof_pcr];
-	uint8_t pts[sizeof_pts];	
-	unsigned int i;
+	uint32_t packet_start_pos;
+	output_header_t output_header;
 	
 	// init locals
 	if (post_ad_header != NULL)
 	{
-		video_ad_slot_end_pos = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts) & ((1LL << 33) - 1));
-		audio_ad_slot_end_pos = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts) & ((1LL << 33) - 1));
+		ad_slot_end_pos[MEDIA_TYPE_VIDEO] = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts) & ((1LL << 33) - 1));
+		ad_slot_end_pos[MEDIA_TYPE_AUDIO] = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts) & ((1LL << 33) - 1));
+	}
+	else
+	{
+		ad_slot_end_pos[MEDIA_TYPE_VIDEO] = INT_MAX;
+		ad_slot_end_pos[MEDIA_TYPE_AUDIO] = INT_MAX;
 	}
 		
 	timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
 	timestamps[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps;
-	
-	memset(&output_packet, 0, sizeof(output_packet));
+		
+	if (ad_header == NULL)
+	{
+		memset(&null_metadata_header, 0, sizeof(null_metadata_header));
+		ad_header = &null_metadata_header;
+	}
 		
 	// append the output header
-	output_header_t output_header;
-
 	init_output_header(&output_header, pre_ad_header, post_ad_header, segment_index, output_end);
 	if (!append_buffer(result, PS(output_header)))
 	{
 		// XXXX handle this
 	}	
+	
+	// output the ts header
+	memset(&output_packet, 0, sizeof(output_packet));
+	output_packet.layout_size = sizeof(output_packet);
+	output_packet.state = STATE_PRE_AD_HEADER;
+	if (!append_buffer(result, &output_packet, sizeof(output_packet)))
+	{
+		// XXXX handle this
+	}
 	
 	if (!output_end)
 	{
@@ -145,13 +155,27 @@ bool_t build_layout_impl(
 		{
 			break;
 		}
-		else if (cur_pos[main_media_type] >= output_start)
+		else if (cur_pos[main_media_type] >= output_start && !output_frames)
 		{
 			output_frames = TRUE;
+			
+			if (timestamps[MEDIA_TYPE_VIDEO].pcr != NO_TIMESTAMP)
+				timestamps[MEDIA_TYPE_VIDEO].pcr += cur_pos[MEDIA_TYPE_VIDEO];
+			if (timestamps[MEDIA_TYPE_VIDEO].pts != NO_TIMESTAMP)
+				timestamps[MEDIA_TYPE_VIDEO].pts += cur_pos[MEDIA_TYPE_VIDEO];
+			if (timestamps[MEDIA_TYPE_VIDEO].dts != NO_TIMESTAMP)
+				timestamps[MEDIA_TYPE_VIDEO].dts += cur_pos[MEDIA_TYPE_VIDEO];
+			
+			if (timestamps[MEDIA_TYPE_AUDIO].pcr != NO_TIMESTAMP)
+				timestamps[MEDIA_TYPE_AUDIO].pcr += cur_pos[MEDIA_TYPE_AUDIO];
+			if (timestamps[MEDIA_TYPE_AUDIO].pts != NO_TIMESTAMP)
+				timestamps[MEDIA_TYPE_AUDIO].pts += cur_pos[MEDIA_TYPE_AUDIO];
+			if (timestamps[MEDIA_TYPE_AUDIO].dts != NO_TIMESTAMP)
+				timestamps[MEDIA_TYPE_AUDIO].dts += cur_pos[MEDIA_TYPE_AUDIO];
 		}
 		
 		// get the next frame to output
-		found_frame = FALSE;
+		next_frame = NULL;
 		
 		switch (cur_state)
 		{
@@ -159,7 +183,6 @@ bool_t build_layout_impl(
 			if (frame_index < pre_ad_header->frame_count)
 			{
 				next_frame = &pre_ad_ts_frames[frame_index];
-				found_frame = TRUE;
 				break;
 			}
 
@@ -168,35 +191,35 @@ bool_t build_layout_impl(
 			/* fallthrough */
 		
 		case STATE_AD:
-			if (ad_header != NULL)
+			try_media_type[MEDIA_TYPE_VIDEO] = ad_header->media_info[MEDIA_TYPE_VIDEO].pid;		// the pid is 0 when there is no video
+			try_media_type[MEDIA_TYPE_AUDIO] = ad_header->media_info[MEDIA_TYPE_AUDIO].pid;
+			for (;;)
 			{
-				try_video = (ad_header->media_info[MEDIA_TYPE_VIDEO].pid != 0);
-				try_audio = (ad_header->media_info[MEDIA_TYPE_AUDIO].pid != 0);
-				while (frame_index < ad_header->frame_count && (try_video || try_audio))
+				if (frame_index >= ad_header->frame_count)
 				{
-					next_frame = &ad_ts_frames[frame_index];
-					if (try_video && next_frame->media_type == MEDIA_TYPE_VIDEO)
-					{
-						if (cur_pos[MEDIA_TYPE_VIDEO] + (int32_t)next_frame->duration <= video_ad_slot_end_pos)
-						{
-							found_frame = TRUE;
-							break;
-						}
-						try_video = FALSE;
-					}
-					else if (try_audio && next_frame->media_type == MEDIA_TYPE_AUDIO)
-					{
-						if (cur_pos[MEDIA_TYPE_AUDIO] + (int32_t)next_frame->duration <= audio_ad_slot_end_pos)
-						{
-							found_frame = TRUE;
-							break;
-						}
-						try_audio = FALSE;
-					}
-					frame_index++;
-				}
-				if (found_frame)
+					next_frame = NULL;
 					break;
+				}
+				next_frame = &ad_ts_frames[frame_index];
+				media_type = next_frame->media_type;
+				if (try_media_type[media_type])
+				{
+					if (cur_pos[media_type] + (int32_t)next_frame->duration <= ad_slot_end_pos[media_type])
+					{
+						break;
+					}
+					try_media_type[media_type] = FALSE;
+				}
+				if (!try_media_type[MEDIA_TYPE_VIDEO] && !try_media_type[MEDIA_TYPE_AUDIO])
+				{
+					next_frame = NULL;
+					break;
+				}
+				frame_index++;
+			}
+			if (next_frame != NULL)
+			{
+				break;
 			}
 			
 			cur_state++;
@@ -204,35 +227,36 @@ bool_t build_layout_impl(
 			/* fallthrough */
 		
 		case STATE_PAD:
-			try_video = (black_header->media_info[MEDIA_TYPE_VIDEO].pid != 0);
-			try_audio = (black_header->media_info[MEDIA_TYPE_AUDIO].pid != 0);
-			while (try_video || try_audio)
+			try_media_type[MEDIA_TYPE_VIDEO] = black_header->media_info[MEDIA_TYPE_VIDEO].pid;
+			try_media_type[MEDIA_TYPE_AUDIO] = black_header->media_info[MEDIA_TYPE_AUDIO].pid;
+			for (;;)
 			{
 				if (frame_index >= black_header->frame_count)
+				{
 					frame_index -= black_header->frame_count;
-				next_frame = &black_ts_frames[frame_index];
-				if (try_video && next_frame->media_type == MEDIA_TYPE_VIDEO)
-				{
-					if (cur_pos[MEDIA_TYPE_VIDEO] + (int32_t)next_frame->duration <= video_ad_slot_end_pos)
-					{
-						found_frame = TRUE;
-						break;
-					}
-					try_video = FALSE;
 				}
-				else if (try_audio && next_frame->media_type == MEDIA_TYPE_AUDIO)
+					
+				next_frame = &black_ts_frames[frame_index];
+				media_type = next_frame->media_type;
+				if (try_media_type[media_type])
 				{
-					if (cur_pos[MEDIA_TYPE_AUDIO] + (int32_t)next_frame->duration <= audio_ad_slot_end_pos)
+					if (cur_pos[media_type] + (int32_t)next_frame->duration <= ad_slot_end_pos[media_type])
 					{
-						found_frame = TRUE;
 						break;
 					}
-					try_audio = FALSE;
+					try_media_type[media_type] = FALSE;
+				}
+				if (!try_media_type[MEDIA_TYPE_VIDEO] && !try_media_type[MEDIA_TYPE_AUDIO])
+				{
+					next_frame = NULL;
+					break;
 				}
 				frame_index++;
 			}
-			if (found_frame)
+			if (next_frame != NULL)
+			{
 				break;
+			}
 				
 			cur_state++;
 			frame_index = 0;
@@ -242,122 +266,91 @@ bool_t build_layout_impl(
 			if (frame_index < post_ad_header->frame_count)
 			{
 				next_frame = &post_ad_ts_frames[frame_index];
-				found_frame = TRUE;
 				break;
 			}
 		}
 		
-		if (!found_frame)
-			break;
-			
-		media_type = next_frame->media_type;
-		
-		if (output_frames)
+		if (next_frame == NULL)
 		{
-			// output the ts header
-			if (!wrote_header)
-			{
-				output_packet.layout_size = sizeof(output_packet);
-				output_packet.state = STATE_PRE_AD_HEADER;
-				if (!append_buffer(result, &output_packet, sizeof(output_packet)))
-				{
-					// XXXX handle this
-				}
-
-				wrote_header = TRUE;
-			}
-		
-			// initialize the packet header
-			output_packet.layout_size = sizeof(output_packet);
-			output_packet.pos = next_frame->pos;
-			output_packet.size = next_frame->size;
-			output_packet.state = cur_state;
-			output_packet.pid = pre_ad_header->media_info[media_type].pid;
-			
-			// update layout size according to required timestamps
-			if (timestamps[media_type].pcr != NO_TIMESTAMP && next_frame->timestamp_offsets.pcr != NO_OFFSET)
-			{
-				output_packet.pcr_offset = next_frame->timestamp_offsets.pcr;
-				output_packet.layout_size += sizeof(pcr);
-			}
-			else
-			{
-				output_packet.pcr_offset = NO_OFFSET;
-			}
-			
-			if (timestamps[media_type].pts != NO_TIMESTAMP && next_frame->timestamp_offsets.pts != NO_OFFSET)
-			{
-				output_packet.pts_offset = next_frame->timestamp_offsets.pts;
-				output_packet.layout_size += sizeof(pts);
-			}
-			else
-			{
-				output_packet.pts_offset = NO_OFFSET;
-			}
-
-			if (timestamps[media_type].dts != NO_TIMESTAMP && next_frame->timestamp_offsets.dts != NO_OFFSET)
-			{
-				output_packet.dts_offset = next_frame->timestamp_offsets.dts;
-				output_packet.layout_size += sizeof(pts);
-			}
-			else
-			{
-				output_packet.dts_offset = NO_OFFSET;
-			}
-			
-			// output the packet
-			last_packet_pos[media_type] = result->write_pos;
-				
-			if (!append_buffer(result, &output_packet, sizeof(output_packet)))
-			{
-				// XXXX handle this
-			}
-			
-			// output the timestamps
-			if (output_packet.pcr_offset != NO_OFFSET)
-			{
-				set_pcr(pcr, timestamps[media_type].pcr);
-				if (!append_buffer(result, &pcr, sizeof(pcr)))
-				{
-					// XXXX handle this
-				}
-			}
-			if (output_packet.pts_offset != NO_OFFSET)
-			{
-				set_pts(pts, next_frame->timestamp_offsets.dts != NO_OFFSET ? PTS_BOTH_PTS : PTS_ONLY_PTS, timestamps[media_type].pts);
-				if (!append_buffer(result, &pts, sizeof(pts)))
-				{
-					// XXXX handle this
-				}
-			}
-			if (output_packet.dts_offset != NO_OFFSET)
-			{
-				set_pts(pts, PTS_BOTH_DTS, timestamps[media_type].dts);
-				if (!append_buffer(result, &pts, sizeof(pts)))
-				{
-					// XXXX handle this
-				}
-			}
+			break;
 		}
-		
-		// update timestamps, pos and frame index
-		if (timestamps[media_type].pcr != NO_TIMESTAMP)
-			timestamps[media_type].pcr += next_frame->duration;
-		if (timestamps[media_type].pts != NO_TIMESTAMP)
-			timestamps[media_type].pts += next_frame->duration;
-		if (timestamps[media_type].dts != NO_TIMESTAMP)
-			timestamps[media_type].dts += next_frame->duration;
+			
+		// update pos and frame index
+		media_type = next_frame->media_type;
 		cur_pos[media_type] += next_frame->duration;
 		frame_index++;
+		
+		if (!output_frames)
+		{
+			continue;
+		}
+			
+		// leave room for the packet header
+		packet_start_pos = result->write_pos;
+		if (!alloc_buffer_space(result, sizeof(output_packet) + sizeof_pcr + 2 * sizeof_pts))
+		{
+			// XXXX handle this
+		}
+		result->write_pos += sizeof(output_packet);
+
+		// output the timestamps
+		output_packet.pcr_offset = NO_OFFSET;
+		if (timestamps[media_type].pcr != NO_TIMESTAMP)
+		{
+			if (next_frame->timestamp_offsets.pcr != NO_OFFSET)
+			{
+				output_packet.pcr_offset = next_frame->timestamp_offsets.pcr;
+				set_pcr(result->data + result->write_pos, timestamps[media_type].pcr);
+				result->write_pos += sizeof_pcr;
+			}
+			timestamps[media_type].pcr += next_frame->duration;
+		}
+		
+		output_packet.pts_offset = NO_OFFSET;
+		if (timestamps[media_type].pts != NO_TIMESTAMP)
+		{
+			if (next_frame->timestamp_offsets.pts != NO_OFFSET)
+			{
+				output_packet.pts_offset = next_frame->timestamp_offsets.pts;
+				set_pts(result->data + result->write_pos, next_frame->timestamp_offsets.dts != NO_OFFSET ? PTS_BOTH_PTS : PTS_ONLY_PTS, timestamps[media_type].pts);
+				result->write_pos += sizeof_pts;
+			}
+			timestamps[media_type].pts += next_frame->duration;
+		}
+
+		output_packet.dts_offset = NO_OFFSET;
+		if (timestamps[media_type].dts != NO_TIMESTAMP)
+		{
+			if (next_frame->timestamp_offsets.dts != NO_OFFSET)
+			{
+				output_packet.dts_offset = next_frame->timestamp_offsets.dts;
+				set_pts(result->data + result->write_pos, PTS_BOTH_DTS, timestamps[media_type].dts);
+				result->write_pos += sizeof_pts;
+			}
+			timestamps[media_type].dts += next_frame->duration;
+		}
+
+		// write the packet header
+		output_packet.layout_size = result->write_pos - packet_start_pos;
+		output_packet.pos = next_frame->pos;
+		output_packet.size = next_frame->size;
+		output_packet.state = cur_state;
+		output_packet.pid = pre_ad_header->media_info[media_type].pid;
+		memcpy(result->data + packet_start_pos, PS(output_packet));
+		
+		// update last packet per media type
+		last_packet_pos[media_type] = packet_start_pos;
 	}
 	
 	// mark the last packet of each media type
-	for (i = 0; i < ARRAY_ENTRIES(last_packet_pos); i++)
+	if (last_packet_pos[MEDIA_TYPE_VIDEO] != 0)
 	{
-		if (last_packet_pos[i] == 0)
-			continue;
-			
-		((output_packet_t*)(result->data + last_packet_pos[i]))->last_packet = TRUE;
+		((output_packet_t*)(result->data + last_packet_pos[MEDIA_TYPE_VIDEO]))->last_packet = TRUE;
+	}
+
+	if (last_packet_pos[MEDIA_TYPE_AUDIO] != 0)
+	{
+		((output_packet_t*)(result->data + last_packet_pos[MEDIA_TYPE_AUDIO]))->last_packet = TRUE;
 	}
 	
 	return TRUE;
@@ -477,8 +470,8 @@ void process_chunk_impl(
 
 		cur_pos += sizeof(*cur_packet);
 		
-		if (cur_packet->state == output_state->chunk_type &&
-			cur_packet->state == STATE_PRE_AD_HEADER)
+		if (cur_packet->state == STATE_PRE_AD_HEADER && 
+			cur_packet->state == output_state->chunk_type)
 		{
 			// got a header buffer - output it as a whole, and move to the next packet
 			fix_continuity_counters(&output_header->streams_info, chunk_buffer, chunk_size);
@@ -489,8 +482,8 @@ void process_chunk_impl(
 		}
 		
 		if (cur_packet->state != output_state->chunk_type || 
-			cur_packet->pos + cur_packet->size <= output_state->chunk_start_offset || 
-			cur_packet->pos >= output_state->chunk_start_offset + chunk_size)
+			cur_packet->pos >= output_state->chunk_start_offset + chunk_size ||
+			cur_packet->pos + cur_packet->size <= output_state->chunk_start_offset)
 		{
 			// nothing to output from this chunk
 			output_state->chunk_type = cur_packet->state;
