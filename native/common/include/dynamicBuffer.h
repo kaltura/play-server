@@ -15,6 +15,8 @@ extern "C" {
 
 bool_t append_buffer(dynamic_buffer_t* buf, const void* data, int len);
 
+bool_t alloc_buffer_space(dynamic_buffer_t* buf, int len);
+
 bool_t resize_buffer(dynamic_buffer_t* buf, int len);
 
 void free_buffer(dynamic_buffer_t* buf);
