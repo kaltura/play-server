@@ -1,6 +1,7 @@
 #ifndef __TS_STITCHER_IMPL_H__
 #define __TS_STITCHER_IMPL_H__
 
+#include "mpegTsMetadata.h"
 #include "dynamicBuffer.h"
 #include "common.h"
 
@@ -35,10 +36,10 @@ extern "C" {
 
 bool_t build_layout_impl(
 	dynamic_buffer_t* result,
-	void* pre_ad_metadata,
-	void* ad_metadata,
-	void* black_metadata,
-	void* post_ad_metadata,
+	metadata_header_t* pre_ad_metadata,
+	metadata_header_t* ad_metadata,
+	metadata_header_t* black_metadata,
+	metadata_header_t* post_ad_metadata,
 	int32_t segment_index,
 	int32_t output_start,
 	int32_t output_end);

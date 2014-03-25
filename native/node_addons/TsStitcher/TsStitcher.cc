@@ -22,7 +22,7 @@ NAN_METHOD(BuildLayout) {
 		return NanThrowTypeError("Function requires 7 arguments");
 	}
 	
-	void* argBuffers[4];
+	metadata_header_t* argBuffers[4];
 	memset(&argBuffers, 0, sizeof(argBuffers));
 	
 	for (int i = 0; i < 4; i++)
@@ -41,7 +41,7 @@ NAN_METHOD(BuildLayout) {
 			return NanThrowTypeError("Arguments 1-4 must be either null or buffer");
 		}
 		
-		argBuffers[i] = Buffer::Data(curObject);
+		argBuffers[i] = (metadata_header_t*)Buffer::Data(curObject);
 		
 		if (!is_metadata_buffer_valid(argBuffers[i], Buffer::Length(curObject)))
 		{
