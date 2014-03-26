@@ -10,8 +10,13 @@ var canStart = true;
 
 
 function buildMasterUrl(entryid, manifestUrl) {
-	// 'http://dev-backend-desktop.dev.kaltura.com:808/manifest/master/entryId/'
-	// + entryid + '/name/master.m3u8?url=' + manifestUrl;
+	// 'http://dev-backend-desktop.dev.kaltura.com:808/manifest/master/entryId/' + entryid + '/name/master.m3u8?url=' + manifestUrl;
+
+	if(!playServerHost)
+		playServerHost = os.hostname();
+	if(!playServerPort)
+		playServerPort = 80;
+	
 	return 'http://' + playServerHost + ':' + playServerPort
 			+ '/manifest/master/entryId/' + entryid + '/name/master.m3u8?url='
 			+ manifestUrl;
@@ -120,7 +125,7 @@ function parseCommandLineOptions(){
 		if (option[0] != '-' && !argv.length) {
 			masterUrl = option;
 			var urlRegex = /^https?:\/\/.+\/manifest\/master\/.*entryId\/.*\?.*url=https?:\/\/.+$/;
-			if (!urlRegex.match(masterUrl)) {
+			if (!masterUrl.match(urlRegex)) {
 				console
 						.error('Master manifest in wrong format [' + masterUrl
 								+ ']');
@@ -142,14 +147,16 @@ function parseCommandLineOptions(){
 			}
 
 			playServerHost = argv.shift();
+			console.log('Validating play-server hostname [' + playServerHost + ']');
 			canStart = false;
 			dns.lookup(playServerHost, function(err, address, family) {
 				if (err) {
-					console.error('Invalid play-server hostname [' + playServerHost
-							+ ']: ' + err);
+					console.error('Invalid play-server hostname [' + playServerHost + ']: ' + err);
 					printHelp();
 					process.exit(1);
 				} else {
+					console.log('Play-server hostname [' + playServerHost + '] is valid');
+					canStart = true;
 					test();
 				}
 			});
@@ -189,9 +196,9 @@ function testSegment(segmentUrl) {
 }
 
 function handleFlavor(flavorUrl, manifestContent) {
-	console.log('Flavor: OK');
-
 	var m3u8Lines = manifestContent.split('\n');
+	console.log('Flavor: OK (' + m3u8Lines.length + ' lines)');
+
 	for (var i = 0; i < m3u8Lines.length; i++) {
 		var m3u8Line = m3u8Lines[i].trim();
 		if (m3u8Line.length == 0)
@@ -212,6 +219,11 @@ function handleFlavor(flavorUrl, manifestContent) {
 function testFlavor(flavorUrl, oldManifestContent) {
 	// console.log('Flavor [' + flavorUrl + ']');
 	http.get(flavorUrl, function(response) {
+		if(response.statusCode != 200){
+			console.error('Flavor status code [' + response.statusCode + ']: ' + flavorUrl);
+			return;
+		}
+		
 		response.setEncoding('utf8');
 		var manifestContent = '';
 		response.on('data', function(chunk) {
@@ -231,9 +243,10 @@ function testFlavor(flavorUrl, oldManifestContent) {
 }
 
 function handleMaster(manifestContent) {
-	console.log('Master: OK');
-
 	var split = manifestContent.split('\n');
+	
+	console.log('Master: OK (' + split.length + ' lines)');
+
 	for (var i = 0; i < split.length; i++) {
 		var currentLine = split[i].trim();
 
