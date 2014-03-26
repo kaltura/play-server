@@ -13,6 +13,28 @@ internalDomain = @CLOUD_HOSTNAME@
 httpPort = 80
 secret = @CLOUD_SECRET@
 
+[logger]
+debugEnabled = 0
+accessLogPath = @LOG_DIR@/kaltura_play_access.log
+logPath = @LOG_DIR@/kaltura_play.log
+errorPath = @LOG_DIR@/kaltura_play_error.log
+
+[cache]
+adMedia = 0
+adMediaExtension = 600
+adHandled = 600
+
+entryHandled = 20
+entryRequired = 600
+masterManifest = 600
+renditionManifest = 20
+encodingParams = 600
+elapsedTime = 600
+blackHandled = 600
+blackMedia = 600
+restoreableAction = 600
+serverProcess = 60
+
 [memcache]
 hostname = 127.0.0.1
 port = 11211
