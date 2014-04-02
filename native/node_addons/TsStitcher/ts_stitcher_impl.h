@@ -5,16 +5,35 @@
 #include "dynamicBuffer.h"
 #include "common.h"
 
+enum 
+{
+	CHUNK_TYPE_INVALID  =  -1,
+	CHUNK_TYPE_TS_HEADER = 	0,
+	CHUNK_TYPE_PRE_AD = 	1,
+	CHUNK_TYPE_POST_AD = 	2,
+};
+
 typedef enum {
-	STATE_PRE_AD,
-	STATE_AD,
-	STATE_PAD,
-	STATE_POST_AD,
-	
-	STATE_PRE_AD_HEADER,
-	
-	STATE_INVALID,
-} layout_state_t;
+	ALIGN_LEFT,
+	ALIGN_MIDDLE,
+	ALIGN_RIGHT,	
+} ad_section_alignment;
+
+typedef enum {
+	PBA_CALL_AGAIN,
+	PBA_GET_NEXT_CHUNK,
+	PBA_CLONE_CURRENT_CHUNK,
+} process_buffer_action_t;
+
+typedef struct {
+	int32_t ad_chunk_type;
+	const metadata_header_t* ad_header;
+	int32_t filler_chunk_type;
+	const metadata_header_t* filler_header;
+	int32_t start_pos;		// 0 = start after previous
+	int32_t end_pos;		// 0 = use video duration
+	ad_section_alignment alignment;
+} ad_section_t;
 
 typedef struct {
 	uint32_t layout_pos;
@@ -27,24 +46,24 @@ typedef struct {
 	uint32_t chunk_output_end;
 	byte_t* output_buffer;
 	size_t output_buffer_size;
-	bool_t more_data_needed;
+	process_buffer_action_t action;
 } process_output_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-bool_t build_layout_impl(
+bool_t build_layout(
 	dynamic_buffer_t* result,
-	metadata_header_t* pre_ad_metadata,
-	metadata_header_t* ad_metadata,
-	metadata_header_t* black_metadata,
-	metadata_header_t* post_ad_metadata,
+	const metadata_header_t* pre_ad_header, 
+	const metadata_header_t* post_ad_header, 
+	ad_section_t* ad_sections_start,
+	int ad_sections_count,
 	int32_t segment_index,
 	int32_t output_start,
 	int32_t output_end);
 	
-void process_chunk_impl(
+void process_chunk(
 	// input
 	byte_t* layout_buffer,
 	uint32_t layout_size,
