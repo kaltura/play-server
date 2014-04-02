@@ -5,6 +5,7 @@ MEDIAINFO_BIN = 'mediainfo'
 class MediaInfoParsers:
 	@staticmethod
 	def parseValue(value):
+		value = value.split(' / ')[0]		# support 'Sampling rate : 44.1 KHz / 22.05 KHz'
 		splittedValue = value.split(' ')
 		value = ''.join(splittedValue[:-1])
 		try:

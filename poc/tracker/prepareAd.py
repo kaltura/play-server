@@ -45,10 +45,16 @@ encodingParams = ' '.join(map(quoteArgs, sys.argv[3:]))
 writeOutput('started, url=%s key=%s encoding-params=%s' % (adUrl, outputKey, encodingParams))
 
 tempDownloadPath = os.path.join(tempfile.gettempdir(), 'downloadedTS')
+preparedAdsPath = os.path.join(tempfile.gettempdir(), 'preparedAds')
 
 # create required folders
 try:
 	os.mkdir(tempDownloadPath)
+except OSError:
+	pass
+	
+try:
+	os.mkdir(preparedAdsPath)
 except OSError:
 	pass
 
@@ -75,16 +81,17 @@ def executeCommand(cmdLine):
   	writeOutput(commands.getoutput(cmdLine))
 	writeOutput('command took %s' % (time.time() - startTime))
 
-# get the ad
-sourceFile = getUrl(adUrl)
+outputFileName = os.path.join(preparedAdsPath, outputKey + '.ts')
+if not os.path.exists(outputFileName):
+	# download the ad
+	sourceFile = getUrl(adUrl)
 
-# convert the ad
-tempFileName = os.path.join(tempDownloadPath, outputKey + '.ts')
-cmdLine = ' '.join([FFMPEG_PATH, ' -i %s ' % sourceFile, encodingParams, ' -y %s' % tempFileName])
-executeCommand(cmdLine)
+	# convert the ad
+	cmdLine = ' '.join([FFMPEG_PATH, ' -i %s ' % sourceFile, encodingParams, ' -y %s' % outputFileName])
+	executeCommand(cmdLine)
 
 # save to memcache
-cmdLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, tempFileName, FFPROBE_PATH, MEMCACHE_HOST, MEMCACHE_PORT, 0, outputKey]))
+cmdLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, outputFileName, FFPROBE_PATH, MEMCACHE_HOST, MEMCACHE_PORT, 0, outputKey]))
 executeCommand(cmdLine)
 
 writeOutput('done')
