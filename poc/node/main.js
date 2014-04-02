@@ -69,6 +69,7 @@ const NOTIFY_STATUS_URI = '/notifyStatus.js';
 
 const AD_REQUEST_URL = 'http://dogusns-f.akamaihd.net/i/DOGUS_STAR/StarTV/Program/osesturkiye/suvedilara.mp4/segment1_0_av.ts?e=e933a313f6018d5d';
 
+const PROXIED_M3U8_TS_COUNT = 3;
 
 var memcache = new memcached(MEMCACHE_URL);
 
@@ -692,7 +693,7 @@ function processFlavorProxy(queryParams, res) {
 		var manifest = parseFlavorM3U8(queryParams.url, urlData);
 
 		// remove the DVR window since we don't want to allow the "red button" player to lag
-		manifest.segments = manifest.segments.slice(-3);
+		manifest.segments = manifest.segments.slice(-PROXIED_M3U8_TS_COUNT);
 		
 		var initialSeqNum = manifest.segments[0].sequence;
 		manifest.headers['EXT-X-MEDIA-SEQUENCE'] = '' + initialSeqNum;		
@@ -712,9 +713,20 @@ function processFlavorProxy(queryParams, res) {
 		var segmentOffsetsKey = 'segmentOffsets-' + queryParams.uid;
 		memcache.get(segmentOffsetsKey, function (err, data) {
 			if (data && data[initialSeqNum]) {
+				// update the previous offsets with the new ones
 				for(var curSegmentId in segmentOffsets) {
-					segmentOffsets[curSegmentId] += data[initialSeqNum];
+					if (!data[curSegmentId]) {
+						data[curSegmentId] = data[initialSeqNum] + segmentOffsets[curSegmentId];
+					}
+				}
+				
+				// leave only the last PROXIED_M3U8_TS_COUNT * 2 offsets
+				var segmentIdsToRemove = Object.keys(data).sort();
+				segmentIdsToRemove = segmentIdsToRemove.slice(0, -(PROXIED_M3U8_TS_COUNT * 2));
+				for(var i = 0; i < segmentIdsToRemove.length; i++) {
+					delete data[segmentIdsToRemove[i]];
 				}				
+				segmentOffsets = data;
 			}
 			console.log('setting segmentOffsets to ');
 			console.dir(segmentOffsets);
