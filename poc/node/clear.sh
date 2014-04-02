@@ -11,4 +11,3 @@ rm -rf /tmp/downloadedTS/*
 rm -rf /tmp/tsFiles/*
 rm -rf /tmp/manifests/*
 rm /var/log/node/access_log
-node main > main.log 2>&1 &
