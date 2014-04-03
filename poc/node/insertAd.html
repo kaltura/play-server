@@ -1,6 +1,9 @@
 <html>
 <head>
 <link rel="stylesheet" type="text/css" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+<style>
+body { padding: 15px; }
+</style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
 <script>
 function outputMessage(msg, noOverride) {	
@@ -110,6 +113,7 @@ function start() {
 			Entry id: <input type="text" value="@UID@" id="entryId" size="10"><br>
 			Ad slot length: <input type="text" value="32" id="adSlotDuration" size="10"><br>
 			<input type="checkbox" id="autoAdInsert">Auto ad insertion<br>
+			<br>
 			<input type="button" value="next" onclick="start();" id="startbtn">
 		</form>
 	</div>
@@ -118,7 +122,7 @@ function start() {
 		<h2>Demo - Frame Accurate Ad Insertion</h2>
 		<p>This page demonstrates how ads can be manually inserted into live streams. 
 		The player below shows the live feed input that will be used by the ad operator to trigger the ad at the right moment during the event. 
-		The ad will show up on the viewer's screen within 60 seconds.</p>
+		The ad will show up on the viewer's screen within 70 seconds.</p>
 
 		<p>Demo Flow:
 		<ol>
