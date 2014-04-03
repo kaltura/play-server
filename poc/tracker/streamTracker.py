@@ -25,7 +25,8 @@ MEMCACHE_PORT = 11211
 MAX_DVR_LENGTH = 35 * 60		# XXXX TODO should be per entry
 
 RESULT_MANIFEST_EXPIRY = 20
-EXTRA_DELAY = 4				# measured in segments
+EXTRA_DELAY = 5				# measured in segments
+DISABLE_DVR = True
 MINIMUM_RUN_PERIOD = 60
 CYCLE_INTERVAL = 2
 
@@ -291,6 +292,10 @@ class ManifestStitcher:
 			memcache.cas(adPositionsKey, requiredAdPositions)
 			
 		# XXXX remove unused urlTranslations
+		
+		if DISABLE_DVR:
+			newResult = newResult[-3:]
+			header['EXT-X-MEDIA-SEQUENCE'] = str(newResult[0]['SEQ'])
 		
 		# build the final manifest
 		return buildM3U8(header, newResult, footer)

@@ -19,6 +19,7 @@ var memcached = require('memcached');
 var memcachedbin = require('./memcachedbin');			// XXXXX TODO fix memcache library so that we won't need 2 instances
 var crypto = require('crypto');
 var exec = require('child_process').exec;
+var spawn = require('child_process').spawn;
 var fs = require('fs');
 
 // parameters
@@ -66,6 +67,8 @@ const STITCH_SEGMENT_URI = '/stitchSegment.ts';
 const SHORT_URL_URI = '/shortUrl.js';
 const NOTIFY_ERROR_URI = '/notifyError.js';
 const NOTIFY_STATUS_URI = '/notifyStatus.js';
+const RESTART_SERVER_URI = '/restartServer.js';
+const FAVICON_ICO_URI = '/favicon.ico';
 
 const AD_REQUEST_URL = 'http://dogusns-f.akamaihd.net/i/DOGUS_STAR/StarTV/Program/osesturkiye/suvedilara.mp4/segment1_0_av.ts?e=e933a313f6018d5d';
 
@@ -703,7 +706,7 @@ function processFlavorProxy(queryParams, res) {
 		var curOffset = 0;
 		for (var i = 0; i < manifest.segments.length; i++) {
 			var curSegment = manifest.segments[i];
-			segmentOffsets[curSegment.sequence] = curOffset;
+			segmentOffsets[curSegment.sequence] = { offset: curOffset, duration: curSegment.duration };
 			curOffset += curSegment.duration;
 		}		
 				
@@ -711,22 +714,27 @@ function processFlavorProxy(queryParams, res) {
 		res.end(buildFlavorM3U8(manifest));
 
 		var segmentOffsetsKey = 'segmentOffsets-' + queryParams.uid;
-		memcache.get(segmentOffsetsKey, function (err, data) {
-			if (data && data[initialSeqNum]) {
+		memcache.get(segmentOffsetsKey, function (err, previousOffsets) {
+			if (previousOffsets && previousOffsets[initialSeqNum]) {
 				// update the previous offsets with the new ones
 				for(var curSegmentId in segmentOffsets) {
-					if (!data[curSegmentId]) {
-						data[curSegmentId] = data[initialSeqNum] + segmentOffsets[curSegmentId];
+					if (!previousOffsets[curSegmentId]) {
+						previousOffsets[curSegmentId] = segmentOffsets[curSegmentId];
+						previousOffsets[curSegmentId].offset += previousOffsets[initialSeqNum].offset;
 					}
 				}
 				
 				// leave only the last PROXIED_M3U8_TS_COUNT * 2 offsets
-				var segmentIdsToRemove = Object.keys(data).sort();
+				var segmentIdsToRemove = Object.keys(previousOffsets).sort();
 				segmentIdsToRemove = segmentIdsToRemove.slice(0, -(PROXIED_M3U8_TS_COUNT * 2));
 				for(var i = 0; i < segmentIdsToRemove.length; i++) {
-					delete data[segmentIdsToRemove[i]];
+					delete previousOffsets[segmentIdsToRemove[i]];
 				}				
-				segmentOffsets = data;
+				segmentOffsets = previousOffsets;
+			}
+			else {
+				console.log('failed to get previous offsets, initial seq num is ' + initialSeqNum + ' previous offsets are ');
+				console.dir(previousOffsets);
 			}
 			console.log('setting segmentOffsets to ');
 			console.dir(segmentOffsets);
@@ -805,20 +813,26 @@ function processInsertAd(params, res) {
 	} else if (params.currentTime && params.currentTime != '0' && params.uid) {
 		memcache.get('segmentOffsets-' + params.uid, function (err, segmentOffsets) {
 			if (err || !segmentOffsets) {
-				errorResponse(res, 400, 'error getting initial seq num from memcache');
+				errorResponse(res, 400, 'failed to get the segment offsets from memcache');
 				return;
 			}
 
 			// find the segment id
 			var currentTime = parseFloat(params.currentTime);
+			var segmentId = undefined;
 			for(var curSegmentId in segmentOffsets) {
-				if (currentTime < segmentOffsets[curSegmentId])
-					break;
-				segmentId = curSegmentId;
+				if (currentTime >= segmentOffsets[curSegmentId].offset && 
+					currentTime < segmentOffsets[curSegmentId].offset + segmentOffsets[curSegmentId].duration) {
+					segmentId = curSegmentId;
+				}
+			}
+			if(typeof segmentId === 'undefined') {
+				errorResponse(res, 400, 'failed to translate player time to a segment id');
+				return;
 			}
 			segmentId = parseInt(segmentId);
 
-			var segmentOffset = currentTime - segmentOffsets[segmentId];
+			var segmentOffset = currentTime - segmentOffsets[segmentId].offset;
 
 			doInsertAd(params.entryId, segmentId, segmentOffset, params.adSlotDuration, res);
 			
@@ -1110,10 +1124,31 @@ function handleHttpRequest(req, res) {
 		res.end('logged');		
 		break;
 		
+	case RESTART_SERVER_URI:
+		res.writeHead(200, {'Content-Type': 'text/plain'});
+		res.end('restarting');
+		
+		setTimeout(function () {
+			spawn('bash', [__dirname + '/clear.sh']);
+		}, 1000);
+		break;
+		
+	case FAVICON_ICO_URI:
+		fs.readFile(__dirname + '/favicon.ico', function (err, data) {
+			if (err) {
+				errorFileNotFound(res);
+				return;
+			}
+			
+			res.writeHead(200, {'Content-Type': 'image/x-icon'});
+			res.end(data);
+		});
+		break;
+		
 	case '/':
 		processInsertAdPage(res);
 		break;
-				
+						
 	default:
 		if (shortUrls[parsedUrl.pathname]) {
 			/*res.writeHead(302, {
