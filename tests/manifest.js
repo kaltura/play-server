@@ -39,6 +39,8 @@ function printHelp() {
 	for ( var entryId in examples) {
 		console.log('\t - ' + buildMasterUrl(entryId, examples[entryId]));
 	}
+	
+	process.exit(1);
 }
 
 function ask(question, format, callback) {
@@ -115,9 +117,7 @@ function getUserInputs(){
 }
 
 function parseCommandLineOptions(){
-	var argv = process.argv;
-	argv.shift();
-	argv.shift();
+	var argv = process.argv.slice(2);
 	
 	var option;
 	while (argv.length) {
@@ -130,20 +130,17 @@ function parseCommandLineOptions(){
 						.error('Master manifest in wrong format [' + masterUrl
 								+ ']');
 				printHelp();
-				process.exit(1);
 			}
 		}
 	
 		if (option == '-h' || option == '--help') {
 			printHelp();
-			process.exit(1);
 		}
 	
 		if (option == '-s' || option == '--server') {
 			if (!argv.length) {
 				console.error('Please specify play-server hostname');
 				printHelp();
-				process.exit(1);
 			}
 
 			playServerHost = argv.shift();
@@ -153,7 +150,6 @@ function parseCommandLineOptions(){
 				if (err) {
 					console.error('Invalid play-server hostname [' + playServerHost + ']: ' + err);
 					printHelp();
-					process.exit(1);
 				} else {
 					console.log('Play-server hostname [' + playServerHost + '] is valid');
 					canStart = true;
@@ -166,7 +162,6 @@ function parseCommandLineOptions(){
 			if (!argv.length) {
 				console.error('Please specify play-server port');
 				printHelp();
-				process.exit(1);
 			}
 
 			playServerPort = argv.shift();
@@ -174,7 +169,6 @@ function parseCommandLineOptions(){
 				console.error('Invalid play-server hostname [' + playServerPort
 						+ ']');
 				printHelp();
-				process.exit(1);
 			}
 		}
 	}
