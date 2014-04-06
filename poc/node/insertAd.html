@@ -1,24 +1,45 @@
 <html>
 <head>
+<link rel="stylesheet" type="text/css" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+<style>
+body { padding: 15px; }
+</style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
 <script>
+function outputMessage(msg, noOverride) {	
+	if (window.consoleClearTimer) {
+		if (noOverride) {
+			return;
+		}
+		clearTimeout(window.consoleClearTimer);
+		window.consoleClearTimer = null;
+	}
+	
+	var output = $("#output");
+	output.html(msg);
+	
+	window.consoleClearTimer = setTimeout(function () { 
+		output.html('');
+		window.consoleClearTimer = null;
+	}, 10000);
+}
+
 function insertAd() {
-  var videoTag = document.getElementById("video");
-  var console = document.getElementById("output");
-  var uid = '@UID@';
+	var videoTag = $("#videoTag")[0];
 
-  if (video.currentTime == 0) {
-    console.innerHTML="<b>Failed</b>: couldn't get video player position";
-    return;
-  }
+	if (videoTag.currentTime == 0) {
+		outputMessage("Failed: could not get video player position");
+		return;
+	}
 
-  $.ajax({
-    url: "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=" + uid + "&currentTime=" + video.currentTime + "&adSlotDuration=" + window.adSlotDuration,
-  }).done(function( data ) {
-        console.innerHTML="<b>Done</b>: " + data;
-  }).fail(function( data ) {
-        console.innerHTML="<b>Failed</b>: " + data.responseText;
-  });
+	var insertAdRequest = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + videoTag.currentTime + "&adSlotDuration=" + window.adSlotDuration;
+	$.ajax({
+		url: insertAdRequest
+	}).done(function( data ) {
+		outputMessage("Success: " + data);
+	}).fail(function( data ) {
+		outputMessage("Failed: " + data.responseText);
+	});
 }
 
 function startAdInsertTimer() {
@@ -29,46 +50,99 @@ function startAdInsertTimer() {
 	}, interval);
 }
 
+function verifyPlayingRealTime() {
+	var videoTag = $("#videoTag")[0];
+
+	if (videoTag.currentTime == 0) {
+		return;
+	}
+
+	var currentLag = videoTag.seekable.end(0) - videoTag.currentTime;
+	if (currentLag > 30)
+		outputMessage("Warning: player is lagging real-time by " + (Math.round(currentLag * 100) / 100) + " seconds, in order to place an ad seek to the end", true);
+}
+
 function start() {
-  var origUrl = document.getElementById("origUrl");
-  var entryId = document.getElementById("entryId");
-  var adSlotDuration = document.getElementById("adSlotDuration");
-  var autoAdInsert = document.getElementById("autoAdInsert");
-  window.entryId = entryId.value;
-  window.adSlotDuration = adSlotDuration.value;
+	// read form settings
+	window.origUrl = $("#origUrl").val();
+	window.autoAdInsert = $("#autoAdInsert").is(':checked');
+	window.adSlotDuration = $("#adSlotDuration").val();
+	window.entryId = $("#entryId").val();
+ 
+	var fullStitchedUrl = '@EXTERNAL_URL@/masterstitch.m3u8?entryId=' + window.entryId + '&url=' + encodeURIComponent(window.origUrl);
+	
+	// create a short stitched URL
+	var shortUrlRequest = "@EXTERNAL_URL@/shortUrl.js?url=" + encodeURIComponent(fullStitchedUrl);
+	$.ajax({
+		url: shortUrlRequest
+	}).done(function( shortStitchedUrl ) {
+		// update video source
+		var videoUrl = '@EXTERNAL_URL@/masterproxy.m3u8?uid=@UID@&url=' + encodeURIComponent(window.origUrl);
+		var videoTag = $("#videoTag")[0];
+		videoTag.setAttribute("src", videoUrl);
 
-  var stitchedUrl = '@EXTERNAL_URL@/masterstitch.m3u8?entryId=' + window.entryId + '&url=' + encodeURIComponent(origUrl.value);
-
-  $.ajax({
-    url: "@EXTERNAL_URL@/shortUrl.js?url=" + encodeURIComponent(stitchedUrl),
-  }).done(function( data ) {
-	var uid = '@UID@';
-
-	document.write(
-		'<p><b>Original</b>: ' + origUrl.value + '</p>' +
-		'<p><b>Stitched</b>: ' + stitchedUrl + '</p>' +
-		'<p><b>Short URL</b>: ' + data + '</p>' +
-		'<video id="video" height="300" width="400" autoplay controls>' +
-		'<source src="@EXTERNAL_URL@/masterproxy.m3u8?uid=' + uid + '&url=' + encodeURIComponent(origUrl.value) + '"/>' +
-		'</video>' +
-		'<button onclick="insertAd()">Insert Ad</button>' +
-		'<p id="output"/>');
-	if (autoAdInsert.value)
-		startAdInsertTimer();
-  }).fail(function( data ) {
-	document.write(
-		'<p>failed to get short url</p>');
-  }); 
+		// update the displayed stitched URL
+		$("#stitchedUrl").html(shortStitchedUrl);
+		
+		// hide the form, show the player
+		$("#screen1Div").hide();
+		$("#screen2Div").show();	 
+	 
+		// start timers
+		if (window.autoAdInsert) {
+			startAdInsertTimer();
+		}
+		setInterval(verifyPlayingRealTime, 10000);
+	}).fail(function( data ) {
+		alert('Failed to get short url');
+	});
 }
 </script>
 </head>
 <body>
-  <form>
-    URL: <input type="text" value="http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8" id="origUrl" size="60"><br>
-    Entry id: <input type="text" value="abcd" id="entryId" size="10"><br>
-	Ad slot length: <input type="text" value="5" id="adSlotDuration" size="10"><br>
-	<input type="checkbox" id="autoAdInsert" checked>Auto ad insertion<br>
-    <input type="button" value="start" onclick="start();" id="startbtn">
-  </form>
+	<div id="screen1Div">
+		<h2>Demo - Frame Accurate Ad Insertion</h2>
+		<p>Please enter the following information to set up the demo:</p>
+		<form>
+			<!--
+				ABC News:			http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8
+				Weather Nation:		http://cdnapi.kaltura.com/p/931702/sp/93170200/playManifest/entryId/0_a7vl6x8e/format/applehttp
+				Nasa:				http://public.infozen.cshls.lldns.net/infozen/public/public.m3u8
+			-->
+			URL: <input type="text" value="http://cdnapi.kaltura.com/content/shared/abcnewsLive.m3u8" id="origUrl" size="60"><br>
+			Entry id: <input type="text" value="@UID@" id="entryId" size="10"><br>
+			Ad slot length: <input type="text" value="32" id="adSlotDuration" size="10"><br>
+			<input type="checkbox" id="autoAdInsert">Auto ad insertion<br>
+			<br>
+			<input type="button" value="next" onclick="start();" id="startbtn">
+		</form>
+	</div>
+
+	<div id="screen2Div" style="display:none">
+		<h2>Demo - Frame Accurate Ad Insertion</h2>
+		<p>This page demonstrates how ads can be manually inserted into live streams. 
+		The player below shows the live feed input that will be used by the ad operator to trigger the ad at the right moment during the event. 
+		The ad will show up on the viewer's screen within 70 seconds.</p>
+
+		<p>Demo Flow:
+		<ol>
+		<li>Open the Viewer's Screen URL on a different browser tab or mobile device (recommended): <b id="stitchedUrl"></b>
+		<li>Insert the ad into the live stream based on the monitor below by clicking on the "Insert Ad" button.
+		<li>View the ads as it shows up on the Viewer's Screen
+		</ol>		
+		</p>
+		<div style="width:600px;">
+			<h4>Live Feed Monitor [Ad Ops]</h4>
+			<video id="videoTag" width="600" height="400" autoplay="" controls=""/>
+		</div>
+		<div style="width:600px;text-align:center">
+			<button onclick="insertAd()" class="btn btn-danger">Click to Insert Ad</button>
+		</div>
+		<br>
+		<div style="width:600px;">
+			<textarea id="output" class="form-control" rows="2"></textarea>
+		</div>
+		<br>
+	</div>
 </body>
 </html>

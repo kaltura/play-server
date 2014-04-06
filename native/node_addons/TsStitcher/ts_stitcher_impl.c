@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <limits.h>
 #include <string.h>
 #include "ts_stitcher_impl.h"
@@ -7,6 +8,14 @@
 #include "mpegTs.h"
 
 typedef struct {
+	int32_t chunk_type;
+	const metadata_header_t* video_header;
+	const metadata_frame_info_t* video_frames;
+	int32_t start_pos[MEDIA_TYPE_COUNT];
+	int32_t end_pos[MEDIA_TYPE_COUNT];
+} internal_ad_section_t;
+
+typedef struct {
 	streams_info_t streams_info;
 } output_header_t;
 
@@ -14,20 +23,200 @@ typedef struct {
 	uint32_t layout_size;
 	uint32_t pos;
 	uint32_t size;
-	uint8_t state;
+	int32_t chunk_type;
+	uint16_t pid;
 	uint8_t pcr_offset;
 	uint8_t pts_offset;
 	uint8_t dts_offset;
-	uint16_t pid;
 	uint8_t last_packet;
-	uint8_t padding;
+	uint8_t padding[2];
 	
 	/*uint8_t pcr[sizeof_pcr];
 	uint8_t pts[sizeof_pts];
 	uint8_t dts[sizeof_pts];*/
 } output_packet_t;
 
-void init_output_header(
+internal_ad_section_t* convert_external_layout_to_internal(
+	const metadata_header_t* pre_ad_header, 
+	const metadata_header_t* post_ad_header, 
+	ad_section_t* ad_sections_start,
+	int ad_sections_count,
+	int* internal_ad_sections_count)
+{
+	ad_section_t* ad_sections_end = ad_sections_start + ad_sections_count;
+	internal_ad_section_t* result;
+	internal_ad_section_t* cur_output_section;
+	ad_section_t* ad_section;
+	int32_t cur_pos[MEDIA_TYPE_COUNT];
+	int32_t end_pos[MEDIA_TYPE_COUNT];
+	int32_t pad_size[MEDIA_TYPE_COUNT];
+	int32_t post_start_pos[MEDIA_TYPE_COUNT];
+	int32_t cur_pad_size;
+	
+	result = malloc(sizeof(result[0]) * (3 * ad_sections_count + 2));
+	if (result == NULL)
+	{
+		return NULL;
+	}
+	cur_output_section = result;
+	
+	// calculate the post ad position
+	if (post_ad_header != NULL)
+	{
+		post_start_pos[MEDIA_TYPE_VIDEO] = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts) & ((1LL << 33) - 1));
+		post_start_pos[MEDIA_TYPE_AUDIO] = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts) & ((1LL << 33) - 1));
+	}
+	else
+	{
+		post_start_pos[MEDIA_TYPE_VIDEO] = INT_MAX;
+		post_start_pos[MEDIA_TYPE_AUDIO] = INT_MAX;
+	}
+	
+	// add the pre ad section
+	cur_output_section->chunk_type = CHUNK_TYPE_PRE_AD;
+	cur_output_section->video_header = pre_ad_header;
+	cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
+	memset(cur_output_section->start_pos, 0, sizeof(cur_output_section->start_pos));
+	cur_pos[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].duration;	
+	cur_pos[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].duration;
+	cur_output_section->end_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
+	cur_output_section->end_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
+	cur_output_section++;
+	
+	for (ad_section = ad_sections_start; ad_section < ad_sections_end; ad_section++)
+	{
+		if (ad_section->start_pos != 0)
+		{
+			// pre-set start position is configured -> use it
+			cur_pos[MEDIA_TYPE_VIDEO] = ad_section->start_pos;
+			cur_pos[MEDIA_TYPE_AUDIO] = ad_section->start_pos;
+		}
+		
+		if (ad_section->end_pos != 0)
+		{
+			// pre-set end position is configured -> use it
+			end_pos[MEDIA_TYPE_VIDEO] = ad_section->end_pos;
+			end_pos[MEDIA_TYPE_AUDIO] = ad_section->end_pos;
+		}
+		else 
+		{
+			// set the end position to the end of the current ad
+			end_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
+			end_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
+
+			if (ad_section->ad_header != NULL)
+			{
+				end_pos[MEDIA_TYPE_VIDEO] += ad_section->ad_header->media_info[MEDIA_TYPE_VIDEO].duration;
+				end_pos[MEDIA_TYPE_AUDIO] += ad_section->ad_header->media_info[MEDIA_TYPE_AUDIO].duration;
+			}
+		}
+		
+		// make sure we don't reach the post start
+		cur_pos[MEDIA_TYPE_VIDEO] = MIN(cur_pos[MEDIA_TYPE_VIDEO], post_start_pos[MEDIA_TYPE_VIDEO]);
+		cur_pos[MEDIA_TYPE_AUDIO] = MIN(cur_pos[MEDIA_TYPE_AUDIO], post_start_pos[MEDIA_TYPE_AUDIO]);
+		end_pos[MEDIA_TYPE_VIDEO] = MIN(end_pos[MEDIA_TYPE_VIDEO], post_start_pos[MEDIA_TYPE_VIDEO]);
+		end_pos[MEDIA_TYPE_AUDIO] = MIN(end_pos[MEDIA_TYPE_AUDIO], post_start_pos[MEDIA_TYPE_AUDIO]);
+		
+		if (ad_section->ad_header != NULL)
+		{
+			if (ad_section->alignment != ALIGN_LEFT)
+			{
+				// check whether we need a pre ad filler
+				pad_size[MEDIA_TYPE_VIDEO] = end_pos[MEDIA_TYPE_VIDEO] - (cur_pos[MEDIA_TYPE_VIDEO] + ad_section->ad_header->media_info[MEDIA_TYPE_VIDEO].duration);
+				pad_size[MEDIA_TYPE_AUDIO] = end_pos[MEDIA_TYPE_AUDIO] - (cur_pos[MEDIA_TYPE_AUDIO] + ad_section->ad_header->media_info[MEDIA_TYPE_AUDIO].duration);
+				
+				if (pad_size[MEDIA_TYPE_VIDEO] > 0 && pad_size[MEDIA_TYPE_AUDIO] > 0)
+				{
+					cur_pad_size = MIN(pad_size[MEDIA_TYPE_VIDEO], pad_size[MEDIA_TYPE_AUDIO]);
+					if (ad_section->alignment == ALIGN_MIDDLE)
+					{
+						cur_pad_size /= 2;
+					}
+					
+					// pre ad filler
+					cur_output_section->chunk_type = ad_section->filler_chunk_type;
+					cur_output_section->video_header = ad_section->filler_header;
+					cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
+					cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
+					cur_output_section->start_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
+					cur_pos[MEDIA_TYPE_VIDEO] += cur_pad_size;
+					cur_pos[MEDIA_TYPE_AUDIO] += cur_pad_size;
+					cur_output_section->end_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
+					cur_output_section->end_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
+					cur_output_section++;			
+				}
+			}
+			
+			// ad
+			cur_output_section->chunk_type = ad_section->ad_chunk_type;
+			cur_output_section->video_header = ad_section->ad_header;
+			cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
+			cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
+			cur_output_section->start_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
+			cur_pos[MEDIA_TYPE_VIDEO] = MIN(end_pos[MEDIA_TYPE_VIDEO], cur_pos[MEDIA_TYPE_VIDEO] + ad_section->ad_header->media_info[MEDIA_TYPE_VIDEO].duration);
+			cur_pos[MEDIA_TYPE_AUDIO] = MIN(end_pos[MEDIA_TYPE_AUDIO], cur_pos[MEDIA_TYPE_AUDIO] + ad_section->ad_header->media_info[MEDIA_TYPE_AUDIO].duration);
+			cur_output_section->end_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
+			cur_output_section->end_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
+			cur_output_section++;
+		}
+
+		// adjust end position for the last segment
+		if (ad_section + 1 >= ad_sections_end)
+		{
+			memcpy(end_pos, post_start_pos, sizeof(end_pos));
+		}
+		
+		// post ad filler
+		if (cur_pos[MEDIA_TYPE_VIDEO] < end_pos[MEDIA_TYPE_VIDEO] || 
+			cur_pos[MEDIA_TYPE_AUDIO] < end_pos[MEDIA_TYPE_AUDIO])
+		{
+			cur_output_section->chunk_type = ad_section->filler_chunk_type;
+			cur_output_section->video_header = ad_section->filler_header;
+			cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
+			cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
+			cur_output_section->start_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
+			cur_pos[MEDIA_TYPE_VIDEO] = end_pos[MEDIA_TYPE_VIDEO];
+			cur_pos[MEDIA_TYPE_AUDIO] = end_pos[MEDIA_TYPE_AUDIO];
+			cur_output_section->end_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
+			cur_output_section->end_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
+			cur_output_section++;
+		}
+	}
+	
+	if (post_ad_header != NULL)
+	{
+		cur_output_section->chunk_type = CHUNK_TYPE_POST_AD;
+		cur_output_section->video_header = post_ad_header;
+		cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
+		cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
+		cur_output_section->start_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
+		cur_output_section->end_pos[MEDIA_TYPE_VIDEO] = cur_output_section->start_pos[MEDIA_TYPE_VIDEO] + post_ad_header->media_info[MEDIA_TYPE_VIDEO].duration;
+		cur_output_section->end_pos[MEDIA_TYPE_AUDIO] = cur_output_section->start_pos[MEDIA_TYPE_AUDIO] + post_ad_header->media_info[MEDIA_TYPE_AUDIO].duration;
+		cur_output_section++;
+	}
+	
+	*internal_ad_sections_count = cur_output_section - result;
+	return result;
+}
+
+static void increment_timestamps(timestamps_t* timestamps, const int32_t* increment)
+{
+	if (timestamps[MEDIA_TYPE_VIDEO].pcr != NO_TIMESTAMP)
+		timestamps[MEDIA_TYPE_VIDEO].pcr += increment[MEDIA_TYPE_VIDEO];
+	if (timestamps[MEDIA_TYPE_VIDEO].pts != NO_TIMESTAMP)
+		timestamps[MEDIA_TYPE_VIDEO].pts += increment[MEDIA_TYPE_VIDEO];
+	if (timestamps[MEDIA_TYPE_VIDEO].dts != NO_TIMESTAMP)
+		timestamps[MEDIA_TYPE_VIDEO].dts += increment[MEDIA_TYPE_VIDEO];
+	
+	if (timestamps[MEDIA_TYPE_AUDIO].pcr != NO_TIMESTAMP)
+		timestamps[MEDIA_TYPE_AUDIO].pcr += increment[MEDIA_TYPE_AUDIO];
+	if (timestamps[MEDIA_TYPE_AUDIO].pts != NO_TIMESTAMP)
+		timestamps[MEDIA_TYPE_AUDIO].pts += increment[MEDIA_TYPE_AUDIO];
+	if (timestamps[MEDIA_TYPE_AUDIO].dts != NO_TIMESTAMP)
+		timestamps[MEDIA_TYPE_AUDIO].dts += increment[MEDIA_TYPE_AUDIO];
+}
+
+static void init_output_header(
 	output_header_t* output_header, 
 	const metadata_header_t* pre_ad_header, 
 	const metadata_header_t* post_ad_header, 
@@ -73,273 +262,197 @@ void init_output_header(
 
 bool_t build_layout_impl(
 	dynamic_buffer_t* result,
-	metadata_header_t* pre_ad_header,
-	metadata_header_t* ad_header,
-	metadata_header_t* black_header,
-	metadata_header_t* post_ad_header,
+	const metadata_header_t* pre_ad_header, 
+	const metadata_header_t* post_ad_header, 
+	internal_ad_section_t* ad_sections_start,
+	int ad_sections_count,
 	int32_t segment_index,
 	int32_t output_start,
 	int32_t output_end)
 {
-	// input videos
-	metadata_frame_info_t* pre_ad_ts_frames = 	(metadata_frame_info_t*)(pre_ad_header + 1);
-	metadata_frame_info_t* ad_ts_frames = 	(metadata_frame_info_t*)(ad_header + 1);
-	metadata_frame_info_t* black_ts_frames = 	(metadata_frame_info_t*)(black_header + 1);
-	metadata_frame_info_t* post_ad_ts_frames = (metadata_frame_info_t*)(post_ad_header + 1);
+	internal_ad_section_t* ad_sections_end = ad_sections_start + ad_sections_count;
 	int main_media_type = ((pre_ad_header->media_info[MEDIA_TYPE_VIDEO].pid != 0) ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);
-	int32_t ad_slot_end_pos[MEDIA_TYPE_COUNT];
-	metadata_header_t null_metadata_header;
 	
 	// current state
-	int cur_state = STATE_PRE_AD;		// ++ doesn't work for enums in cpp
-	uint32_t frame_index = 0;	
 	bool_t output_frames = FALSE;
-	int32_t cur_pos[MEDIA_TYPE_COUNT] = { 0 };
-	timestamps_t timestamps[MEDIA_TYPE_COUNT];
 	uint32_t last_packet_pos[MEDIA_TYPE_COUNT] = { 0 };
+	int32_t cur_pos[MEDIA_TYPE_COUNT];
+	timestamps_t timestamps[MEDIA_TYPE_COUNT];
+	uint32_t frame_index;
 
 	// temporary vars
-	metadata_frame_info_t* next_frame;
+	const metadata_frame_info_t* next_frame;
 	int media_type;
 	bool_t try_media_type[MEDIA_TYPE_COUNT];
+	bool_t has_media_type[MEDIA_TYPE_COUNT];
 	output_packet_t output_packet;
 	uint32_t packet_start_pos;
 	output_header_t output_header;
-	
-	// init locals
-	if (post_ad_header != NULL)
-	{
-		ad_slot_end_pos[MEDIA_TYPE_VIDEO] = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps.pts) & ((1LL << 33) - 1));
-		ad_slot_end_pos[MEDIA_TYPE_AUDIO] = (int32_t)((post_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts - pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps.pts) & ((1LL << 33) - 1));
-	}
-	else
-	{
-		ad_slot_end_pos[MEDIA_TYPE_VIDEO] = INT_MAX;
-		ad_slot_end_pos[MEDIA_TYPE_AUDIO] = INT_MAX;
-	}
-		
-	timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
-	timestamps[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps;
-		
-	if (ad_header == NULL)
-	{
-		memset(&null_metadata_header, 0, sizeof(null_metadata_header));
-		ad_header = &null_metadata_header;
-	}
-		
+	internal_ad_section_t* ad_section;
+
 	// append the output header
 	init_output_header(&output_header, pre_ad_header, post_ad_header, segment_index, output_end);
 	if (!append_buffer(result, PS(output_header)))
 	{
-		// XXXX handle this
+		return FALSE;
 	}	
 	
-	// output the ts header
+	// output the TS header
 	memset(&output_packet, 0, sizeof(output_packet));
 	output_packet.layout_size = sizeof(output_packet);
-	output_packet.state = STATE_PRE_AD_HEADER;
+	output_packet.chunk_type = CHUNK_TYPE_TS_HEADER;
 	if (!append_buffer(result, &output_packet, sizeof(output_packet)))
 	{
-		// XXXX handle this
+		return FALSE;
 	}
 	
+	// no output_end means we should output until we are out of frames
 	if (!output_end)
 	{
 		output_end = INT_MAX;
 	}
 	
-	for (;;)
+	for (ad_section = ad_sections_start; ad_section < ad_sections_end; ad_section++)
 	{
-		// check for output start / end
-		if (cur_pos[main_media_type] > output_end)
-		{
-			break;
-		}
-		else if (cur_pos[main_media_type] >= output_start && !output_frames)
-		{
-			output_frames = TRUE;
-			
-			if (timestamps[MEDIA_TYPE_VIDEO].pcr != NO_TIMESTAMP)
-				timestamps[MEDIA_TYPE_VIDEO].pcr += cur_pos[MEDIA_TYPE_VIDEO];
-			if (timestamps[MEDIA_TYPE_VIDEO].pts != NO_TIMESTAMP)
-				timestamps[MEDIA_TYPE_VIDEO].pts += cur_pos[MEDIA_TYPE_VIDEO];
-			if (timestamps[MEDIA_TYPE_VIDEO].dts != NO_TIMESTAMP)
-				timestamps[MEDIA_TYPE_VIDEO].dts += cur_pos[MEDIA_TYPE_VIDEO];
-			
-			if (timestamps[MEDIA_TYPE_AUDIO].pcr != NO_TIMESTAMP)
-				timestamps[MEDIA_TYPE_AUDIO].pcr += cur_pos[MEDIA_TYPE_AUDIO];
-			if (timestamps[MEDIA_TYPE_AUDIO].pts != NO_TIMESTAMP)
-				timestamps[MEDIA_TYPE_AUDIO].pts += cur_pos[MEDIA_TYPE_AUDIO];
-			if (timestamps[MEDIA_TYPE_AUDIO].dts != NO_TIMESTAMP)
-				timestamps[MEDIA_TYPE_AUDIO].dts += cur_pos[MEDIA_TYPE_AUDIO];
-		}
-		
-		// get the next frame to output
-		next_frame = NULL;
-		
-		switch (cur_state)
-		{
-		case STATE_PRE_AD:
-			if (frame_index < pre_ad_header->frame_count)
-			{
-				next_frame = &pre_ad_ts_frames[frame_index];
-				break;
-			}
-
-			cur_state++;
-			frame_index = 0;
-			/* fallthrough */
-		
-		case STATE_AD:
-			try_media_type[MEDIA_TYPE_VIDEO] = ad_header->media_info[MEDIA_TYPE_VIDEO].pid;		// the pid is 0 when there is no video
-			try_media_type[MEDIA_TYPE_AUDIO] = ad_header->media_info[MEDIA_TYPE_AUDIO].pid;
-			for (;;)
-			{
-				if (frame_index >= ad_header->frame_count)
-				{
-					next_frame = NULL;
-					break;
-				}
-				next_frame = &ad_ts_frames[frame_index];
-				media_type = next_frame->media_type;
-				if (try_media_type[media_type])
-				{
-					if (cur_pos[media_type] + (int32_t)next_frame->duration <= ad_slot_end_pos[media_type])
-					{
-						break;
-					}
-					try_media_type[media_type] = FALSE;
-				}
-				if (!try_media_type[MEDIA_TYPE_VIDEO] && !try_media_type[MEDIA_TYPE_AUDIO])
-				{
-					next_frame = NULL;
-					break;
-				}
-				frame_index++;
-			}
-			if (next_frame != NULL)
-			{
-				break;
-			}
-			
-			cur_state++;
-			frame_index = 0;
-			/* fallthrough */
-		
-		case STATE_PAD:
-			try_media_type[MEDIA_TYPE_VIDEO] = black_header->media_info[MEDIA_TYPE_VIDEO].pid;
-			try_media_type[MEDIA_TYPE_AUDIO] = black_header->media_info[MEDIA_TYPE_AUDIO].pid;
-			for (;;)
-			{
-				if (frame_index >= black_header->frame_count)
-				{
-					frame_index -= black_header->frame_count;
-				}
-					
-				next_frame = &black_ts_frames[frame_index];
-				media_type = next_frame->media_type;
-				if (try_media_type[media_type])
-				{
-					if (cur_pos[media_type] + (int32_t)next_frame->duration <= ad_slot_end_pos[media_type])
-					{
-						break;
-					}
-					try_media_type[media_type] = FALSE;
-				}
-				if (!try_media_type[MEDIA_TYPE_VIDEO] && !try_media_type[MEDIA_TYPE_AUDIO])
-				{
-					next_frame = NULL;
-					break;
-				}
-				frame_index++;
-			}
-			if (next_frame != NULL)
-			{
-				break;
-			}
-				
-			cur_state++;
-			frame_index = 0;
-			/* fallthrough */
-
-		case STATE_POST_AD:
-			if (frame_index < post_ad_header->frame_count)
-			{
-				next_frame = &post_ad_ts_frames[frame_index];
-				break;
-			}
-		}
-		
-		if (next_frame == NULL)
-		{
-			break;
-		}
-			
-		// update pos and frame index
-		media_type = next_frame->media_type;
-		cur_pos[media_type] += next_frame->duration;
-		frame_index++;
-		
-		if (!output_frames)
+		// check which media types exist for the current section
+		has_media_type[MEDIA_TYPE_VIDEO] = ad_section->video_header->media_info[MEDIA_TYPE_VIDEO].pid != 0;
+		has_media_type[MEDIA_TYPE_AUDIO] = ad_section->video_header->media_info[MEDIA_TYPE_AUDIO].pid != 0;
+	
+		// if the current section ends before output starts we can just skip it
+		if ((!has_media_type[MEDIA_TYPE_VIDEO] || ad_section->end_pos[MEDIA_TYPE_VIDEO] < output_start) && 
+			(!has_media_type[MEDIA_TYPE_AUDIO] || ad_section->end_pos[MEDIA_TYPE_AUDIO] < output_start))
 		{
 			continue;
 		}
+	
+		// initialize the state for the current section
+		cur_pos[MEDIA_TYPE_VIDEO] = ad_section->start_pos[MEDIA_TYPE_VIDEO];
+		cur_pos[MEDIA_TYPE_AUDIO] = ad_section->start_pos[MEDIA_TYPE_AUDIO];
+		if (output_frames)
+		{
+			timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
+			timestamps[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps;
+			increment_timestamps(timestamps, cur_pos);
+		}
+		frame_index = 0;
+		
+		for (;;)
+		{
+			// get a frame
+			try_media_type[MEDIA_TYPE_VIDEO] = has_media_type[MEDIA_TYPE_VIDEO];
+			try_media_type[MEDIA_TYPE_AUDIO] = has_media_type[MEDIA_TYPE_AUDIO];
+			for (;;)
+			{
+				if (frame_index >= ad_section->video_header->frame_count)
+				{
+					frame_index -= ad_section->video_header->frame_count;
+				}
+				
+				next_frame = &ad_section->video_frames[frame_index];
+				media_type = next_frame->media_type;
+				
+				if (try_media_type[media_type])
+				{
+					if (cur_pos[media_type] + (int32_t)next_frame->duration <= ad_section->end_pos[media_type])
+					{
+						break;
+					}
+					try_media_type[media_type] = FALSE;
+				}
+				
+				if (!try_media_type[MEDIA_TYPE_VIDEO] && !try_media_type[MEDIA_TYPE_AUDIO])
+				{
+					next_frame = NULL;
+					break;
+				}
+				
+				frame_index++;
+			}
 			
-		// leave room for the packet header
-		packet_start_pos = result->write_pos;
-		if (!alloc_buffer_space(result, sizeof(output_packet) + sizeof_pcr + 2 * sizeof_pts))
-		{
-			// XXXX handle this
-		}
-		result->write_pos += sizeof(output_packet);
-
-		// output the timestamps
-		output_packet.pcr_offset = NO_OFFSET;
-		if (timestamps[media_type].pcr != NO_TIMESTAMP)
-		{
-			if (next_frame->timestamp_offsets.pcr != NO_OFFSET)
+			if (next_frame == NULL)
 			{
-				output_packet.pcr_offset = next_frame->timestamp_offsets.pcr;
-				set_pcr(result->data + result->write_pos, timestamps[media_type].pcr);
-				result->write_pos += sizeof_pcr;
+				// failed to find a frame move to the next section
+				break;
 			}
-			timestamps[media_type].pcr += next_frame->duration;
-		}
-		
-		output_packet.pts_offset = NO_OFFSET;
-		if (timestamps[media_type].pts != NO_TIMESTAMP)
-		{
-			if (next_frame->timestamp_offsets.pts != NO_OFFSET)
+			
+			// update output state
+			if (cur_pos[main_media_type] > output_end)
 			{
-				output_packet.pts_offset = next_frame->timestamp_offsets.pts;
-				set_pts(result->data + result->write_pos, next_frame->timestamp_offsets.dts != NO_OFFSET ? PTS_BOTH_PTS : PTS_ONLY_PTS, timestamps[media_type].pts);
-				result->write_pos += sizeof_pts;
+				break;
 			}
-			timestamps[media_type].pts += next_frame->duration;
-		}
-
-		output_packet.dts_offset = NO_OFFSET;
-		if (timestamps[media_type].dts != NO_TIMESTAMP)
-		{
-			if (next_frame->timestamp_offsets.dts != NO_OFFSET)
+			else if (cur_pos[main_media_type] >= output_start && !output_frames)
 			{
-				output_packet.dts_offset = next_frame->timestamp_offsets.dts;
-				set_pts(result->data + result->write_pos, PTS_BOTH_DTS, timestamps[media_type].dts);
-				result->write_pos += sizeof_pts;
+				output_frames = TRUE;				
+				timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
+				timestamps[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps;
+				increment_timestamps(timestamps, cur_pos);
 			}
-			timestamps[media_type].dts += next_frame->duration;
-		}
+			
+			// update position and frame index
+			cur_pos[media_type] += next_frame->duration;
+			frame_index++;
+			
+			if (!output_frames)
+			{
+				continue;
+			}
+			
+			// leave room for the packet header
+			packet_start_pos = result->write_pos;
+			if (!alloc_buffer_space(result, sizeof(output_packet) + sizeof_pcr + 2 * sizeof_pts))
+			{
+				return FALSE;
+			}
+			result->write_pos += sizeof(output_packet);
 
-		// write the packet header
-		output_packet.layout_size = result->write_pos - packet_start_pos;
-		output_packet.pos = next_frame->pos;
-		output_packet.size = next_frame->size;
-		output_packet.state = cur_state;
-		output_packet.pid = pre_ad_header->media_info[media_type].pid;
-		memcpy(result->data + packet_start_pos, PS(output_packet));
-		
-		// update last packet per media type
-		last_packet_pos[media_type] = packet_start_pos;
+			// output the timestamps
+			output_packet.pcr_offset = NO_OFFSET;
+			if (timestamps[media_type].pcr != NO_TIMESTAMP)
+			{
+				if (next_frame->timestamp_offsets.pcr != NO_OFFSET)
+				{
+					output_packet.pcr_offset = next_frame->timestamp_offsets.pcr;
+					set_pcr(result->data + result->write_pos, timestamps[media_type].pcr);
+					result->write_pos += sizeof_pcr;
+				}
+				timestamps[media_type].pcr += next_frame->duration;
+			}
+			
+			output_packet.pts_offset = NO_OFFSET;
+			if (timestamps[media_type].pts != NO_TIMESTAMP)
+			{
+				if (next_frame->timestamp_offsets.pts != NO_OFFSET)
+				{
+					output_packet.pts_offset = next_frame->timestamp_offsets.pts;
+					set_pts(result->data + result->write_pos, next_frame->timestamp_offsets.dts != NO_OFFSET ? PTS_BOTH_PTS : PTS_ONLY_PTS, timestamps[media_type].pts);
+					result->write_pos += sizeof_pts;
+				}
+				timestamps[media_type].pts += next_frame->duration;
+			}
+
+			output_packet.dts_offset = NO_OFFSET;
+			if (timestamps[media_type].dts != NO_TIMESTAMP)
+			{
+				if (next_frame->timestamp_offsets.dts != NO_OFFSET)
+				{
+					output_packet.dts_offset = next_frame->timestamp_offsets.dts;
+					set_pts(result->data + result->write_pos, PTS_BOTH_DTS, timestamps[media_type].dts);
+					result->write_pos += sizeof_pts;
+				}
+				timestamps[media_type].dts += next_frame->duration;
+			}
+
+			// write the packet header
+			output_packet.layout_size = result->write_pos - packet_start_pos;
+			output_packet.pos = next_frame->pos;
+			output_packet.size = next_frame->size;
+			output_packet.chunk_type = ad_section->chunk_type;
+			output_packet.pid = pre_ad_header->media_info[media_type].pid;
+			memcpy(result->data + packet_start_pos, PS(output_packet));
+			
+			// update last packet per media type
+			last_packet_pos[media_type] = packet_start_pos;
+		}
 	}
 	
 	// mark the last packet of each media type
@@ -354,6 +467,46 @@ bool_t build_layout_impl(
 	}
 	
 	return TRUE;
+}
+
+bool_t build_layout(
+	dynamic_buffer_t* result,
+	const metadata_header_t* pre_ad_header, 
+	const metadata_header_t* post_ad_header, 
+	ad_section_t* ad_sections_start,
+	int ad_sections_count,
+	int32_t segment_index,
+	int32_t output_start,
+	int32_t output_end)
+{
+	internal_ad_section_t* internal_sections;
+	int internal_sections_count;
+	bool_t status;
+	
+	internal_sections = convert_external_layout_to_internal(
+		pre_ad_header, 
+		post_ad_header, 
+		ad_sections_start,
+		ad_sections_count,
+		&internal_sections_count);
+	if (internal_sections == NULL)
+	{
+		return FALSE;
+	}
+	
+	status = build_layout_impl(
+		result,
+		pre_ad_header, 
+		post_ad_header, 
+		internal_sections,
+		internal_sections_count,
+		segment_index,
+		output_start,
+		output_end);
+	
+	free(internal_sections);
+	
+	return status;
 }
 
 byte_t* create_null_packets(stream_info_t* stream_info, size_t* result_buffer_size)
@@ -422,7 +575,7 @@ void fix_continuity_counters(streams_info_t* streams_info, byte_t* buffer, uint3
 	}
 }
 
-void process_chunk_impl(
+void process_chunk(
 	// input
 	byte_t* layout_buffer,
 	uint32_t layout_size,
@@ -449,14 +602,14 @@ void process_chunk_impl(
 	
 	// init output
 	memset(output, 0, sizeof(*output));
-	output->more_data_needed = TRUE;
+	output->action = PBA_GET_NEXT_CHUNK;
 	
 	if (chunk_size == 0)
 	{
 		// first call - init state
 		cur_packet = (output_packet_t*)(layout_buffer + sizeof(output_header_t));
 		output_state->layout_pos = sizeof(output_header_t);
-		output_state->chunk_type = cur_packet->state;
+		output_state->chunk_type = cur_packet->chunk_type;
 		output_state->chunk_start_offset = cur_packet->pos;
 		return;
 	}
@@ -470,8 +623,8 @@ void process_chunk_impl(
 
 		cur_pos += sizeof(*cur_packet);
 		
-		if (cur_packet->state == STATE_PRE_AD_HEADER && 
-			cur_packet->state == output_state->chunk_type)
+		if (cur_packet->chunk_type == CHUNK_TYPE_TS_HEADER && 
+			cur_packet->chunk_type == output_state->chunk_type)
 		{
 			// got a header buffer - output it as a whole, and move to the next packet
 			fix_continuity_counters(&output_header->streams_info, chunk_buffer, chunk_size);
@@ -481,12 +634,12 @@ void process_chunk_impl(
 			continue;
 		}
 		
-		if (cur_packet->state != output_state->chunk_type || 
+		if (cur_packet->chunk_type != output_state->chunk_type || 
 			cur_packet->pos >= output_state->chunk_start_offset + chunk_size ||
 			cur_packet->pos + cur_packet->size <= output_state->chunk_start_offset)
 		{
 			// nothing to output from this chunk
-			output_state->chunk_type = cur_packet->state;
+			output_state->chunk_type = cur_packet->chunk_type;
 			output_state->chunk_start_offset = cur_packet->pos;
 			return;
 		}
@@ -503,7 +656,7 @@ void process_chunk_impl(
 		else if (packet_start_offset != output->chunk_output_end)
 		{
 			// the packet is not adjacent to the last packet, write whatever we have so far first
-			output->more_data_needed = FALSE;
+			output->action = (packet_start_offset > output->chunk_output_end ? PBA_CALL_AGAIN : PBA_CLONE_CURRENT_CHUNK);
 			return;
 		}
 		output->chunk_output_end = packet_end_offset;
@@ -563,14 +716,14 @@ void process_chunk_impl(
 			if (output->output_buffer != NULL)
 			{
 				// output the null packets before continuing
-				output->more_data_needed = FALSE;
+				output->action = PBA_CALL_AGAIN;
 				return;
 			}
 		}
 	}
 	
 	// we're done
-	output_state->chunk_type = STATE_INVALID;
+	output_state->chunk_type = CHUNK_TYPE_INVALID;
 }
 
 bool_t is_metadata_buffer_valid(const void* buffer, size_t size)

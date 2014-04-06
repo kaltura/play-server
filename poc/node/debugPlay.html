@@ -1,5 +1,9 @@
 <html>
 <head>
+<link rel="stylesheet" type="text/css" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+<style>
+body { padding: 15px; }
+</style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
 <script>
 window.lastCurrentTime = 0;
@@ -36,6 +40,10 @@ window.setInterval(function () {
 </script>
 </head>
 <body>
-<p><video id="video" src="@VIDEO_URL@" autoplay controls onerror="failed(event)"></video></p>
+<h2>Demo - Frame Accurate Ad Insertion</h2>
+<div style="width:600px;">
+	<h4>Viewer's Screen (Broadcast Output)</h4>
+	<video id="video" width="600" height="400" src="@VIDEO_URL@" autoplay controls onerror="failed(event)"></video>
+</div>
 </body>
 </html>

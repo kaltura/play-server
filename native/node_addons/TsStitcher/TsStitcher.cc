@@ -13,77 +13,171 @@ void MyFreeCallback(char* data, void* hint)
 }
 */
 
+bool GetMetadataHeader(Local<Value> input, const metadata_header_t** result)
+{
+	*result = NULL;
+	
+	if (input->IsNull())
+	{
+		return true;
+	}
+	
+	if (!input->IsObject())
+	{
+		return false;
+	}
+	
+	v8::Handle<v8::Object> curObject = input->ToObject();
+	if (!Buffer::HasInstance(curObject))
+	{
+		return false;
+	}
+	
+	*result = (metadata_header_t*)Buffer::Data(curObject);
+	if (!is_metadata_buffer_valid(*result, Buffer::Length(curObject)))
+	{
+		return false;
+	}
+	
+	return true;
+}
+
+bool FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
+{
+	// XXX need more validations here
+	// XXX save the symbols instead of allocating every time
+	result->ad_chunk_type = 	inputSection->Get(String::NewSymbol("adChunkType"))->Int32Value();
+	result->filler_chunk_type = inputSection->Get(String::NewSymbol("fillerChunkType"))->Int32Value();
+	result->start_pos = 		inputSection->Get(String::NewSymbol("startPos"))->Int32Value();
+	result->end_pos = 			inputSection->Get(String::NewSymbol("endPos"))->Int32Value();
+	result->alignment = 		(ad_section_alignment)inputSection->Get(String::NewSymbol("alignment"))->Int32Value();
+
+	if (!GetMetadataHeader(inputSection->Get(String::NewSymbol("ad")), &result->ad_header))
+	{
+		return false;
+	}
+	
+	if (!GetMetadataHeader(inputSection->Get(String::NewSymbol("filler")), &result->filler_header))
+	{
+		return false;
+	}
+	
+	if (result->filler_header == NULL)
+	{
+		return false;
+	}
+	
+	return true;
+}
+
+/*
+	Parameters
+	0	Buffer preAdMetadata
+	1	Buffer postAdMetadata
+	2	Array adSections of object:
+			Number adChunkType
+			Buffer ad
+			Number fillerChunkType
+			Buffer filler
+			Number startPos		// 0 = start after previous
+			Number endPos		// 0 = use video duration
+			Number alignment
+	3	Number segmentIndex
+	4	Number outputStart
+	5	Number outputEnd
+*/
 NAN_METHOD(BuildLayout) {
 	NanScope();
 
 	// validate input
-	if (args.Length() < 7) 
+	if (args.Length() < 6) 
 	{
-		return NanThrowTypeError("Function requires 7 arguments");
+		return NanThrowTypeError("Function requires 6 arguments");
 	}
 	
-	metadata_header_t* argBuffers[4];
+	const metadata_header_t* argBuffers[2];
 	memset(&argBuffers, 0, sizeof(argBuffers));
 	
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < 2; i++)
 	{
-		if (args[i]->IsNull())
-			continue;
-		
-		if (!args[i]->IsObject())
+		if (!GetMetadataHeader(args[i], &argBuffers[i]))
 		{
-			return NanThrowTypeError("Arguments 1-4 must be either null or buffer");
-		}
-		
-		v8::Handle<v8::Object> curObject = args[i]->ToObject();
-		if (!Buffer::HasInstance(curObject))
-		{
-			return NanThrowTypeError("Arguments 1-4 must be either null or buffer");
-		}
-		
-		argBuffers[i] = (metadata_header_t*)Buffer::Data(curObject);
-		
-		if (!is_metadata_buffer_valid(argBuffers[i], Buffer::Length(curObject)))
-		{
-			return NanThrowTypeError("Invalid metadata buffer");
+			return NanThrowTypeError("Arguments 1-2 must be either null or metadata buffer");
 		}
 	}
-		
-	if (!args[4]->IsNumber() || !args[5]->IsNumber() || !args[6]->IsNumber()) 
+	
+	if (!args[2]->IsArray())
 	{
-		return NanThrowTypeError("Arguments 5-7 must be numbers");
+		return NanThrowTypeError("Arguments 3 must be an array");
+	}
+		
+	if (!args[3]->IsNumber() || !args[4]->IsNumber() || !args[5]->IsNumber()) 
+	{
+		return NanThrowTypeError("Arguments 4-6 must be numbers");
 	}
 
 	// check for mandatory buffers
-	if (argBuffers[STATE_PRE_AD] == NULL)
+	if (argBuffers[0] == NULL)
 	{
 		return NanThrowTypeError("Pre-ad segment must not be null");
 	}
 
-	if (argBuffers[STATE_PAD] == NULL)
-	{
-		return NanThrowTypeError("Pad segment must not be null");
-	}
-	
-	if (argBuffers[STATE_POST_AD] == NULL && args[6]->NumberValue() == 0)
+	if (argBuffers[1] == NULL && args[5]->Int32Value() == 0)
 	{
 		return NanThrowTypeError("Post-ad segment must not be null in the last segment");
+	}
+	
+	// parse the ad sections array
+	Local<Array> adSectionsArray = args[2].As<Array>();
+	size_t adSectionsCount = adSectionsArray->Length();
+	if (adSectionsCount < 1)
+	{
+		return NanThrowTypeError("Ad sections array must not be empty");
+	}
+	
+	ad_section_t* adSections = (ad_section_t*)malloc(sizeof(ad_section_t) * adSectionsCount);
+	if (adSections == NULL)
+	{
+		return NanThrowError("Not enough memory to allocate ad sections buffer");
+	}
+	
+	for (size_t i = 0; i < adSectionsCount; i++) 
+	{	
+		if (!adSectionsArray->Get(i)->IsObject())
+		{
+			free(adSections);
+			return NanThrowTypeError("Ad sections array must contain objects");
+		}
+		
+		Local<Object> curObject = adSectionsArray->Get(i)->ToObject();
+		if (!FillAdSectionData(curObject, adSections + i))
+		{
+			free(adSections);
+			return NanThrowTypeError("Failed to process ad sections array element");
+		}
 	}
 	
 	// build the layout
 	dynamic_buffer_t dynBuffer;
 	memset(&dynBuffer, 0, sizeof(dynBuffer));
 	
-	build_layout_impl(
+	bool_t status = build_layout(
 		&dynBuffer,
 		argBuffers[0],
 		argBuffers[1],
-		argBuffers[2],
-		argBuffers[3],
-		args[4]->NumberValue(),
-		args[5]->NumberValue(),
-		args[6]->NumberValue());
+		adSections,
+		adSectionsCount,
+		args[3]->Int32Value(),
+		args[4]->Int32Value(),
+		args[5]->Int32Value());
 
+	free(adSections);
+	
+	if (!status)
+	{
+		// XXXX
+	}
+		
 	// return the result
 	// XXXX TODO check if we can avoid this memory copy
 	// appending (smalloc::FreeCallback)MyFreeCallback, (void*)NULL didn't work - unresolved symbol
@@ -125,14 +219,14 @@ NAN_METHOD(ProcessChunk) {
 	output_state_t outputState;
 	memset(&outputState, 0, sizeof(outputState));
 	Local<Object> inputState = args[2].As<Object>();
-	outputState.layout_pos = 		inputState->Get(String::NewSymbol("layoutPos"))->NumberValue();
-	outputState.chunk_type = 		inputState->Get(String::NewSymbol("chunkType"))->NumberValue();
-	outputState.chunk_start_offset = 	inputState->Get(String::NewSymbol("chunkStartOffset"))->NumberValue();
+	outputState.layout_pos = 		inputState->Get(String::NewSymbol("layoutPos"))->Uint32Value();
+	outputState.chunk_type = 		inputState->Get(String::NewSymbol("chunkType"))->Int32Value();
+	outputState.chunk_start_offset = 	inputState->Get(String::NewSymbol("chunkStartOffset"))->Uint32Value();
 
 	// process the chunk
 	process_output_t processResult;
 
-	process_chunk_impl(
+	process_chunk(
 		(byte_t*)Buffer::Data(args[0]->ToObject()),
 		Buffer::Length(args[0]->ToObject()),
 		(byte_t*)Buffer::Data(args[1]->ToObject()),
@@ -149,7 +243,7 @@ NAN_METHOD(ProcessChunk) {
 	Local<Object> result = Object::New();
 	result->Set(String::NewSymbol("chunkOutputStart"), Number::New(processResult.chunk_output_start));
 	result->Set(String::NewSymbol("chunkOutputEnd"), Number::New(processResult.chunk_output_end));
-	result->Set(String::NewSymbol("moreDataNeeded"), Boolean::New(processResult.more_data_needed));
+	result->Set(String::NewSymbol("action"), Number::New(processResult.action));
 
 	if (processResult.output_buffer != NULL)
 	{

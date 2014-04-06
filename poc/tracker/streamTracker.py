@@ -1,4 +1,5 @@
 import ffmpegTSParams
+import urlparse
 import operator
 import tempfile
 import commands
@@ -24,8 +25,8 @@ MEMCACHE_PORT = 11211
 MAX_DVR_LENGTH = 35 * 60		# XXXX TODO should be per entry
 
 RESULT_MANIFEST_EXPIRY = 20
-EXTRA_DELAY = 4				# measured in segments
-AD_DURATION = 10
+EXTRA_DELAY = 5				# measured in segments
+DISABLE_DVR = True
 MINIMUM_RUN_PERIOD = 60
 CYCLE_INTERVAL = 2
 
@@ -95,7 +96,7 @@ def cutTsFiles(videoKey, buffer, position, portion):
 	# save the result to memcache
 	addVideoToMemcache(outputFile, videoKey, MAX_DVR_LENGTH)
 	
-def parseM3U8(streamData):
+def parseM3U8(manifestUrl, streamData):
 	header = {}
 	segments = []
 	footer = {}
@@ -115,7 +116,7 @@ def parseM3U8(streamData):
 					lastSequenceNum = int(header['EXT-X-MEDIA-SEQUENCE'])			# live
 				else:
 					lastSequenceNum = 1												# vod
-			segmentInfo['URL'] = m3u8Line
+			segmentInfo['URL'] = urlparse.urljoin(manifestUrl, m3u8Line)
 			segmentInfo['SEQ'] = lastSequenceNum
 			segments.append(segmentInfo)
 			segmentInfo = {}
@@ -178,7 +179,7 @@ class ManifestStitcher:
 	def getUpdatedManifest(self, liveStreamUrl, adPositionsKey):
 		# get and parse source stream
 		streamData = urllib.urlopen(liveStreamUrl).read()
-		(header, segments, footer) = parseM3U8(streamData)
+		(header, segments, footer) = parseM3U8(liveStreamUrl, streamData)
 		if segments == None:
 			return (None, None)
 		
@@ -188,6 +189,8 @@ class ManifestStitcher:
 			adPositions = json.loads(adPositions)
 		else:
 			adPositions = []
+			
+		writeOutput('read ad positions ' + repr(adPositions));
 			
 		# process the segments
 		newResult = []
@@ -290,6 +293,10 @@ class ManifestStitcher:
 			
 		# XXXX remove unused urlTranslations
 		
+		if DISABLE_DVR:
+			newResult = newResult[-3:]
+			header['EXT-X-MEDIA-SEQUENCE'] = str(newResult[0]['SEQ'])
+		
 		# build the final manifest
 		return buildM3U8(header, newResult, footer)
 	
@@ -335,7 +342,7 @@ memcache = memcache.Client(['%s:%s' % (MEMCACHE_HOST, MEMCACHE_PORT)], cache_cas
 
 # get the M3U8
 streamData = urllib.urlopen(liveStreamUrl).read()
-(header, segments, footer) = parseM3U8(streamData)
+(header, segments, footer) = parseM3U8(liveStreamUrl, streamData)
 if segments == None or len(segments) == 0:
 	writeOutput('failed to get any TS segments')
 	sys.exit(1)
@@ -372,7 +379,8 @@ while time.time() < startTime + MINIMUM_RUN_PERIOD or memcache.get(trackerRequir
 		# Note: there is a race here between the get & set, but it shouldn't be a problem since trackers
 		#		working on the same entry will more or less synchronized, if they aren't it's a problem anyway...
 		savedLastUsedSegment = memcache.get(lastUsedSegmentKey)
-		if savedLastUsedSegment == None or manifestStitcher.lastUsedSegment > savedLastUsedSegment:
+		if savedLastUsedSegment == None or manifestStitcher.lastUsedSegment > int(savedLastUsedSegment):
+			writeOutput('setting last used segment to %s' % manifestStitcher.lastUsedSegment);
 			memcache.set(lastUsedSegmentKey, str(manifestStitcher.lastUsedSegment), RESULT_MANIFEST_EXPIRY)
 		
 	# save the result to memcache
