@@ -36,12 +36,12 @@ bool ID3_Header::SetSpec(ID3_V2Spec spec)
   static ID3_Header::Info _spec_info[] =
   {
   // Warning, EXT SIZE are minimum sizes, they can be bigger
-  // SIZEOF SIZEOF SIZEOF IS EXT EXT  EXPERIM
-  // FRID   FRSZ   FRFL   HEADER SIZE BIT
-    {  3,     3,     0,     false, 0,   false }, // ID3V2_2_0
-    {  3,     3,     0,     true,  8,   true  }, // ID3V2_2_1
-    {  4,     4,     2,     false, 10,  false }, // ID3V2_3_0
-    {  4,     4,     2,     false, 6,   false }  // ID3V2_4_0
+    // SIZEOF SIZEOF SIZEOF IS EXT EXT  EXPERIM FRSIZE
+    // FRID   FRSZ   FRFL   HEADER SIZE BIT		SYNC
+    {  3,     3,     0,     false, 0,   false,  false  }, // ID3V2_2_0
+    {  3,     3,     0,     true,  8,   true,   false  }, // ID3V2_2_1
+    {  4,     4,     2,     false, 10,  false,  false  }, // ID3V2_3_0
+    {  4,     4,     2,     false, 6,   false,  true   }  // ID3V2_4_0
   };
   
   bool changed = false;
