@@ -46,6 +46,7 @@ public:
     bool       is_extended;
     size_t     extended_bytes; //including the extended header, so everything!
     bool       is_experimental;
+    bool       frame_size_synchsafe;
   };
 
   ID3_Header() 
