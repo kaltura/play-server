@@ -1,26 +1,34 @@
 <html>
 <head>
-<link rel="stylesheet" type="text/css" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
 <style>
 body { padding: 15px; }
 </style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
 <script>
-function outputMessage(msg, noOverride) {	
+const PRIO_NOTICE = 1;
+const PRIO_WARNING = 2;
+const PRIO_ERROR = 3;
+const PRIO_HIGH = 4;
+
+function outputMessage(msg, priority) {	
+	if (priority < window.currentMessagePriority) {
+		return;
+	}
+	
 	if (window.consoleClearTimer) {
-		if (noOverride) {
-			return;
-		}
 		clearTimeout(window.consoleClearTimer);
 		window.consoleClearTimer = null;
 	}
 	
 	var output = $("#output");
 	output.html(msg);
+	window.currentMessagePriority = priority;
 	
 	window.consoleClearTimer = setTimeout(function () { 
 		output.html('');
 		window.consoleClearTimer = null;
+		window.currentMessagePriority = 0;
 	}, 10000);
 }
 
@@ -28,17 +36,25 @@ function insertAd() {
 	var videoTag = $("#videoTag")[0];
 
 	if (videoTag.currentTime == 0) {
-		outputMessage("Failed: could not get video player position");
+		outputMessage("Failed: could not get video player position", PRIO_ERROR);
 		return;
 	}
 
+	var insertAdBtn = $("#insertAdBtn");
+	
+	insertAdBtn.prop('disabled',true);
+	
 	var insertAdRequest = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + videoTag.currentTime + "&adSlotDuration=" + window.adSlotDuration;
 	$.ajax({
 		url: insertAdRequest
 	}).done(function( data ) {
-		outputMessage("Success: " + data);
+		outputMessage("Success: " + data, PRIO_HIGH);
+		setTimeout(function () {
+			insertAdBtn.prop('disabled',false);
+		}, window.adSlotDuration * 1000);
 	}).fail(function( data ) {
-		outputMessage("Failed: " + data.responseText);
+		outputMessage("Failed: " + data.responseText, PRIO_ERROR);
+		insertAdBtn.prop('disabled',false);
 	});
 }
 
@@ -59,7 +75,26 @@ function verifyPlayingRealTime() {
 
 	var currentLag = videoTag.seekable.end(0) - videoTag.currentTime;
 	if (currentLag > 30)
-		outputMessage("Warning: player is lagging real-time by " + (Math.round(currentLag * 100) / 100) + " seconds, in order to place an ad seek to the end", true);
+		outputMessage("Warning: player is lagging real-time by " + (Math.round(currentLag * 100) / 100) + " seconds, in order to place an ad seek to the end", PRIO_WARNING);
+}
+
+function checkWhetherStreamIsWatched() {
+	var requestUrl = "@EXTERNAL_URL@/isWatched.js?entryId=" + window.entryId;
+	$.ajax({
+		url: requestUrl
+	}).done(function(isWatched) {
+		if (isWatched !== '1') {
+			outputMessage("Notice: there are currently no users watching the stitched stream", PRIO_NOTICE);
+		}
+	});
+}
+
+function notifyStatus() {
+	var videoTag = $("#videoTag")[0];
+
+	$.ajax({
+		url: "@EXTERNAL_URL@/notifyStatusAdmin.js?currenttime=" + videoTag.currentTime + "&end=" + videoTag.seekable.end(0)
+	});	
 }
 
 function start() {
@@ -72,7 +107,7 @@ function start() {
 	var fullStitchedUrl = '@EXTERNAL_URL@/masterstitch.m3u8?entryId=' + window.entryId + '&url=' + encodeURIComponent(window.origUrl);
 	
 	// create a short stitched URL
-	var shortUrlRequest = "@EXTERNAL_URL@/shortUrl.js?url=" + encodeURIComponent(fullStitchedUrl);
+	var shortUrlRequest = "@EXTERNAL_URL@/shortUrl.js?URL=" + encodeURIComponent(fullStitchedUrl) + '&ENTRY_ID=' + window.entryId;
 	$.ajax({
 		url: shortUrlRequest
 	}).done(function( shortStitchedUrl ) {
@@ -93,6 +128,8 @@ function start() {
 			startAdInsertTimer();
 		}
 		setInterval(verifyPlayingRealTime, 10000);
+		setInterval(checkWhetherStreamIsWatched, 5000);
+		setInterval(notifyStatus, 5000);		// XXXX remove
 	}).fail(function( data ) {
 		alert('Failed to get short url');
 	});
@@ -109,7 +146,7 @@ function start() {
 				Weather Nation:		http://cdnapi.kaltura.com/p/931702/sp/93170200/playManifest/entryId/0_a7vl6x8e/format/applehttp
 				Nasa:				http://public.infozen.cshls.lldns.net/infozen/public/public.m3u8
 			-->
-			URL: <input type="text" value="http://cdnapi.kaltura.com/content/shared/abcnewsLive.m3u8" id="origUrl" size="60"><br>
+			URL: <input type="text" value="@PROTOCOL@cdnapisec.kaltura.com/content/shared/abcnewsLive.m3u8" id="origUrl" size="60"><br>
 			Entry id: <input type="text" value="@UID@" id="entryId" size="10"><br>
 			Ad slot length: <input type="text" value="32" id="adSlotDuration" size="10"><br>
 			<input type="checkbox" id="autoAdInsert">Auto ad insertion<br>
@@ -136,7 +173,7 @@ function start() {
 			<video id="videoTag" width="600" height="400" autoplay="" controls=""/>
 		</div>
 		<div style="width:600px;text-align:center">
-			<button onclick="insertAd()" class="btn btn-danger">Click to Insert Ad</button>
+			<button id="insertAdBtn" onclick="insertAd()" class="btn btn-danger">Click to Insert Ad</button>
 		</div>
 		<br>
 		<div style="width:600px;">
