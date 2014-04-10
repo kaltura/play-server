@@ -4,6 +4,7 @@ var url = require('url');
 var dns = require('dns');
 var util = require('util');
 var http = require('http');
+var adServer = require('kaltura-ad-server');
 
 var id3Reader = require('../bin/TsId3Reader.node');
 
@@ -172,20 +173,59 @@ function initClient(callback) {
 	}
 }
 
+function pushAd(client){
+	
+}
+
+function cuePointsDisabled(players){
+	console.log('Cue-Points Disabled');
+	for(var i = 0; i < players.length; i++){
+		players[i].isCuePointsEnabled = false;
+	}
+}
+
+function cuePointsEnabled(client, players){
+	console.log('Cue-Points Enabled');
+	for(var i = 0; i < players.length; i++){
+		players[i].isCuePointsEnabled = true;
+	}
+
+	pushAd(client);
+}
+
+function enableCuePoints(client, players){
+	var duration = 150;
+	client.liveStream.createPeriodicSyncPoints(function(err){
+		if (err && err.objectType && err.objectType == 'KalturaAPIException') {
+			console.error('liveStream.createPeriodicSyncPoints: ' + err.message);
+		}
+
+		cuePointsEnabled(client, players);
+		setTimeout(function(){
+			cuePointsDisabled(players);
+		}, duration * 1000);
+	}, entryId, 30, duration);
+}
+
 function handlePlayManifest(client, manifestUrl, manifestContent) {
 	var split = manifestContent.split('\n');
 	
 	console.log('Master: OK (' + split.length + ' lines)');
 
+	var players = [];
 	for (var i = 0; i < split.length; i++) {
 		var currentLine = split[i].trim();
 
 		if (currentLine.length && currentLine[0] != '#') {
 			var playerClient = initClient(client.getKs());
 			var renditionUrl = url.resolve(manifestUrl, currentLine);
-			new player(playerClient, renditionUrl);
+			players.push(new player(playerClient, renditionUrl));
 		}
 	}
+	
+	setTimeout(function(){
+		enableCuePoints(client, players);
+	}, 15000);
 }
 
 function getUrl(httpUrl, callback) {
@@ -221,8 +261,7 @@ function getUrl(httpUrl, callback) {
 
 function handleEntry(client, entry) {
 	if (entry.objectType && entry.objectType == 'KalturaAPIException') {
-		throw new Error(entry.message);
-		process.exit(1);
+		console.error('liveStream.get: ' + entry.message);
 	}
 
 	var playManifestUrl = 'http://' + serverHost + '/p/' + partnerId + '/playManifest/entryId/' + entryId + '/format/applehttp';
@@ -250,46 +289,15 @@ function player(client, renditionUrl){
 	this.client = client;
 	this.url = renditionUrl;
 	this.m3u8Lines = [];
-	this.isCuePointsEnabled = false;
+	this.isCuePointsEnabled = null;
 	
 	this.getManifest();
-	
-	var This = this;
-	setTimeout(function(){
-		This.enableCuePoints();
-	}, 60000);
 }
 player.prototype = {
 	client: null,
 	url: null,
 	m3u8Lines: null,
 	isCuePointsEnabled: false,
-
-	enableCuePoints: function(){
-		var This = this;
-		var duration = 120;
-		this.client.liveStream.createPeriodicSyncPoints(function(err){
-			if (err && err.objectType && err.objectType == 'KalturaAPIException') {
-				throw new Error(err.message);
-				process.exit(1);
-			}
-
-			This.cuePointsEnabled();
-			setTimeout(function(){
-				This.cuePointsDisabled();
-			}, duration * 1000);
-		}, entryId, 30, duration);
-	},
-	
-	cuePointsDisabled: function(){
-		console.log('Cue-Points Disabled');
-		this.isCuePointsEnabled = false;
-	},
-	
-	cuePointsEnabled: function(){
-		console.log('Cue-Points Enabled');
-		this.isCuePointsEnabled = true;
-	},
 	
 	getManifest: function(){
 		var This = this;
@@ -312,12 +320,17 @@ player.prototype = {
     		});
     		response.on('end', function() {
 				var m3u8Lines = manifestContent.split('\n');
-				var newM3u8Lines = m3u8Lines;
+				var newM3u8Lines = m3u8Lines.slice(0);
 				if(This.m3u8Lines.length){
 					newM3u8Lines = m3u8Lines.diff(This.m3u8Lines);
 				}
     			if (newM3u8Lines.length) {
     				This.m3u8Lines = m3u8Lines;
+    				for(var i = 0; i < This.m3u8Lines.length; i++){
+    					if(This.m3u8Lines[i][0] === '#'){
+    						delete This.m3u8Lines[i];
+    					}
+    				}
     				This.handleManifest(newM3u8Lines);
     			}
 
@@ -331,49 +344,56 @@ player.prototype = {
     	});
 	},
 	
-	verifySegment: function(localPath, buffer){
-		console.log('Verify segment [' + localPath + ']');
-		// TODO run ffmpeg / mediainfo?
+	handleSyncPoint: function(syncPoint, segment){
+		if(this.isCuePointsEnabled === false){
+			console.error('Sync-point [' + syncPoint.id + '] accepted when sync-points should be disabled');
+		}
+		
+		var offsetInSegment = (syncPoint.pts - segment.pts) / 90;
+		var absoluteOffset = syncPoint.offset;
+		var segmentOffset = absoluteOffset - offsetInSegment;
+		var segmentTimestamp = syncPoint.timestamp - offsetInSegment;
+		
+		if(this.isCuePointsEnabled && this.elapsedTime && this.elapsedTime.sequence == segment.sequence && Math.abs(this.elapsedTime.offset - segmentOffset) > 1000){
+			console.error('large gap between sync offset [' + this.formaTime(segmentOffset) + '] and calculated offset [' + this.formaTime(this.elapsedTime.offset) + ']');
+		}
+		
+		this.elapsedTime = {
+    		sequence: segment.sequence,
+    		duration: segment.duration,
+			offset: segmentOffset,
+			timestamp: segmentTimestamp // in milliseconds since 1970
+		};
+	},
+	
+	verifySegment: function(localPath, segment, buffer){
+		//console.log('Verify segment [' + localPath + ']');
 		
 		var parsed = id3Reader.parseBuffer(buffer);
+		segment.pts = parsed.videoPts ? parsed.videoPts : parsed.audioPts;
+		
 		if(parsed.id3tags.length > 0){
 			for(var i = 0; i < parsed.id3tags.length; i++){
 				var id3tag = parsed.id3tags[i];
-				for(var attribute in id3tag){
-					switch(attribute){
-						case 'PTS':
-							// TODO is there something to validate here?
-							console.log('Path [' + localPath + '] Id3 [' + attribute + ']: ' + id3tag[attribute]);
-							break;
-							
-						case 'TEXT':
-							var cuePoint = JSON.parse(id3tag.TEXT.TEXT);
-							console.dir(cuePoint);
-							process.exit(1);
-//							if(cuePoint.objectType){
-//								switch(cuePoint.objectType){
-//									case 'KalturaSyncPoint':
-//										this.handleSyncPoint(entryId, segment, cuePoint);
-//										break;
-//
-//									case 'KalturaAdCuePoint':
-//										// TODO
-//										break;
-//								}
-//							}
-							break;
-							
-						default:
-							console.log('unhandled Id3 [' + attribute + ']: ' + util.inspect(id3tag[attribute]));
+				if(id3tag.PTS && id3tag.TEXT && id3tag.TEXT.TEXT){
+					var cuePoint = JSON.parse(id3tag.TEXT.TEXT);
+					cuePoint.pts = id3tag.PTS;
+					if(cuePoint.objectType && cuePoint.objectType == 'KalturaSyncPoint'){
+						this.handleSyncPoint(cuePoint, segment);
 					}
 				}
 			}
 		}
 		
-		fs.unlink(localPath);
+		fs.unlink(localPath, function(err){
+			if(err){
+				console.error('Delete file [' + localPath + ']:' + err);
+			}
+		});
 	},
 	
-	testSegment: function(segmentUrl){
+	testSegment: function(segment){
+		var segmentUrl = segment.url;
 //		console.log('Segment URL [' + segmentUrl + ']');
 
 		var This = this;
@@ -394,7 +414,7 @@ player.prototype = {
 				buffers.push(data);
 			});
 			response.on('end', function() {
-				This.verifySegment(localPath, Buffer.concat(buffers));
+				This.verifySegment(localPath, segment, Buffer.concat(buffers));
 			});
 		}).on('error', function(e) {
 			console.error('Segment failed [' + segmentUrl + ']:' + e.stack);
@@ -405,18 +425,96 @@ player.prototype = {
 	handleManifest: function(m3u8Lines){
 		// console.log('Rendition [' + this.url + '] OK');
 
+		var segment;
+		var sequence = 1;
 		for (var i = 0; i < m3u8Lines.length; i++) {
 			var m3u8Line = m3u8Lines[i].trim();
 			if (m3u8Line.length == 0)
 				continue;
 
-			if (m3u8Line[0] != '#') {
-				var segmentUrl = url.resolve(this.url, m3u8Line);
-				this.testSegment(segmentUrl);
+			if (m3u8Line[0] == '#') {
+				var parts = m3u8Line.split(':');
+				switch(parts[0]){
+					case '#EXTM3U':
+					case '#EXT-X-VERSION':
+					case '#EXT-X-ALLOW-CACHE':
+					case '#EXT-X-TARGETDURATION':
+						break;
+						
+					case '#EXT-X-MEDIA-SEQUENCE':
+						sequence = parseInt(parts[1]);
+						break;
+						
+					case '#EXTINF':
+						var duration = parts[1];
+						if(duration.substr(-1) == ',')
+							duration = duration.trim(0, duration.length - 1);
+		
+						duration = parseFloat(duration) * 1000;
+						
+						segment = {
+							sequence: sequence,
+							duration: duration
+						};
+
+						if(this.elapsedTime && this.elapsedTime.sequence === (sequence - 1)){
+							var segmentOffset = this.elapsedTime.offset + this.elapsedTime.duration;
+							var segmentTimestamp = this.elapsedTime.timestamp + this.elapsedTime.duration;
+							
+							this.elapsedTime = {
+    							sequence: sequence,
+    							duration: duration,
+    							offset: segmentOffset,
+    							timestamp: segmentTimestamp
+    						};
+						}
+
+						sequence++;
+						break;
+				}
+			}
+			else{
+				segment.url = url.resolve(this.url, m3u8Line);
+				this.testSegment(segment);
 			}
 		}
+	},
+	
+	formaTime: function(offset){
+		var millis = offset % 1000;
+		offset = parseInt(offset / 1000);
+		var sec = offset % 60;
+		offset -= sec;
+		offset /= 60;
+		var format = (sec < 10 ? '0' : '') + sec + '.' + millis;
+		if(offset > 0){
+			var min = offset % 60;
+			offset -= min;
+			offset /= 60;
+			format = (min < 10 ? '0' : '') + min + ':' + format;
+		}
+		if(offset > 0){
+			var hour = offset % 60;
+			offset -= hour;
+			offset /= 60;
+			format = (hour < 10 ? '0' : '') + hour + ':' + format;
+		}
+
+		return format;
 	}
 };
 
 parseCommandLineOptions();
 getUserInputs(test);
+
+var options = {
+	host: '0.0.0.0',
+	port: 8085,
+	partnerId : partnerId,
+	secret : adminSecret,
+	userId : 'ad-server',
+	expiry : null,
+	privileges : null,
+	serviceUrl: 'http://' + serverHost
+};
+adServer.create(options);
