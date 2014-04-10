@@ -1,11 +1,41 @@
 <html>
 <head>
-<link rel="stylesheet" type="text/css" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+<link rel="stylesheet" type="text/css" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
 <style>
 body { padding: 15px; }
 </style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
 <script>
+
+const PRIO_NOTICE = 1;
+const PRIO_WARNING = 2;
+const PRIO_ERROR = 3;
+const PRIO_HIGH = 4;
+
+function outputMessage(msg, priority) {	
+	if (priority < window.currentMessagePriority) {
+		return;
+	}
+	
+	if (window.consoleClearTimer) {
+		clearTimeout(window.consoleClearTimer);
+		window.consoleClearTimer = null;
+	}
+	
+	var output = $("#output");
+	if (!msg) {		// support passing undefined
+		msg = '';
+	}
+	output.html(msg);
+	window.currentMessagePriority = priority;
+	
+	window.consoleClearTimer = setTimeout(function () { 
+		output.html('');
+		window.consoleClearTimer = null;
+		window.currentMessagePriority = 0;
+	}, 10000);
+}
+
 window.lastCurrentTime = 0;
 window.notifiedError = false;
 
@@ -16,34 +46,80 @@ function failed(e) {
 	
 	window.notifiedError = true;
 	$.ajax({
-		url: "@EXTERNAL_URL@/notifyError.js?url=" + encodeURIComponent("@VIDEO_URL@"),
+		url: "@EXTERNAL_URL@/notifyError.js?url=" + encodeURIComponent("@URL@"),
 	});
 }
+
+function updateNextAdTime() {
+	var videoTag = $("#videoTag")[0];
+
+	if (window.adEndTime > videoTag.currentTime) {
+		outputMessage('Returning to live broadcast in ' + Math.round(window.adEndTime - videoTag.currentTime) + ' seconds', PRIO_NOTICE);
+		return;
+	}
+	
+	requestUrl = '@EXTERNAL_URL@/getNextAdTime.js?entryId=@ENTRY_ID@&uid=@UID@&currentTime=' + videoTag.currentTime;
+	$.ajax({
+		url: requestUrl,
+	}).done(function(result) {
+		result = JSON.parse(result);
+		if (window.cuePointId && window.cuePointId != result.cuePointId) {
+			window.adEndTime = videoTag.currentTime + window.adDuration - 1;		// empirically -1 improves the result
+			outputMessage('Returning to live broadcast in ' + window.adDuration + ' seconds', PRIO_NOTICE);
+		} else {
+			outputMessage(result.message, PRIO_NOTICE);
+		}
+		window.adDuration = result.adDuration;
+		window.cuePointId = result.cuePointId;
+	});
+}
+window.setInterval(updateNextAdTime, 1000);
+
 window.setInterval(function () {
-	var videoTag = document.getElementById("video");
+	var videoTag = $("#videoTag")[0];
 	
 	if (videoTag.currentTime != 0) {
 		if (window.lastCurrentTime == videoTag.currentTime && !window.notifiedError) {
 			$.ajax({
-				url: "@EXTERNAL_URL@/notifyError.js?reason=stuck&url=" + encodeURIComponent("@VIDEO_URL@"),
+				url: "@EXTERNAL_URL@/notifyError.js?reason=stuck&url=" + encodeURIComponent("@URL@"),
 			});
 			window.notifiedError = true;
 		} else {
 			window.lastCurrentTime = videoTag.currentTime;
 		}
 		
+		var endPos = '';
+		if (videoTag.seekable && videoTag.seekable.length) {
+			endPos = videoTag.seekable.end(0);
+		}
+		
+		var bufferEnd = '';
+		if (videoTag.buffered && videoTag.buffered.length) {
+			bufferEnd = videoTag.buffered.end(0);
+		}
+		
+		var playedEnd = '';
+		if (videoTag.played && videoTag.played.length) {
+			playedEnd = videoTag.played.end(0);
+		}		
+		
 		$.ajax({
-			url: "@EXTERNAL_URL@/notifyStatus.js?currenttime=" + videoTag.currentTime + "&end=" + videoTag.seekable.end(0)
+			url: "@EXTERNAL_URL@/notifyStatus.js?currenttime=" + videoTag.currentTime + "&end=" + endPos + "&buffer=" + bufferEnd + "&played=" + playedEnd,
 		});	
 	}
-}, 30000);
+}, 10000);
+
 </script>
 </head>
 <body>
 <h2>Demo - Frame Accurate Ad Insertion</h2>
 <div style="width:600px;">
 	<h4>Viewer's Screen (Broadcast Output)</h4>
-	<video id="video" width="600" height="400" src="@VIDEO_URL@" autoplay controls onerror="failed(event)"></video>
+	<video id="videoTag" width="600" height="400" src="@URL@&uid=@UID@" autoplay controls onerror="failed(event)"></video>
+</div>
+<br>
+<div style="width:600px;">
+	<textarea id="output" class="form-control" rows="2"></textarea>
 </div>
 </body>
 </html>

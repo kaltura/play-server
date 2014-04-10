@@ -14,7 +14,7 @@ var http = require('http');
 var httpClient = require('follow-redirects').http;
 var url = require('url');
 var querystring = require('querystring');
-var extend = require('util')._extend;
+var util = require('util');
 var memcached = require('memcached');
 var memcachedbin = require('./memcachedbin');			// XXXXX TODO fix memcache library so that we won't need 2 instances
 var crypto = require('crypto');
@@ -24,7 +24,9 @@ var fs = require('fs');
 
 // parameters
 const LOCAL_SERVER_PORT = 1337;
-const SERVER_EXTERNAL_URL = 'http://lbd.kaltura.com:1337';
+const SERVER_EXTERNAL_DOMAIN = 'adstitchdemo.kaltura.com'; //'lbd.kaltura.com';
+const SERVER_EXTERNAL_URL = SERVER_EXTERNAL_DOMAIN;	// + ':1337';
+const SERVER_EXTERNAL_HTTP_URL = 'http://' + SERVER_EXTERNAL_URL;
 const START_TRACKER_URL = 'http://localhost:' + LOCAL_SERVER_PORT;
 const MEMCACHE_URL = 'localhost:11211';
 
@@ -33,6 +35,8 @@ const STREAM_TRACKER_SCRIPT = __dirname + '/../tracker/streamTracker.sh';
 const PREPARE_AD_SCRIPT = __dirname + '/../tracker/prepareAd.sh';
 
 const SERVER_SECRET = 'Angry birds !!!';
+
+const ALLOCATED_ADS_COOKIE_NAME = '_allocatedads_';
 
 // NOTE: the following constants must match ts_stitcher_impl.h
 const PBA_CALL_AGAIN = 0;
@@ -55,6 +59,13 @@ const CHUNK_TYPE_BLACK = 	 4;
 const TS_PACKET_LENGTH = 188;
 const FILE_CHUNK_SIZE = 2500 * TS_PACKET_LENGTH;
 
+// content types
+const CONTENT_TYPE_PLAIN_TEXT = 'text/plain';
+const CONTENT_TYPE_HTML = 'text/html';
+const CONTENT_TYPE_ICON = 'image/x-icon';
+const CONTENT_TYPE_M3U8 = 'application/vnd.apple.mpegurl';
+const CONTENT_TYPE_MPEG2TS = 'video/MP2T';
+
 // URIs
 const MASTER_STITCH_URI = '/masterstitch.m3u8';
 const FLAVOR_STITCH_URI = '/flavorstitch.m3u8';
@@ -64,6 +75,8 @@ const INSERT_AD_URI = '/insertAd.js'
 const START_TRACKER_URI = '/startAdTracker.js';
 const AD_SEGMENT_REDIRECT_URI = '/adRedirect.ts';
 const STITCH_SEGMENT_URI = '/stitchSegment.ts';
+const IS_WATCHED_URI = '/isWatched.js';
+const GET_NEXT_AD_TIME_URI = '/getNextAdTime.js';
 const SHORT_URL_URI = '/shortUrl.js';
 const NOTIFY_ERROR_URI = '/notifyError.js';
 const NOTIFY_STATUS_URI = '/notifyStatus.js';
@@ -72,7 +85,7 @@ const FAVICON_ICO_URI = '/favicon.ico';
 
 const AD_REQUEST_URL = 'http://dogusns-f.akamaihd.net/i/DOGUS_STAR/StarTV/Program/osesturkiye/suvedilara.mp4/segment1_0_av.ts?e=e933a313f6018d5d';
 
-const PROXIED_M3U8_TS_COUNT = 3;
+const NO_DVR_M3U8_TS_COUNT = 3;
 
 var memcache = new memcached(MEMCACHE_URL);
 
@@ -87,6 +100,12 @@ if (typeof String.prototype.endsWith != 'function') {
   String.prototype.endsWith = function (str){
     return this.slice(-str.length) == str;
   };
+}
+
+if (typeof String.prototype.replaceAll != 'function') {
+	String.prototype.replaceAll = function(str1, str2, ignore) {
+		return this.replace(new RegExp(str1.replace(/([\/\,\!\\\^\$\{\}\[\]\(\)\.\*\+\?\|\<\>\-\&])/g,"\\$&"),(ignore?"gi":"g")),(typeof(str2)=="string")?str2.replace(/\$/g,"$$$$"):str2);
+	};
 }
 
 // add getUnique to arrays
@@ -108,16 +127,16 @@ function md5(str) {
 
 function errorResponse(res, statusCode, body) {
 	res.log('Error code ' + statusCode + ' : ' + body);
-	res.writeHead(statusCode, {'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*'});
+	res.writeHead(statusCode, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT, 'Access-Control-Allow-Origin': '*'});
 	res.end(body);
 }
 
 function errorFileNotFound(res) {
-	errorResponse(res, 404, 'Not found!\n');
+	errorResponse(res, 404, 'file not found');
 }
 
 function errorMissingParameter(res) {
-	errorResponse(res, 400, 'Missing parameter\n');
+	errorResponse(res, 400, 'missing mandatory parameter');
 }
 
 function getHttpUrl(urlStr, success, error) {
@@ -238,6 +257,12 @@ function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 	var split = manifest.split('\n');
 	var result = '';
 	var urlsToTrack = [];
+	
+	var protocol;
+	if (masterUrl.startsWith('https://'))
+		protocol = 'https://';
+	else
+		protocol = 'http://';
 
 	for (var i = 0; i < split.length; i++) {
 		var curLine = split[i].trim();
@@ -251,7 +276,7 @@ function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 				adPositionsKey: 'adPos-' + baseParams.entryId,
 				lastUsedSegmentKey: 'lastUsedSegment-' + baseParams.entryId,
 				ffmpegParamsKey: 'ffmpegParams-' + baseParams.entryId,
-				adSegmentRedirectUrl: SERVER_EXTERNAL_URL + AD_SEGMENT_REDIRECT_URI,
+				adSegmentRedirectUrl: SERVER_EXTERNAL_HTTP_URL + AD_SEGMENT_REDIRECT_URI,
 				entryId: baseParams.entryId
 			};
 			if (attributes['BANDWIDTH'])
@@ -268,10 +293,11 @@ function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 				entryId: baseParams.entryId,
 				masterUrl: masterUrl, 
 				trackerRequiredKey: trackerParams['trackerRequiredKey'],
-				trackerOutputKey: trackerParams['trackerOutputKey']
+				trackerOutputKey: trackerParams['trackerOutputKey'],
+				uid: baseParams.uid
 			};
 			
-			result += SERVER_EXTERNAL_URL + FLAVOR_STITCH_URI + '?' + querystring.stringify(flavorStitchParams) + '\n';
+			result += protocol + SERVER_EXTERNAL_URL + FLAVOR_STITCH_URI + '?' + querystring.stringify(flavorStitchParams) + '\n';
 			
 			attributes = {};
 			continue;
@@ -311,14 +337,14 @@ function processMasterStitch(params, res) {
 	simpleCache(params.url, 60, 
 		function (cb) {		// calcFunc
 			getHttpUrl(params.url, function (urlData) {
-				cb({statusCode:200, body:stitchMasterM3U8(params.url, urlData, {entryId: params.entryId})});
+				cb({statusCode:200, body:stitchMasterM3U8(params.url, urlData, {entryId: params.entryId, uid: params.uid})});
 			}, function (err) {
 				res.log('Error : ' + err);
 				cb({statusCode:400, body:err});
 			})
 		},
 		function (data) {	// callback
-			res.writeHead(data.statusCode, {'Content-Type': 'application/vnd.apple.mpegurl'});
+			res.writeHead(data.statusCode, {'Content-Type': CONTENT_TYPE_M3U8});
 			res.end(data.body);
 		} 
 	);
@@ -326,54 +352,16 @@ function processMasterStitch(params, res) {
 
 var m3u8FileCounter = 1;
 
-function readTrackerOutput(res, trackerOutputKey, masterUrl, entryId, responseHeaders, attempts) {
-	memcache.get(trackerOutputKey, function (err, data) {
-		if (err) {
-			errorResponse(res, 400, 'error getting tracker output');
-			return;
+function logManifestToFile(res, manifestString) {
+	var outputFileName = "/tmp/manifests/" + (m3u8FileCounter % 10) + ".m3u8";
+	fs.writeFile(outputFileName, manifestString, function(err) {
+		if(err) {
+			res.log(err);
+		} else {
+			res.log("Manifest saved to " + outputFileName);
 		}
-		
-		if (data) {
-			res.writeHead(200, responseHeaders);
-			res.end(data);
-
-			// print the returned sequence number for debugging purposes
-			var splittedData = data.split('\n');
-			for (var i = 0; i < splittedData.length; i++) {
-				if (splittedData[i].startsWith('#EXT-X-MEDIA-SEQUENCE')) {
-					res.log('sequence is ' + splittedData[i]);
-				}
-			}
-
-			// save the manifest to a file for debugging purposes
-			var outputFileName = "/tmp/manifests/" + (m3u8FileCounter % 10) + ".m3u8";
-			fs.writeFile(outputFileName, data, function(err) {
-				if(err) {
-					res.log(err);
-				} else {
-					res.log("Manifest saved to " + outputFileName);
-				}
-			}); 
-			m3u8FileCounter++;
-			
-			return;
-		}
-		
-		if (attempts <= 0) {
-			errorResponse(res, 400, 'timed out waiting for tracker output');
-			
-			// reload the master url and start any trackers that died
-			getHttpUrl(masterUrl, function (urlData) {
-				stitchMasterM3U8(masterUrl, urlData, {entryId: entryId});
-			}, function (err) {});
-			
-			return;
-		}
-		
-		setTimeout(function () {
-			readTrackerOutput(res, trackerOutputKey, masterUrl, entryId, responseHeaders, attempts - 1);
-		}, 100);
-	});
+	}); 
+	m3u8FileCounter++;
 }
 
 function parseCookies(request) {
@@ -465,6 +453,13 @@ function prepareAdForEntry(adUrl, adId, entryId) {
 	});
 }
 
+function prepareAdsForEntry(adsToPrepare) {
+	for (var i = 0; i < adsToPrepare.length; i++) {
+		var adToPrepare = adsToPrepare[i];
+		prepareAdForEntry(adToPrepare.adUrl, adToPrepare.adId, adToPrepare.entryId);
+	}
+}
+
 var adPoolUrls = [
 	//31 seconds - Blistex
 	'http://cdnapi.kaltura.com/p/437481/sp/43748100/playManifest/entryId/0_r0rsau9o/flavorId/0_mx13do2t/format/url/protocol/http/a.flv',
@@ -479,16 +474,81 @@ var adPoolUrls = [
 	//'http://cdnapi.kaltura.com/p/437481/sp/43748100/playManifest/entryId/0_0i5ymzed/flavorId/0_3japm9zh/format/url/protocol/http/a.webm',
 ];
 
+function processIsWatched(params, res) {
+	var trackerRequiredKey = 'required-' + params.entryId;
+	
+	memcache.get(trackerRequiredKey, function (err, data) {
+		var result;
+		var currentTime = Math.floor(new Date().getTime() / 1000);
+		if (!data || currentTime - data > 20) {
+			result = '0';
+		} else {
+			result = '1';
+		}
+		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
+		res.end(result);
+	});
+}
+
+function readTrackerOutput(res, trackerOutputKey, successCallback, errorCallback, attempts) {
+	memcache.get(trackerOutputKey, function (err, data) {
+		if (err) {
+			errorCallback('error getting tracker output');
+			return;
+		}
+		
+		if (data) {
+			successCallback(data);
+			return;
+		}
+		
+		if (attempts <= 0) {
+			errorCallback('timed out waiting for tracker output');			
+			return;
+		}
+		
+		setTimeout(function () {
+			readTrackerOutput(res, trackerOutputKey, successCallback, errorCallback, attempts - 1);
+		}, 100);
+	});
+}
+
+function allocateAdsForUser(res, entryId, adPositions, allocatedAds, adsToPrepare) {
+	var newAllocatedAds = {};
+	
+	// find which ads should be prepared
+	for (var i = 0; i < adPositions.length; i++) {
+		var adPosition = adPositions[i];
+		if (allocatedAds[adPosition.cuePointId]) {
+			// already allocated
+			newAllocatedAds[adPosition.cuePointId] = allocatedAds[adPosition.cuePointId];
+			continue;
+		}
+		
+		res.log('requesting ad for user');
+
+		// XXXX TODO get via VAST
+		var adUrl = adPoolUrls[Math.floor(Math.random()*adPoolUrls.length)];		
+		
+		var adId = md5(adUrl);
+		adsToPrepare.push({adUrl: adUrl, adId: adId, entryId: entryId});		
+		newAllocatedAds[adPosition.cuePointId] = adId;
+	}
+	return newAllocatedAds;
+}
+
 function processFlavorStitch(params, cookies, res) {
 	if (!params.entryId || !params.trackerRequiredKey || !params.trackerOutputKey) {
 		errorMissingParameter(res);
 		return;
 	}
 	
-	// XXX TODO - get the ads only after getting the m3u8 successfully or get the ad from a TS request
-		
+	// mark the tracker as required
+	var currentTime = Math.floor(new Date().getTime() / 1000);
+	memcache.set(params.trackerRequiredKey, '' + currentTime, 600, function (err) {});
+
 	// get ads allocated to the user
-	var allocatedAdsCookieName = 'allocatedAds_' + params.entryId;
+	var allocatedAdsCookieName = ALLOCATED_ADS_COOKIE_NAME + params.entryId;
 	var allocatedAds = cookies[allocatedAdsCookieName];
 	res.log('allocated ads ' + allocatedAds);
 	if (allocatedAds)
@@ -496,70 +556,80 @@ function processFlavorStitch(params, cookies, res) {
 	else
 		allocatedAds = {};
 
-	// get ad positions for the entry
-	var adPositionsKey = 'adPos-' + params.entryId;
-	res.log('getting ad positions');
-	memcache.get(adPositionsKey, function (err, data) {
-		res.log('got ad positions ' + data);
-		if (err) {
-			// XXXX
-		}
-		
-		var adPositions = JSON.parse(data);
-		var adsToPrepare = [];
-		var newAllocatedAds = {};
-		var i = 0;
-		
-		// find which ads should be prepared
-		for (i = 0; i < adPositions.length; i++) {
-			var adPosition = adPositions[i];
-			if (!allocatedAds[adPosition.cuePointId]) {
-				res.log('requesting ad for user');
-
-				// XXXX TODO get via VAST
-				var adUrl = adPoolUrls[Math.floor(Math.random()*adPoolUrls.length)];
-				
-				var adId = md5(adUrl);
-				
-				adsToPrepare.push({adUrl: adUrl, adId: adId, entryId: params.entryId});
-				
-				newAllocatedAds[adPosition.cuePointId] = adId;
+	// read the tracker output
+	res.log('getting tracker output');
+	readTrackerOutput(res, params.trackerOutputKey, function (manifestString) {
+		// get the ad positions
+		res.log('getting ad positions');
+		memcache.get('adPos-' + params.entryId, function (err, adPositionsJson) {
+			res.log('got ad positions ' + adPositionsJson);
+			if (err) {
+				// XXXX
 			}
-			else {
-				newAllocatedAds[adPosition.cuePointId] = allocatedAds[adPosition.cuePointId];
-			}
-		}
-		
-		// update the allocated ads cookie and return the m3u8 to the client
-		var responseHeaders = {
-			'Content-Type': 'application/vnd.apple.mpegurl',
-			'Set-Cookie': 	allocatedAdsCookieName + '=' + escape(JSON.stringify(newAllocatedAds))
-		};
-		
-		res.log('reading tracker output');
-		readTrackerOutput(res, params.trackerOutputKey, params.masterUrl, params.entryId, responseHeaders, 30);
+			
+			// allocate ads for the user
+			var adsToPrepare = [];
+			
+			var newAllocatedAds = allocateAdsForUser(res, params.entryId, JSON.parse(adPositionsJson), allocatedAds, adsToPrepare);
+					
+			// parse the m3u8 and remove the DVR
+			var manifest = parseFlavorM3U8('', manifestString);		// no need for the URL, will always be absolute here
+			res.log('sequence is ' + manifest.headers['EXT-X-MEDIA-SEQUENCE']);
+			disableDvr(manifest);
+			
+			// return the final manifest
+			var finalManifest = buildFlavorM3U8(manifest);
+			
+			// XXXXXX remove unneeded headers
+			var currentDate = new Date().toUTCString();
+			res.writeHead(200, {
+				'Mime-Version': '1.0',
+				'Content-Type': CONTENT_TYPE_M3U8,
+				'Content-Length': finalManifest.length,
+				'Pragma': 'no-cache',
+				'Cache-Control': 'no-store',
+				'Expires': currentDate,
+				'Date': currentDate,
+				'Connection': 'keep-alive',
+				'Access-Control-Allow-Origin': '*',	
+				'Set-Cookie': 	allocatedAdsCookieName + '=' + escape(JSON.stringify(newAllocatedAds)) + '; path=/; domain=' + SERVER_EXTERNAL_DOMAIN
+			});	
+			
+			res.end(finalManifest);
+			logManifestToFile(res, finalManifest);			
 
-		// mark the tracker as required
-		memcache.set(params.trackerRequiredKey, '1', 600, function (err) {});
+			// update the segment offsets
+			updateSegmentOffsets(manifest, 'segmentOffsets-' + params.uid);
+
+			// prepare the ads
+			prepareAdsForEntry(adsToPrepare);
+		});
+	}, function (msg) {
+		errorResponse(res, 400, msg);
 		
-		// prepare the ads
-		for (i = 0; i < adsToPrepare.length; i++) {
-			var adToPrepare = adsToPrepare[i];
-			prepareAdForEntry(adToPrepare.adUrl, adToPrepare.adId, adToPrepare.entryId);
-		}
-	});
+		// reload the master URL and start any trackers that died
+		getHttpUrl(params.masterUrl, function (urlData) {
+			stitchMasterM3U8(params.masterUrl, urlData, {entryId: params.entryId});
+		}, function (err) {});			
+	}, 30);
 }
 
 function proxyMasterM3U8(masterUrl, manifest, uid) {
 	var split = manifest.split('\n');
 	var result = '';
 
+	var protocol;
+	if (masterUrl.startsWith('https://'))
+		protocol = 'https://';
+	else
+		protocol = 'http://';
+	
 	for (var i = 0; i < split.length; i++) {
 		var curLine = split[i].trim();
 
 		if (curLine.length && curLine[0] != '#') {
 			curLine = url.resolve(masterUrl, curLine);
-			result += SERVER_EXTERNAL_URL + FLAVOR_PROXY_URI + '?' + querystring.stringify({'uid': uid, 'url': curLine}) + '\n';
+			result += protocol + SERVER_EXTERNAL_URL + FLAVOR_PROXY_URI + '?' + querystring.stringify({'uid': uid, 'url': curLine}) + '\n';
 			continue;
 		}
 
@@ -583,13 +653,13 @@ function processMasterProxy(params, res) {
 			})
 		},
 		function (data) {	// callback
-			res.writeHead(data.statusCode, {'Content-Type': 'application/vnd.apple.mpegurl'});
+			res.writeHead(data.statusCode, {'Content-Type': CONTENT_TYPE_M3U8});
 			res.end(data.body);
 		} 
 	);
 }
 
-function parseFlavorM3U8(masterUrl, manifestContent){
+function parseFlavorM3U8(manifestUrl, manifestContent){
 	var manifest = {
 		headers: {},
 		segments: [],
@@ -608,7 +678,7 @@ function parseFlavorM3U8(masterUrl, manifestContent){
 			if(lastSequenceNum == null)
 				lastSequenceNum = manifest.headers['EXT-X-MEDIA-SEQUENCE'] * 1;
 			
-			segmentInfo.url = url.resolve(masterUrl, m3u8Line);
+			segmentInfo.url = url.resolve(manifestUrl, m3u8Line);
 			segmentInfo.sequence = lastSequenceNum;
 			manifest.segments.push(segmentInfo);
 			segmentInfo = {};
@@ -686,6 +756,176 @@ function buildFlavorM3U8(manifest) {
 	return result;
 }
 
+function disableDvr(manifest) {
+	// leave only the last 3 segments
+	manifest.segments = manifest.segments.slice(-NO_DVR_M3U8_TS_COUNT);
+
+	// update the returned sequence number
+	var initialSeqNum = manifest.segments[0].sequence;
+	manifest.headers['EXT-X-MEDIA-SEQUENCE'] = '' + initialSeqNum;		
+}
+
+function updateSegmentOffsets(manifest, memcacheKey) {
+	// build an array that maps sequence number to player time
+	var initialSeqNum = manifest.segments[0].sequence;
+	var segmentOffsets = {};
+	var curOffset = 0;
+	for (var i = 0; i < manifest.segments.length; i++) {
+		var curSegment = manifest.segments[i];
+		segmentOffsets[curSegment.sequence] = { offset: curOffset, duration: curSegment.duration };
+		curOffset += curSegment.duration;
+	}
+
+	// get the previously saved offsets
+	memcache.get(memcacheKey, function (err, previousOffsets) {
+		if (previousOffsets) {
+			// calculate how much we need to shift the segment offsets
+			var offsetShift;
+			if (previousOffsets[initialSeqNum]) {
+				offsetShift = previousOffsets[initialSeqNum].offset;
+			} else {
+				var sortedSegmentIds = Object.keys(previousOffsets).sort();
+				var referenceSegmentId = sortedSegmentIds[sortedSegmentIds.length - 1];
+				offsetShift = previousOffsets[referenceSegmentId].offset + previousOffsets[referenceSegmentId].duration;
+				previousOffsets = {};		// remove all previously known offsets
+			}
+			
+			// shift the offset of the current segments
+			var curSegmentId;
+			for(curSegmentId in segmentOffsets) {
+				segmentOffsets[curSegmentId].offset += offsetShift;
+			}
+			
+			// merge the previous offsets to the current offsets
+			for(curSegmentId in previousOffsets) {
+				segmentOffsets[curSegmentId] = previousOffsets[curSegmentId];
+			}
+			
+			// leave only the last NO_DVR_M3U8_TS_COUNT * 2 offsets
+			var segmentIdsToRemove = Object.keys(segmentOffsets).sort();
+			segmentIdsToRemove = segmentIdsToRemove.slice(0, -(NO_DVR_M3U8_TS_COUNT * 2));
+			for(var i = 0; i < segmentIdsToRemove.length; i++) {
+				delete segmentOffsets[segmentIdsToRemove[i]];
+			}
+		} else {
+			console.log('failed to get previous offsets, initial seq num is ' + initialSeqNum + ' previous offsets are ');
+			console.dir(previousOffsets);
+		}
+		
+		// save to memcache
+		console.log('setting ' + memcacheKey + ' to ');
+		console.dir(segmentOffsets);
+		memcache.set(memcacheKey, segmentOffsets, 86400, function (err) {});
+	});
+}
+
+function translateTimeToSegmentId(segmentOffsets, currentTime) {
+	var segmentId = undefined;
+	for(var curSegmentId in segmentOffsets) {
+		if (currentTime >= segmentOffsets[curSegmentId].offset && 
+			currentTime < segmentOffsets[curSegmentId].offset + segmentOffsets[curSegmentId].duration) {
+			segmentId = curSegmentId;
+		}
+	}
+	if(typeof segmentId === 'undefined') {
+		return undefined;
+	}
+	
+	var result = {};
+	result.segmentId = parseInt(segmentId);
+	result.segmentOffset = currentTime - segmentOffsets[segmentId].offset;
+	return result;
+}
+
+function getMaxSegmentDuration(segmentOffsets) {
+	var result = 0;
+	for(var curSegmentId in segmentOffsets) {
+		if (segmentOffsets[curSegmentId].duration > result) {
+			result = segmentOffsets[curSegmentId].duration;
+		}
+	}
+	return result;
+}
+
+function processGetNextAdTime(queryParams, res) {
+	var adPositionsKey = 'adPos-' + queryParams.entryId;
+	var segmentOffsetsKey = 'segmentOffsets-' + queryParams.uid;
+
+	memcache.getMulti([adPositionsKey, segmentOffsetsKey], function (err, data) {
+		// get previous offsets and translate time
+		var segmentOffsets = data[segmentOffsetsKey];
+		if (!segmentOffsets) {
+			errorResponse(res, 400, 'failed to get previous offsets from memcache');
+			return;
+		}
+	
+		var translatedTime = translateTimeToSegmentId(segmentOffsets, parseFloat(queryParams.currentTime));
+		if (!translatedTime) {
+			errorResponse(res, 400, 'failed to translate player time');
+			return;
+		}
+
+		// parse ad positions
+		var adPositions = data[adPositionsKey];
+		if (adPositions) {
+			adPositions = JSON.parse(adPositions);
+		} else {
+			adPositions = [];
+		}
+		
+		// get the next ad
+		var nextAd = undefined;
+		for (var i = 0; i < adPositions.length; i++) {
+			var adPosition = adPositions[i];
+			
+			if (adPosition.startSegmentId < translatedTime.segmentId || 
+				(adPosition.startSegmentId == translatedTime.segmentId && adPosition.startSegmentOffset < translatedTime.segmentOffset)) {
+				// ad already passed
+				continue;
+			}
+
+			if (!nextAd || 
+				adPosition.startSegmentId < nextAd.startSegmentId ||
+				(adPosition.startSegmentId == nextAd.startSegmentId && adPosition.startSegmentOffset < nextAd.startSegmentOffset)) {
+				// adPosition is earlier than nextAd
+				nextAd = adPosition;
+			}
+		}
+		
+		if (!nextAd) {
+			res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
+			res.end('{}');
+			return;
+		}
+		
+		// calculate time left
+		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
+
+		var timeForAd = nextAd.startSegmentOffset - translatedTime.segmentOffset;
+		var message = 'Ad will show in ';
+		if (segmentOffsets[nextAd.startSegmentId]) {			
+			for (var curSegmentId = translatedTime.segmentId; curSegmentId < nextAd.startSegmentId; curSegmentId++) {
+				timeForAd += segmentOffsets[curSegmentId].duration;
+			}
+			timeForAd = Math.round(timeForAd);
+		} else {
+			var maxSegmentDuration = getMaxSegmentDuration(segmentOffsets);
+			timeForAd += (nextAd.startSegmentId - translatedTime.segmentId) * maxSegmentDuration;
+			timeForAd = Math.round(timeForAd / 5) * 5;
+			message += 'about ';		// not 100% accurate since we assume equal length segments
+		}
+		message += timeForAd + ' seconds';
+		var result = {
+			message: message, 
+			adDuration: nextAd.adSlotDuration,
+			cuePointId: nextAd.cuePointId,
+		};
+		result = JSON.stringify(result);
+		res.log(result);
+		res.end(result);
+	});
+}
+
 function processFlavorProxy(queryParams, res) {
 	if (!queryParams.url || !queryParams.uid) {
 		errorMissingParameter(res);
@@ -695,54 +935,15 @@ function processFlavorProxy(queryParams, res) {
 	getHttpUrl(queryParams.url, function (urlData) {
 		var manifest = parseFlavorM3U8(queryParams.url, urlData);
 
-		// remove the DVR window since we don't want to allow the "red button" player to lag
-		manifest.segments = manifest.segments.slice(-PROXIED_M3U8_TS_COUNT);
+		disableDvr(manifest);
 		
-		var initialSeqNum = manifest.segments[0].sequence;
-		manifest.headers['EXT-X-MEDIA-SEQUENCE'] = '' + initialSeqNum;		
-		
-		// build an array that maps sequence number to player time
-		var segmentOffsets = {};
-		var curOffset = 0;
-		for (var i = 0; i < manifest.segments.length; i++) {
-			var curSegment = manifest.segments[i];
-			segmentOffsets[curSegment.sequence] = { offset: curOffset, duration: curSegment.duration };
-			curOffset += curSegment.duration;
-		}		
-				
-		res.writeHead(200, {'Content-Type': 'application/vnd.apple.mpegurl'});
+		res.writeHead(200, {'Content-Type': CONTENT_TYPE_M3U8});
 		res.end(buildFlavorM3U8(manifest));
 
-		var segmentOffsetsKey = 'segmentOffsets-' + queryParams.uid;
-		memcache.get(segmentOffsetsKey, function (err, previousOffsets) {
-			if (previousOffsets && previousOffsets[initialSeqNum]) {
-				// update the previous offsets with the new ones
-				for(var curSegmentId in segmentOffsets) {
-					if (!previousOffsets[curSegmentId]) {
-						previousOffsets[curSegmentId] = segmentOffsets[curSegmentId];
-						previousOffsets[curSegmentId].offset += previousOffsets[initialSeqNum].offset;
-					}
-				}
-				
-				// leave only the last PROXIED_M3U8_TS_COUNT * 2 offsets
-				var segmentIdsToRemove = Object.keys(previousOffsets).sort();
-				segmentIdsToRemove = segmentIdsToRemove.slice(0, -(PROXIED_M3U8_TS_COUNT * 2));
-				for(var i = 0; i < segmentIdsToRemove.length; i++) {
-					delete previousOffsets[segmentIdsToRemove[i]];
-				}				
-				segmentOffsets = previousOffsets;
-			}
-			else {
-				console.log('failed to get previous offsets, initial seq num is ' + initialSeqNum + ' previous offsets are ');
-				console.dir(previousOffsets);
-			}
-			console.log('setting segmentOffsets to ');
-			console.dir(segmentOffsets);
-			memcache.set(segmentOffsetsKey, segmentOffsets, 60, function (err) {});
-		});
+		updateSegmentOffsets(manifest, 'segmentOffsets-' + queryParams.uid);
 
 	}, function (err) {
-		errorResponse(res, 400, 'Failed to get original URL');
+		errorResponse(res, 400, 'failed to get original stream URL via HTTP');
 	});
 }
 
@@ -755,7 +956,7 @@ function doInsertAd(entryId, segmentId, segmentOffset, adSlotDuration, res) {
 	memcache.getMulti([adPositionsKey, lastUsedSegmentKey], function (err, data) {
 		res.log('last used segment is ' + data[lastUsedSegmentKey]);
 		if (err) {
-			errorResponse(res, 400, 'error getting current positions');
+			errorResponse(res, 400, 'failed to get current ad positions');
 			return;
 		}
 		
@@ -788,9 +989,9 @@ function doInsertAd(entryId, segmentId, segmentOffset, adSlotDuration, res) {
 		
 		memcache.set(adPositionsKey, JSON.stringify(adPositions), 3600, function (err) {
 			if (err) {
-				errorResponse(res, 400, 'failed to write to memcache');
+				errorResponse(res, 400, 'failed to write the ad position to memcache');
 			} else {
-				res.writeHead(200, {'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*'});
+				res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT, 'Access-Control-Allow-Origin': '*'});
 				res.end('ad inserted');				
 			}
 		});
@@ -798,8 +999,6 @@ function doInsertAd(entryId, segmentId, segmentOffset, adSlotDuration, res) {
 }
 
 function processInsertAd(params, res) {
-
-	console.dir(params);
 
 	if (!params.entryId) {
 		errorMissingParameter(res);
@@ -816,26 +1015,15 @@ function processInsertAd(params, res) {
 				errorResponse(res, 400, 'failed to get the segment offsets from memcache');
 				return;
 			}
+			
+			var translatedTime = translateTimeToSegmentId(segmentOffsets, parseFloat(params.currentTime));
 
-			// find the segment id
-			var currentTime = parseFloat(params.currentTime);
-			var segmentId = undefined;
-			for(var curSegmentId in segmentOffsets) {
-				if (currentTime >= segmentOffsets[curSegmentId].offset && 
-					currentTime < segmentOffsets[curSegmentId].offset + segmentOffsets[curSegmentId].duration) {
-					segmentId = curSegmentId;
-				}
-			}
-			if(typeof segmentId === 'undefined') {
-				errorResponse(res, 400, 'failed to translate player time to a segment id');
+			if (!translatedTime) {
+				errorResponse(res, 400, 'failed to translate player time to a segment id, reload the player');
 				return;
 			}
-			segmentId = parseInt(segmentId);
-
-			var segmentOffset = currentTime - segmentOffsets[segmentId].offset;
-
-			doInsertAd(params.entryId, segmentId, segmentOffset, params.adSlotDuration, res);
 			
+			doInsertAd(params.entryId, translatedTime.segmentId, translatedTime.segmentOffset, params.adSlotDuration, res);
 		});
 	} else {
 		errorMissingParameter(res);
@@ -845,7 +1033,7 @@ function processInsertAd(params, res) {
 
 function processStartTracker(queryParams, res) {
 	if (queryParams.signature != md5(SERVER_SECRET + queryParams.params)) {
-		errorResponse(res, 403, 'Forbidden\n');
+		errorResponse(res, 403, 'bad signature');
 	}
 	
 	var cmdLine = ['sh', STREAM_TRACKER_SCRIPT, queryParams.params].join(' ');
@@ -855,11 +1043,11 @@ function processStartTracker(queryParams, res) {
 	var child = exec(cmdLine, function (error, stdout, stderr) { });
 	child = null;
 	
-	res.writeHead(200, {'Content-Type': 'text/plain'});
+	res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
 	res.end('tracker started');
 }
 
-function processInsertAdPage(res) {
+function processInsertAdPage(protocol, res) {
 	fs.readFile(__dirname + '/insertAd.html', 'utf8', function (err, data) {
 		if (err) {
 			errorFileNotFound(res);
@@ -869,14 +1057,16 @@ function processInsertAdPage(res) {
 		crypto.randomBytes(4, function(ex, buf) {
 			var uid = buf.toString('hex');
 			
-			res.writeHead(200, {'Content-Type': 'text/html'});
-			res.end(data.replace(/@UID@/g, uid).replace(/@EXTERNAL_URL@/g, SERVER_EXTERNAL_URL));
+			res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
+			res.end(data.replaceAll('@UID@', uid).
+						 replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL).
+						 replaceAll('@PROTOCOL@', protocol));
 		});
 	});
 }
 
 function processAdSegmentRedirect(queryParams, cookies, res) {
-	var allocatedAdsCookieName = 'allocatedAds_' + queryParams.entryId;		// XXX add to the params
+	var allocatedAdsCookieName = ALLOCATED_ADS_COOKIE_NAME + queryParams.entryId;		// XXX add to the params
 	var allocatedAds = cookies[allocatedAdsCookieName];
 	if (allocatedAds)
 		allocatedAds = JSON.parse(allocatedAds);
@@ -1037,7 +1227,7 @@ function processStitchSegment(queryParams, res) {
 					postAdMetadata = null;
 					
 					// output the TS
-					res.writeHead(200, {'Content-Type': 'video/MP2T'});
+					res.writeHead(200, {'Content-Type': CONTENT_TYPE_MPEG2TS});
 					
 					var tsDebugFileName = '/tmp/tsFiles/' + (tsFileCounter % 10) + '.ts';
 					res.log('saving ts file to ' + tsDebugFileName);
@@ -1055,17 +1245,26 @@ var shortUrlCounter = 1;
 
 function handleHttpRequest(req, res) {
 	var sessionId = Math.floor(Math.random() * 0x7fffffff);
-	res.setHeader('x-kaltura-session', sessionId);
+	res.setHeader('X-Kaltura-Session', sessionId);
 	res.log = function (msg) {
 		console.log(formatTime.getDateTime() + ' [' + sessionId + '] ' + msg);
 	}
+	res.dir = function (obj) {
+		res.log(util.inspect(obj));
+	}
+	
 	accessLog(req, res);
+	
+	var protocol = 'http://';
+	if (req.headers['x-kaltura-f5-https'] == 'ON') {
+		protocol = 'https://';
+	}
 
 	var parsedUrl = url.parse(req.url);
 	var queryParams = querystring.parse(parsedUrl.query);
 	
-	//console.log(getDateTime() + ' request ' + parsedUrl.path);
-	//console.dir(req.headers);
+	res.log('handling request');
+	res.dir(queryParams);
 	
 	switch (parsedUrl.pathname) {
 	case MASTER_STITCH_URI:
@@ -1100,12 +1299,20 @@ function handleHttpRequest(req, res) {
 		processStitchSegment(queryParams, res);
 		break;
 		
+	case IS_WATCHED_URI:
+		processIsWatched(queryParams, res);
+		break;
+		
+	case GET_NEXT_AD_TIME_URI:
+		processGetNextAdTime(queryParams, res);
+		break;
+		
 	case SHORT_URL_URI:
 		var shortUri = '/' + shortUrlCounter;
-		shortUrls[shortUri] = queryParams.url;
+		shortUrls[shortUri] = queryParams;
 		shortUrlCounter++;
-		res.writeHead(200, {'Content-Type': 'text/plain'});
-		res.end(SERVER_EXTERNAL_URL + shortUri);		
+		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
+		res.end(protocol + SERVER_EXTERNAL_URL + shortUri);		
 		break;
 		
 	case NOTIFY_ERROR_URI:
@@ -1120,12 +1327,12 @@ function handleHttpRequest(req, res) {
 		// fall through
 		
 	case NOTIFY_STATUS_URI:
-		res.writeHead(200, {'Content-Type': 'text/plain'});
+		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
 		res.end('logged');		
 		break;
 		
 	case RESTART_SERVER_URI:
-		res.writeHead(200, {'Content-Type': 'text/plain'});
+		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
 		res.end('restarting');
 		
 		setTimeout(function () {
@@ -1140,13 +1347,20 @@ function handleHttpRequest(req, res) {
 				return;
 			}
 			
-			res.writeHead(200, {'Content-Type': 'image/x-icon'});
+			res.writeHead(200, {'Content-Type': CONTENT_TYPE_ICON});
 			res.end(data);
 		});
 		break;
 		
 	case '/':
-		processInsertAdPage(res);
+		if (req.headers['host'].trim().toLowerCase() != SERVER_EXTERNAL_DOMAIN) {
+			res.writeHead(302, {
+				'Location': SERVER_EXTERNAL_HTTP_URL
+			});
+			res.end();
+			break;
+		}
+		processInsertAdPage(protocol, res);
 		break;
 						
 	default:
@@ -1160,9 +1374,21 @@ function handleHttpRequest(req, res) {
 					errorFileNotFound(res);
 					return;
 				}
-				
-				res.writeHead(200, {'Content-Type': 'text/html'});
-				res.end(data.replace(/@VIDEO_URL@/g, shortUrls[parsedUrl.pathname]).replace(/@EXTERNAL_URL@/g, SERVER_EXTERNAL_URL));
+
+				crypto.randomBytes(4, function(ex, buf) {
+					var uid = buf.toString('hex');
+							
+					res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
+					
+					data = data.replaceAll('@UID@', uid).
+								replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL);
+								
+					for (var key in shortUrls[parsedUrl.pathname]) {
+						var value = shortUrls[parsedUrl.pathname][key];
+						data = data.replaceAll('@' + key + '@', value);
+					}
+					res.end(data);
+				});
 			});
 			
 			break;
