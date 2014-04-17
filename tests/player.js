@@ -17,6 +17,7 @@ var adminSecret = null;
 var entryId = null;
 var serverHost = null;
 var canStart = true;
+var isCuePointsEnabled = null;
 
 if (typeof Array.prototype.diff != 'function') {
 	Array.prototype.diff = function(arr) {
@@ -173,59 +174,36 @@ function initClient(callback) {
 	}
 }
 
-function pushAd(client){
-	
-}
-
-function cuePointsDisabled(players){
-	console.log('Cue-Points Disabled');
-	for(var i = 0; i < players.length; i++){
-		players[i].isCuePointsEnabled = false;
-	}
-}
-
-function cuePointsEnabled(client, players){
-	console.log('Cue-Points Enabled');
-	for(var i = 0; i < players.length; i++){
-		players[i].isCuePointsEnabled = true;
-	}
-
-	pushAd(client);
-}
-
-function enableCuePoints(client, players){
-	var duration = 150;
-	client.liveStream.createPeriodicSyncPoints(function(err){
-		if (err && err.objectType && err.objectType == 'KalturaAPIException') {
-			console.error('liveStream.createPeriodicSyncPoints: ' + err.message);
-		}
-
-		cuePointsEnabled(client, players);
-		setTimeout(function(){
-			cuePointsDisabled(players);
-		}, duration * 1000);
-	}, entryId, 30, duration);
-}
-
 function handlePlayManifest(client, manifestUrl, manifestContent) {
 	var split = manifestContent.split('\n');
 	
 	console.log('Master: OK (' + split.length + ' lines)');
 
-	var players = [];
 	for (var i = 0; i < split.length; i++) {
 		var currentLine = split[i].trim();
 
 		if (currentLine.length && currentLine[0] != '#') {
 			var playerClient = initClient(client.getKs());
 			var renditionUrl = url.resolve(manifestUrl, currentLine);
-			players.push(new player(playerClient, renditionUrl));
+			new Player(playerClient, renditionUrl);
 		}
 	}
+}
+
+function handleAdminPlayManifest(client, manifestUrl, manifestContent) {
+	var split = manifestContent.split('\n');
 	
-	setTimeout(function(){
-		enableCuePoints(client, players);
-	}, 15000);
+	console.log('Master: OK (' + split.length + ' lines)');
+
+	for (var i = 0; i < split.length; i++) {
+		var currentLine = split[i].trim();
+
+		if (currentLine.length && currentLine[0] != '#') {
+			var playerClient = initClient(client.getKs());
+			var renditionUrl = url.resolve(manifestUrl, currentLine);
+			new AdminPlayer(playerClient, renditionUrl);
+		}
+	}
 }
 
 function getUrl(httpUrl, callback) {
@@ -262,11 +240,18 @@ function getUrl(httpUrl, callback) {
 function handleEntry(client, entry) {
 	if (entry.objectType && entry.objectType == 'KalturaAPIException') {
 		console.error('liveStream.get: ' + entry.message);
+		return;
 	}
-
-	var playManifestUrl = 'http://' + serverHost + '/p/' + partnerId + '/playManifest/entryId/' + entryId + '/format/applehttp';
+	
+	var playManifestUrl = 'http://' + serverHost + '/p/' + partnerId + '/playManifest/entryId/' + entryId + '/format/applehttp/usePlayServer/1';
 	getUrl(playManifestUrl, function(playManifestUrl, data){
 		handlePlayManifest(client, playManifestUrl, data);
+	});
+	
+	// low latency manifest to simulate the big-red-buttom player
+	playManifestUrl += '/usePlayServer/1';
+	getUrl(playManifestUrl, function(playManifestUrl, data){
+		handleAdminPlayManifest(client, playManifestUrl, data);
 	});
 }
 
@@ -284,20 +269,22 @@ function test() {
 	initClient(getEntry);
 }
 
-function player(client, renditionUrl){
-	console.log('New rendition player [' + renditionUrl + ']');
-	this.client = client;
-	this.url = renditionUrl;
-	this.m3u8Lines = [];
-	this.isCuePointsEnabled = null;
-	
-	this.getManifest();
+function Player(client, renditionUrl){
+	this.init(client, renditionUrl);
 }
-player.prototype = {
+Player.prototype = {
 	client: null,
 	url: null,
 	m3u8Lines: null,
-	isCuePointsEnabled: false,
+	
+	init: function(client, renditionUrl){
+		console.log('New rendition player [' + renditionUrl + ']');
+		this.client = client;
+		this.url = renditionUrl;
+		this.m3u8Lines = [];
+		
+		this.getManifest();
+	},
 	
 	getManifest: function(){
 		var This = this;
@@ -342,21 +329,29 @@ player.prototype = {
     		console.error('Rendition failed [' + This.url + ']:' + e.stack);
     		process.exit(1);
     	});
-	},
+	},	
 	
-	handleSyncPoint: function(syncPoint, segment){
-		if(this.isCuePointsEnabled === false){
+	validateCuePointsAlreadyEnabled: function(syncPoint){
+		if(isCuePointsEnabled === false){
 			console.error('Sync-point [' + syncPoint.id + '] accepted when sync-points should be disabled');
 		}
+	},	
+	
+	validateCuePointsStillEnabled: function(segment, segmentOffset){
+		if(isCuePointsEnabled && this.elapsedTime && this.elapsedTime.sequence == segment.sequence && Math.abs(this.elapsedTime.offset - segmentOffset) > 1000){
+			console.error('large gap between sync offset [' + this.formaTime(segmentOffset) + '] and calculated offset [' + this.formaTime(this.elapsedTime.offset) + ']');
+		}
+	},	
+	
+	handleSyncPoint: function(syncPoint, segment){
+		this.validateCuePointsAlreadyEnabled(syncPoint);
 		
 		var offsetInSegment = (syncPoint.pts - segment.pts) / 90;
 		var absoluteOffset = syncPoint.offset;
 		var segmentOffset = absoluteOffset - offsetInSegment;
 		var segmentTimestamp = syncPoint.timestamp - offsetInSegment;
 		
-		if(this.isCuePointsEnabled && this.elapsedTime && this.elapsedTime.sequence == segment.sequence && Math.abs(this.elapsedTime.offset - segmentOffset) > 1000){
-			console.error('large gap between sync offset [' + this.formaTime(segmentOffset) + '] and calculated offset [' + this.formaTime(this.elapsedTime.offset) + ']');
-		}
+		this.validateCuePointsStillEnabled(segment, segmentOffset);
 		
 		this.elapsedTime = {
     		sequence: segment.sequence,
@@ -365,6 +360,7 @@ player.prototype = {
 			timestamp: segmentTimestamp // in milliseconds since 1970
 		};
 	},
+	
 	
 	verifySegment: function(localPath, segment, buffer){
 		//console.log('Verify segment [' + localPath + ']');
@@ -391,6 +387,7 @@ player.prototype = {
 			}
 		});
 	},
+	
 	
 	testSegment: function(segment){
 		var segmentUrl = segment.url;
@@ -501,6 +498,112 @@ player.prototype = {
 		}
 
 		return format;
+	}
+};
+
+function AdminPlayer(client, renditionUrl){
+	this.init(client, renditionUrl);
+
+	this.isCuePointsEnabled = null;
+
+	// TODO create pre-defined cue-point for now + 60 sec
+	// TODO wait for now + 540 sec and create pre-defined cue-point for now + 60 sec
+	
+	setTimeout(function(){
+		this.enableCuePoints(client, 150);
+	}, 120000);
+}
+util.inherits(AdminPlayer, Player);
+
+AdminPlayer.prototype.cuePointsDisabled = function(latency){
+	console.log('Admin Cue-Points Disabled');
+	this.isCuePointsEnabled = false;
+	setTimeout(function(){
+		console.log('Cue-Points Disabled');
+		isCuePointsEnabled = false;
+	}, latency * 1000);
+};
+
+AdminPlayer.prototype.cuePointsEnabled = function(latency){
+	console.log('Admin Cue-Points Enabled');
+	this.isCuePointsEnabled = true;
+	setTimeout(function(){
+		console.log('Cue-Points Enabled');
+		isCuePointsEnabled = true;
+	}, latency * 1000);
+};
+
+AdminPlayer.prototype.enableCuePoints = function(duration){
+	var This = this;
+	this.client.liveStream.createPeriodicSyncPoints(function(err){
+		if (err && err.objectType && err.objectType == 'KalturaAPIException') {
+			console.error('liveStream.createPeriodicSyncPoints: ' + err.message);
+			return;
+		}
+
+		var latency = 40;
+		This.cuePointsEnabled(latency);
+		setTimeout(function(){
+			This.cuePointsDisabled(latency);
+		}, duration * 1000);
+	}, entryId, 30, duration);
+};
+
+AdminPlayer.prototype.createTimeCuePoint = function(sourceUrl, startTime, endTime){
+	var cuePoint = new kaltura.client.objects.KalturaAdCuePoint();
+	cuePoint.sourceUrl = sourceUrl;
+	cuePoint.startTime = startTime;
+	cuePoint.endTime = endTime;
+	
+	this.createCuePoint(cuePoint);
+};
+
+AdminPlayer.prototype.createDurationCuePoint = function(sourceUrl, startTime, duration){
+	cuePoint.sourceUrl = sourceUrl;
+	cuePoint.startTime = startTime;
+	cuePoint.duration = duration;
+	
+	this.createCuePoint(cuePoint);
+};
+
+AdminPlayer.prototype.createDateCuePoint = function(sourceUrl, date, duration){
+	cuePoint.sourceUrl = sourceUrl;
+	cuePoint.triggeredAt = date;
+	cuePoint.duration = duration;
+	
+	this.createCuePoint(cuePoint);
+};
+
+AdminPlayer.prototype.createCuePoint = function(cuePoint){
+	cuePoint.entryId = entryId;
+	
+	this.client.cuePoint.add(function(cuePoint){
+		if (cuePoint && cuePoint.objectType && cuePoint.objectType == 'KalturaAPIException') {
+			console.error('cuePoint.add: ' + cuePoint.message);
+			return;
+		}
+		
+		console.log('Cue-Point [' + cuePoint.id + '] created');
+	}, cuePoint);
+};
+
+AdminPlayer.prototype.validateCuePointsAlreadyEnabled = function(syncPoint){
+	if(this.isCuePointsEnabled === false){
+		console.error('Sync-point [' + syncPoint.id + '] accepted when sync-points should be disabled');
+	}
+};
+
+AdminPlayer.prototype.validateCuePointsStillEnabled = function(segment, segmentOffset){
+	if(this.isCuePointsEnabled && this.elapsedTime && this.elapsedTime.sequence == segment.sequence && Math.abs(this.elapsedTime.offset - segmentOffset) > 1000){
+		console.error('large gap between sync offset [' + this.formaTime(segmentOffset) + '] and calculated offset [' + this.formaTime(this.elapsedTime.offset) + ']');
+	}
+};
+
+AdminPlayer.prototype.handleSyncPoint = function(syncPoint, segment){
+	Player.prototype.handleSyncPoint.apply(this, [syncPoint, segment]);
+	
+	if(this.createCuePoints){
+		// TODO add cue-point for now
 	}
 };
 
