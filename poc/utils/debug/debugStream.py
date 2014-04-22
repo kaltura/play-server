@@ -23,6 +23,7 @@ class MyHTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 	http_error_301 = http_error_303 = http_error_307 = http_error_302
 
 def getUrlData(url, requestHeaders={}):
+	url = url.replace('adstitchdemo.kaltura.com', 'localhost:1337')
 	writeLog('Getting %s...' % url)
 	request = urllib2.Request(url, headers=requestHeaders)
 	f = urllib2.urlopen(request)
