@@ -115,3 +115,27 @@ frame_info_t* get_frames_single(const char* ffprobe_bin, const char* input_file,
 	files[0] = input_file;
 	return get_frames(ffprobe_bin, files, 1, frame_count);
 }
+
+frame_info_t* parse_ffprobe_output(char* input_buffer, int length, int* frame_count)
+{
+	get_frames_state_t state = { { 0 } };
+	char* end_pos = input_buffer + length;
+	char* new_line_pos;
+	char* cur_pos;
+	
+	for (cur_pos = input_buffer; cur_pos < end_pos; cur_pos = new_line_pos + 1)
+	{
+		new_line_pos = (char*)memchr(cur_pos, '\n', end_pos - cur_pos);
+		if (new_line_pos == NULL)
+		{
+			break;
+		}
+		
+		*new_line_pos = '\0';
+		
+		get_frames_callback(&state, cur_pos);
+	}
+
+	*frame_count = state.result.write_pos / sizeof(frame_info_t);
+	return (frame_info_t*)state.result.data;
+}
