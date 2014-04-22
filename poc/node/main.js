@@ -24,8 +24,8 @@ var fs = require('fs');
 
 // parameters
 const LOCAL_SERVER_PORT = 1337;
-const SERVER_EXTERNAL_DOMAIN = 'adstitchdemo.kaltura.com'; //'lbd.kaltura.com';
-const SERVER_EXTERNAL_URL = SERVER_EXTERNAL_DOMAIN;	// + ':1337';
+const SERVER_EXTERNAL_DOMAIN = 'adstitchdemo.kaltura.com';
+const SERVER_EXTERNAL_URL = SERVER_EXTERNAL_DOMAIN;
 const SERVER_EXTERNAL_HTTP_URL = 'http://' + SERVER_EXTERNAL_URL;
 const START_TRACKER_URL = 'http://localhost:' + LOCAL_SERVER_PORT;
 const MEMCACHE_URL = 'localhost:11211';
@@ -35,8 +35,6 @@ const STREAM_TRACKER_SCRIPT = __dirname + '/../tracker/streamTracker.sh';
 const PREPARE_AD_SCRIPT = __dirname + '/../tracker/prepareAd.sh';
 
 const SERVER_SECRET = 'Angry birds !!!';
-
-const ALLOCATED_ADS_COOKIE_NAME = '_allocatedads_';
 
 // NOTE: the following constants must match ts_stitcher_impl.h
 const PBA_CALL_AGAIN = 0;
@@ -364,18 +362,6 @@ function logManifestToFile(res, manifestString) {
 	m3u8FileCounter++;
 }
 
-function parseCookies(request) {
-    var list = {},
-        rc = request.headers.cookie;
-
-    rc && rc.split(';').forEach(function( cookie ) {
-        var parts = cookie.split('=');
-        list[parts.shift().trim()] = unescape(parts.join('='));
-    });
-
-    return list;
-}
-
 function doMemcacheMultiTouch(memcache, keys, curIndex, lifetime, callback) {
 	if (curIndex >= keys.length) {
 		callback(null);
@@ -537,73 +523,45 @@ function allocateAdsForUser(res, entryId, adPositions, allocatedAds, adsToPrepar
 	return newAllocatedAds;
 }
 
-function processFlavorStitch(params, cookies, res) {
+function processFlavorStitch(params, res) {
 	if (!params.entryId || !params.trackerRequiredKey || !params.trackerOutputKey) {
 		errorMissingParameter(res);
 		return;
 	}
 	
-	// mark the tracker as required
-	var currentTime = Math.floor(new Date().getTime() / 1000);
-	memcache.set(params.trackerRequiredKey, '' + currentTime, 600, function (err) {});
-
-	// get ads allocated to the user
-	var allocatedAdsCookieName = ALLOCATED_ADS_COOKIE_NAME + params.entryId;
-	var allocatedAds = cookies[allocatedAdsCookieName];
-	res.log('allocated ads ' + allocatedAds);
-	if (allocatedAds)
-		allocatedAds = JSON.parse(allocatedAds);
-	else
-		allocatedAds = {};
-
 	// read the tracker output
 	res.log('getting tracker output');
 	readTrackerOutput(res, params.trackerOutputKey, function (manifestString) {
-		// get the ad positions
-		res.log('getting ad positions');
-		memcache.get('adPos-' + params.entryId, function (err, adPositionsJson) {
-			res.log('got ad positions ' + adPositionsJson);
-			if (err) {
-				// XXXX
-			}
-			
-			// allocate ads for the user
-			var adsToPrepare = [];
-			
-			var newAllocatedAds = allocateAdsForUser(res, params.entryId, JSON.parse(adPositionsJson), allocatedAds, adsToPrepare);
-					
-			// parse the m3u8 and remove the DVR
-			var manifest = parseFlavorM3U8('', manifestString);		// no need for the URL, will always be absolute here
-			res.log('sequence is ' + manifest.headers['EXT-X-MEDIA-SEQUENCE']);
-			disableDvr(manifest);
-			
-			// return the final manifest
-			var finalManifest = buildFlavorM3U8(manifest);
-			
-			// XXXXXX remove unneeded headers
-			var currentDate = new Date().toUTCString();
-			res.writeHead(200, {
-				'Mime-Version': '1.0',
-				'Content-Type': CONTENT_TYPE_M3U8,
-				'Content-Length': finalManifest.length,
-				'Pragma': 'no-cache',
-				'Cache-Control': 'no-store',
-				'Expires': currentDate,
-				'Date': currentDate,
-				'Connection': 'keep-alive',
-				'Access-Control-Allow-Origin': '*',	
-				'Set-Cookie': 	allocatedAdsCookieName + '=' + escape(JSON.stringify(newAllocatedAds)) + '; path=/; domain=' + SERVER_EXTERNAL_DOMAIN
-			});	
-			
-			res.end(finalManifest);
-			logManifestToFile(res, finalManifest);			
 
-			// update the segment offsets
-			updateSegmentOffsets(manifest, 'segmentOffsets-' + params.uid);
+		manifestString = manifestString.replaceAll(AD_SEGMENT_REDIRECT_URI + '?', AD_SEGMENT_REDIRECT_URI + '?uid=' + params.uid + '&');
+	
+		// parse the m3u8 and remove the DVR
+		var manifest = parseFlavorM3U8('', manifestString);		// no need for the URL, will always be absolute here
+		res.log('sequence is ' + manifest.headers['EXT-X-MEDIA-SEQUENCE']);
+		disableDvr(manifest);
+		
+		// return the final manifest
+		var finalManifest = buildFlavorM3U8(manifest);
+		
+		// XXXX remove unneeded headers
+		var currentDate = new Date().toUTCString();
+		res.writeHead(200, {
+			//'Mime-Version': '1.0',
+			'Content-Type': CONTENT_TYPE_M3U8,
+			'Content-Length': finalManifest.length,
+			/*'Pragma': 'no-cache',
+			'Cache-Control': 'no-store',
+			'Expires': currentDate,
+			'Date': currentDate,
+			'Connection': 'keep-alive',			// hangs python
+			'Access-Control-Allow-Origin': '*',	*/
+		});	
+		
+		res.end(finalManifest);
+		logManifestToFile(res, finalManifest);			
 
-			// prepare the ads
-			prepareAdsForEntry(adsToPrepare);
-		});
+		// update the segment offsets
+		updateSegmentOffsets(manifest, 'segmentOffsets-' + params.uid);
 	}, function (msg) {
 		errorResponse(res, 400, msg);
 		
@@ -612,6 +570,43 @@ function processFlavorStitch(params, cookies, res) {
 			stitchMasterM3U8(params.masterUrl, urlData, {entryId: params.entryId});
 		}, function (err) {});			
 	}, 30);
+		
+	// mark the tracker as required
+	var currentTime = Math.floor(new Date().getTime() / 1000);
+	memcache.set(params.trackerRequiredKey, '' + currentTime, 600, function (err) {});
+
+	// get ads allocated to the user
+	var allocatedAdsKey = 'allocatedAds-' + params.uid;
+	var adPositionsKey = 'adPos-' + params.entryId;
+	memcache.getMulti([allocatedAdsKey, adPositionsKey], function (err, data) {
+		if (err) {
+			// XXXX
+		}
+
+		// parse allocated ads
+		allocatedAds = data[allocatedAdsKey];
+		res.log('allocated ads ' + allocatedAds);
+		if (allocatedAds)
+			allocatedAds = JSON.parse(allocatedAds);
+		else
+			allocatedAds = {};
+
+		// allocate ads for the user
+		var adPositions = data[adPositionsKey];
+		res.log('got ad positions ' + adPositions);
+		if (adPositions)
+			adPositions = JSON.parse(adPositions);
+		else
+			adPositions = {};
+		
+		var adsToPrepare = [];
+		
+		var newAllocatedAds = allocateAdsForUser(res, params.entryId, adPositions, allocatedAds, adsToPrepare);
+		memcache.set(allocatedAdsKey, JSON.stringify(newAllocatedAds), 3600, function (err) {});
+
+		// prepare the ads
+		prepareAdsForEntry(adsToPrepare);
+	});
 }
 
 function proxyMasterM3U8(masterUrl, manifest, uid) {
@@ -1065,27 +1060,33 @@ function processInsertAdPage(protocol, res) {
 	});
 }
 
-function processAdSegmentRedirect(queryParams, cookies, res) {
-	var allocatedAdsCookieName = ALLOCATED_ADS_COOKIE_NAME + queryParams.entryId;		// XXX add to the params
-	var allocatedAds = cookies[allocatedAdsCookieName];
-	if (allocatedAds)
-		allocatedAds = JSON.parse(allocatedAds);
-	else
-		allocatedAds = {};
+function processAdSegmentRedirect(queryParams, res) {
+	// get allocated ads
+	var allocatedAdsKey = 'allocatedAds-' + queryParams.uid;
+	memcache.get(allocatedAdsKey, function (err, allocatedAds) {
+		if (allocatedAds)
+			allocatedAds = JSON.parse(allocatedAds);
+		else
+			allocatedAds = {};
 
-	var adId;
-	if (allocatedAds[queryParams.cuePointId]) {
-		adId = allocatedAds[queryParams.cuePointId];
-	} else {
-		adId = 'none';
-	}
+		// get the id of the current ad
+		var adId;
+		if (allocatedAds[queryParams.cuePointId]) {
+			adId = allocatedAds[queryParams.cuePointId];
+		} else {
+			adId = 'none';
+		}
 
-	queryParams['adId'] = adId;
+		// update the query parameters
+		delete queryParams.uid;
+		queryParams['adId'] = adId;
 
-	res.writeHead(302, {
-		'Location': STITCH_SEGMENT_URI + '?' + querystring.stringify(queryParams)
+		// redirect
+		res.writeHead(302, {
+			'Location': STITCH_SEGMENT_URI + '?' + querystring.stringify(queryParams)
+		});
+		res.end();
 	});
-	res.end();
 }
 
 function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, adKey, blackKey, postAdKey, res, tsDebugFile) {
@@ -1272,7 +1273,7 @@ function handleHttpRequest(req, res) {
 		break;
 		
 	case FLAVOR_STITCH_URI:
-		processFlavorStitch(queryParams, parseCookies(req), res);
+		processFlavorStitch(queryParams, res);
 		break;
 		
 	case MASTER_PROXY_URI:
@@ -1292,7 +1293,7 @@ function handleHttpRequest(req, res) {
 		break;
 
 	case AD_SEGMENT_REDIRECT_URI:
-		processAdSegmentRedirect(queryParams, parseCookies(req), res);
+		processAdSegmentRedirect(queryParams, res);
 		break;
 	
 	case STITCH_SEGMENT_URI:
@@ -1353,7 +1354,8 @@ function handleHttpRequest(req, res) {
 		break;
 		
 	case '/':
-		if (req.headers['host'].trim().toLowerCase() != SERVER_EXTERNAL_DOMAIN) {
+		var hostName = req.headers['host'];
+		if (hostName && hostName.trim().toLowerCase() != SERVER_EXTERNAL_DOMAIN) {
 			res.writeHead(302, {
 				'Location': SERVER_EXTERNAL_HTTP_URL
 			});
