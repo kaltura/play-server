@@ -5,7 +5,9 @@
 body { padding: 15px; }
 </style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
+<script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js" ></script>
 <script>
+
 const PRIO_NOTICE = 1;
 const PRIO_WARNING = 2;
 const PRIO_ERROR = 3;
@@ -137,7 +139,7 @@ function start() {
 </script>
 </head>
 <body>
-	<div id="screen1Div">
+	<div id="screen1Div" style="width:550px;">
 		<h2>Demo - Frame Accurate Ad Insertion</h2>
 		<p>Please enter the following information to set up the demo:</p>
 		<form>
@@ -146,16 +148,42 @@ function start() {
 				Weather Nation:		http://cdnapi.kaltura.com/p/931702/sp/93170200/playManifest/entryId/0_a7vl6x8e/format/applehttp
 				Nasa:				http://public.infozen.cshls.lldns.net/infozen/public/public.m3u8
 			-->
-			URL: <input type="text" value="@PROTOCOL@cdnapisec.kaltura.com/content/shared/abcnewsLive.m3u8" id="origUrl" size="60"><br>
-			Entry id: <input type="text" value="@UID@" id="entryId" size="10"><br>
-			Ad slot length: <input type="text" value="32" id="adSlotDuration" size="10"><br>
-			<input type="checkbox" id="autoAdInsert">Auto ad insertion<br>
+			<div class="form-group">
+				<label for="origUrl">URL</label>
+					<div class="input-group">
+						<input id="origUrl" type="text" class="form-control" value="@PROTOCOL@cdnapisec.kaltura.com/content/shared/doguslive.m3u8">
+						<div class="input-group-btn">
+							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Preset <span class="caret"></span></button>
+							<ul class="dropdown-menu pull-right">
+								<li><a onclick="$('#origUrl').val('@PROTOCOL@cdnapisec.kaltura.com/content/shared/abcnewslive.m3u8')">ABC News</a></li>
+								<li><a onclick="$('#origUrl').val('@PROTOCOL@cdnapisec.kaltura.com/content/shared/dmtlive.m3u8')">DMT</a></li>
+								<li><a onclick="$('#origUrl').val('@PROTOCOL@cdnapisec.kaltura.com/content/shared/doguslive.m3u8')">Dogus</a></li>
+								<li><a onclick="$('#origUrl').val('@PROTOCOL@cdnapisec.kaltura.com/content/shared/iblive.m3u8')">IB</a></li>
+							</ul>
+						</div><!-- /btn-group -->
+					</div><!-- /input-group -->
+			</div>
+  
+			<div class="form-group">
+				<label for="entryId">Entry id</label>
+				<input type="text" class="form-control" id="entryId" value="@UID@">
+			</div>
+
+			<div class="form-group">
+				<label for="adSlotDuration">Ad slot duration</label>
+				<input type="text" class="form-control" id="adSlotDuration" value="32">
+			</div>  
+			<div class="checkbox">
+				<label>
+					<input id="autoAdInsert" type="checkbox">Auto ad insertion
+				</label>
+			</div>
 			<br>
-			<input type="button" value="next" onclick="start();" id="startbtn">
+			<input type="button" class="btn btn-default" value="Next" onclick="start();">
 		</form>
 	</div>
 
-	<div id="screen2Div" style="display:none">
+	<div id="screen2Div" style="display:none;width:650px;">
 		<h2>Demo - Frame Accurate Ad Insertion</h2>
 		<p>This page demonstrates how ads can be manually inserted into live streams. 
 		The player below shows the live feed input that will be used by the ad operator to trigger the ad at the right moment during the event. 
