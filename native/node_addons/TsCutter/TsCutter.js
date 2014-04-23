@@ -6,6 +6,18 @@
 
 var tsCutter = require('../../../lib/media/KalturaTsCutter');
 
+if (typeof String.prototype.startsWith != 'function') {
+  String.prototype.startsWith = function (str){
+    return this.slice(0, str.length) == str;
+  };
+}
+
+if (typeof String.prototype.endsWith != 'function') {
+  String.prototype.endsWith = function (str){
+    return this.slice(-str.length) == str;
+  };
+}
+
 if (process.argv.length < 8) {
 	console.log('Usage:\n\tnode TsCutter.js <output file> <ffmpeg bin> <ffprobe bin> <cut offset> <left/right> <file1> [<file2> [ ... ] ]');
 	process.exit(1);
