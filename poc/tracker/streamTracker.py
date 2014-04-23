@@ -14,7 +14,7 @@ import json
 import sys
 import os
 
-TS_CUTTER_PATH = os.path.join(os.path.dirname(__file__), '../../native/ts_cutter/ts_cutter')
+TS_CUTTER_PATH = 'node %s' % os.path.join(os.path.dirname(__file__), '../../native/node_addons/TsCutter/TsCutter.js')
 TS_PREPARER_PATH = os.path.join(os.path.dirname(__file__), '../../native/ts_preparer/ts_preparer')
 FFPROBE_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffprobe-2.1.sh'
 FFMPEG_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffmpeg-2.1.sh'
@@ -47,7 +47,7 @@ def md5(buf):
 def getUrl(url, fileExt):
 	path = os.path.join(tempDownloadPath, md5(url) + fileExt)
 	if not os.path.exists(path):
-		writeOutput("downloading %s" % (url))
+		writeOutput("downloading %s to %s" % (url, path))
 		startTime = time.time()
 		urllib.urlretrieve(url, path)
 		writeOutput("download took %s" % (time.time() - startTime))

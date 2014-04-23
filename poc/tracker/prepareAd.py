@@ -69,7 +69,7 @@ def md5(buf):
 def getUrl(url, fileExt = ''):
 	path = os.path.join(tempDownloadPath, md5(url) + fileExt)
 	if not os.path.exists(path):
-		writeOutput("downloading %s" % (url))
+		writeOutput("downloading %s to %s" % (url, path))
 		startTime = time.time()
 		urllib.urlretrieve(url, path)
 		writeOutput( "download took %s" % (time.time() - startTime))

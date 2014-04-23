@@ -55,6 +55,9 @@ class MediaInfoParsers:
 			return None
 		return splittedValue
 		
+	@staticmethod
+	def parseAudioProfile(value):
+		return value.split(' / ')[0].split('@')[0]		# support 'HE-AAC / LC'
 		
 class MediaInfo:
 	PARSING_CONFIG = {
@@ -74,7 +77,8 @@ class MediaInfo:
 		'audio': [
 			('bit rate', 'audioBitrate', MediaInfoParsers.parseBitrate),
 			('sampling rate', 'audioSamplingRate', MediaInfoParsers.parseSamplingRate),
-			('channel(s)', 'audioChannels', MediaInfoParsers.getSimpleParser(['channel', 'channels']))
+			('channel(s)', 'audioChannels', MediaInfoParsers.getSimpleParser(['channel', 'channels'])),
+			('format profile', 'audioProfile', MediaInfoParsers.parseAudioProfile),
 			],
 	}
 
@@ -164,6 +168,19 @@ def getMpegTSEncodingParams(referenceFileName, blackDuration = 10):
 	if mediaInfo.hasAudio:
 		silenceInput = '-t %s' % blackDuration
 		acodec = '-acodec libfdk_aac'
+
+		audioProfile = ' -profile:a aac_he'
+		AUDIO_PROFILE_MAPPING = {
+			'LC': 'aac_low',
+			'HE-AAC': 'aac_he',
+			'HE-AACv2': 'aac_he_v2',
+			'ER AAC LD': 'aac_ld',
+			'ER AAC ELD': 'aac_eld',
+		}
+		if AUDIO_PROFILE_MAPPING.has_key(mediaInfo.audioProfile):
+			audioProfile = ' -profile:a %s' % AUDIO_PROFILE_MAPPING[mediaInfo.audioProfile]
+		acodec += audioProfile
+		
 		if mediaInfo.audioBitrate != None:
 			acodec += ' -b:a %sk' % normalizeAudioBitrate(mediaInfo.audioBitrate / 1024)
 			
