@@ -4,12 +4,31 @@ var url = require('url');
 var dns = require('dns');
 var util = require('util');
 var http = require('http');
-var adServer = require('kaltura-ad-server');
+var colors = require('colors');
+var kalturaAdServer = require('kaltura-ad-server');
 
 var id3Reader = require('../bin/TsId3Reader.node');
 
 var kaltura = {
 	client: require('../lib/client/KalturaClient')
+};
+
+
+colors.setTheme({
+	warn: 'yellow',
+	debug: 'blue',
+	error: 'red'
+});
+
+console.err = console.error;
+console.error = function(msg){
+	console.err(msg.error);
+};
+console.warn = function(msg){
+	console.err(msg.warn);
+};
+console.debug = function(msg){
+	console.log(msg.debug);
 };
 
 var partnerId = null;
@@ -18,6 +37,8 @@ var entryId = null;
 var serverHost = null;
 var canStart = true;
 var isCuePointsEnabled = null;
+var vast;
+var adServer;
 
 if (typeof Array.prototype.diff != 'function') {
 	Array.prototype.diff = function(arr) {
@@ -33,6 +54,10 @@ if (typeof Array.prototype.diff != 'function') {
 		}
 		return retArr;
 	};
+}
+
+function getUniqueId(){
+	return Math.floor(Math.random() * 10000000000000001).toString(36);
 }
 
 function printHelp() {
@@ -202,6 +227,7 @@ function handleAdminPlayManifest(client, manifestUrl, manifestContent) {
 			var playerClient = initClient(client.getKs());
 			var renditionUrl = url.resolve(manifestUrl, currentLine);
 			new AdminPlayer(playerClient, renditionUrl);
+			break;
 		}
 	}
 }
@@ -210,6 +236,10 @@ function getUrl(httpUrl, callback) {
 	http.get(httpUrl, function(response) {
 		console.log('Request [' + httpUrl + '] response: ' + response.statusCode);
 		console.log('Request [' + httpUrl + '] response headers: ' + util.inspect(response.headers));
+		
+		if(response.headers['x-kaltura']){
+			process.exit(0);
+		}
 		
 		if(response.statusCode == 302){
 			var redirectUrl = response.headers.location.replace(/^\s+|\s+$/gm,'');
@@ -240,7 +270,7 @@ function getUrl(httpUrl, callback) {
 function handleEntry(client, entry) {
 	if (entry.objectType && entry.objectType == 'KalturaAPIException') {
 		console.error('liveStream.get: ' + entry.message);
-		return;
+		process.exit(1);
 	}
 	
 	var playManifestUrl = 'http://' + serverHost + '/p/' + partnerId + '/playManifest/entryId/' + entryId + '/format/applehttp/usePlayServer/1';
@@ -287,11 +317,21 @@ Player.prototype = {
 	},
 	
 	getManifest: function(){
+
+		if(this.lastGoodManifest){
+    		var d = new Date();
+    		if(this.lastGoodManifest < (d.getTime() - 10000)){
+    			console.log('Stream is dead');
+    			return;
+    		}
+		}
+
 		var This = this;
+		
 		//console.log('Rendition [' + this.url + '] request...');
     	http.get(this.url, function(response) {
     		if(response.statusCode != 200){
-    			console.error('Rendition [' + This.url + '] status code [' + response.statusCode + ']');
+    			console.warn('Rendition [' + This.url + '] status code [' + response.statusCode + ']');
 
     			setTimeout(function(){
     				This.getManifest();
@@ -320,6 +360,9 @@ Player.prototype = {
     				}
     				This.handleManifest(newM3u8Lines);
     			}
+    			
+    			var d = new Date();
+    			This.lastGoodManifest = d.getTime();
 
     			setTimeout(function(){
     				This.getManifest();
@@ -332,14 +375,14 @@ Player.prototype = {
 	},	
 	
 	validateCuePointsAlreadyEnabled: function(syncPoint){
-		if(isCuePointsEnabled === false){
+		if(isCuePointsEnabled === 0){
 			console.error('Sync-point [' + syncPoint.id + '] accepted when sync-points should be disabled');
 		}
-	},	
+	},
 	
 	validateCuePointsStillEnabled: function(segment, segmentOffset){
 		if(isCuePointsEnabled && this.elapsedTime && this.elapsedTime.sequence == segment.sequence && Math.abs(this.elapsedTime.offset - segmentOffset) > 1000){
-			console.error('large gap between sync offset [' + this.formaTime(segmentOffset) + '] and calculated offset [' + this.formaTime(this.elapsedTime.offset) + ']');
+			console.warn('large gap between sync offset [' + this.formaTime(segmentOffset) + '] and calculated offset [' + this.formaTime(this.elapsedTime.offset) + ']');
 		}
 	},	
 	
@@ -383,7 +426,7 @@ Player.prototype = {
 		
 		fs.unlink(localPath, function(err){
 			if(err){
-				console.error('Delete file [' + localPath + ']:' + err);
+//				console.error('Delete file [' + localPath + ']:' + err);
 			}
 		});
 	},
@@ -396,7 +439,7 @@ Player.prototype = {
 		var This = this;
 		http.get(segmentUrl, function(response) {
     		if(response.statusCode != 200){
-    			console.error('Segment [' + segmentUrl + '] status code [' + response.statusCode + ']');
+    			console.warn('Segment [' + segmentUrl + '] status code [' + response.statusCode + ']');
     			return;
     		}
 
@@ -503,33 +546,87 @@ Player.prototype = {
 
 function AdminPlayer(client, renditionUrl){
 	this.init(client, renditionUrl);
-
 	this.isCuePointsEnabled = null;
 
-	// TODO create pre-defined cue-point for now + 60 sec
-	// TODO wait for now + 540 sec and create pre-defined cue-point for now + 60 sec
+	var This = this;
+
+	// create pre-defined cue-point for now + 60 sec
+	var callbacks = {
+		get: function(params) {
+			console.log('Ad VAST XML requested [' + params.id + ']');
+			// TODO
+		},
+		getAsset: function(params) {
+			console.log('Ad asset requested [' + params.id + ']');
+			// TODO
+		},
+		getImpression: function(params) {
+			console.log('Ad impression called [' + params.id + ']');
+			// TODO
+		},
+		getTracking: function(params) {
+			console.log('Ad tracking called [' + params.id + ']');
+			// TODO
+		},
+		getVideoClick: function(params) {
+			console.log('Ad video-click called [' + params.id + ']');
+			// TODO
+		}
+	};
+	var id = getUniqueId();
+	var sourceUrl = adServer.address + '/vast/get?id=' + id;
+	var duration = vast.register(id, callbacks);
+	this.createDateCuePoint(sourceUrl, 60, duration);
 	
 	setTimeout(function(){
-		this.enableCuePoints(client, 150);
+		This.enableCuePoints(150);
 	}, 120000);
 }
 util.inherits(AdminPlayer, Player);
 
 AdminPlayer.prototype.cuePointsDisabled = function(latency){
 	console.log('Admin Cue-Points Disabled');
-	this.isCuePointsEnabled = false;
+	this.isCuePointsEnabled--;
 	setTimeout(function(){
 		console.log('Cue-Points Disabled');
-		isCuePointsEnabled = false;
+		isCuePointsEnabled--;
 	}, latency * 1000);
+
+	// create pre-defined cue-point for now + 60 sec
+	var callbacks = {
+		get: function(params) {
+			console.log('Ad VAST XML requested [' + params.id + ']');
+			// TODO
+		},
+		getAsset: function(params) {
+			console.log('Ad asset requested [' + params.id + ']');
+			// TODO
+		},
+		getImpression: function(params) {
+			console.log('Ad impression called [' + params.id + ']');
+			// TODO
+		},
+		getTracking: function(params) {
+			console.log('Ad tracking called [' + params.id + ']');
+			// TODO
+		},
+		getVideoClick: function(params) {
+			console.log('Ad video-click called [' + params.id + ']');
+			// TODO
+		}
+	};
+	var id = getUniqueId();
+	var sourceUrl = adServer.address + '/vast/get?id=' + id;
+	var duration = vast.register(id, callbacks);
+	this.createDateCuePoint(sourceUrl, 60, duration);
 };
 
 AdminPlayer.prototype.cuePointsEnabled = function(latency){
 	console.log('Admin Cue-Points Enabled');
-	this.isCuePointsEnabled = true;
+	this.isCuePointsEnabled++;
 	setTimeout(function(){
 		console.log('Cue-Points Enabled');
-		isCuePointsEnabled = true;
+		isCuePointsEnabled++;
 	}, latency * 1000);
 };
 
@@ -549,34 +646,50 @@ AdminPlayer.prototype.enableCuePoints = function(duration){
 	}, entryId, 30, duration);
 };
 
-AdminPlayer.prototype.createTimeCuePoint = function(sourceUrl, startTime, endTime){
+AdminPlayer.prototype.createTimeCuePoint = function(sourceUrl, startTime, endTime, callback){
 	var cuePoint = new kaltura.client.objects.KalturaAdCuePoint();
 	cuePoint.sourceUrl = sourceUrl;
 	cuePoint.startTime = startTime;
 	cuePoint.endTime = endTime;
 	
-	this.createCuePoint(cuePoint);
+	this.createCuePoint(cuePoint, callback);
 };
 
-AdminPlayer.prototype.createDurationCuePoint = function(sourceUrl, startTime, duration){
+AdminPlayer.prototype.createDurationCuePoint = function(sourceUrl, startTime, duration, callback){
+	var cuePoint = new kaltura.client.objects.KalturaAdCuePoint();
 	cuePoint.sourceUrl = sourceUrl;
 	cuePoint.startTime = startTime;
 	cuePoint.duration = duration;
 	
-	this.createCuePoint(cuePoint);
+	this.createCuePoint(cuePoint, callback);
 };
 
-AdminPlayer.prototype.createDateCuePoint = function(sourceUrl, date, duration){
+AdminPlayer.prototype.createDateCuePoint = function(sourceUrl, date, duration, callback){
+	var cuePoint = new kaltura.client.objects.KalturaAdCuePoint();
 	cuePoint.sourceUrl = sourceUrl;
 	cuePoint.triggeredAt = date;
 	cuePoint.duration = duration;
 	
-	this.createCuePoint(cuePoint);
+	var This = this;
+	this.createCuePoint(cuePoint, function(cuePoint){
+		if(callback){
+			callback(cuePoint);
+			
+			var d = new Date();
+			var timeout = (cuePoint.triggeredAt * 1000) - d.getTime() - 25000; // sync-points should start 30 seconds before triggeredAt
+			var latency = 40;
+			setTimeout(function(){
+				This.cuePointsEnabled(latency);
+			}, timeout);
+			setTimeout(function(){
+				This.cuePointsDisabled(latency);
+			}, timeout + 10000);
+		}
+	});
 };
 
-AdminPlayer.prototype.createCuePoint = function(cuePoint){
+AdminPlayer.prototype.createCuePoint = function(cuePoint, callback){
 	cuePoint.entryId = entryId;
-	
 	this.client.cuePoint.add(function(cuePoint){
 		if (cuePoint && cuePoint.objectType && cuePoint.objectType == 'KalturaAPIException') {
 			console.error('cuePoint.add: ' + cuePoint.message);
@@ -584,11 +697,14 @@ AdminPlayer.prototype.createCuePoint = function(cuePoint){
 		}
 		
 		console.log('Cue-Point [' + cuePoint.id + '] created');
+		if(callback){
+			callback(cuePoint);
+		}
 	}, cuePoint);
 };
 
 AdminPlayer.prototype.validateCuePointsAlreadyEnabled = function(syncPoint){
-	if(this.isCuePointsEnabled === false){
+	if(this.isCuePointsEnabled === 0){
 		console.error('Sync-point [' + syncPoint.id + '] accepted when sync-points should be disabled');
 	}
 };
@@ -602,8 +718,36 @@ AdminPlayer.prototype.validateCuePointsStillEnabled = function(segment, segmentO
 AdminPlayer.prototype.handleSyncPoint = function(syncPoint, segment){
 	Player.prototype.handleSyncPoint.apply(this, [syncPoint, segment]);
 	
-	if(this.createCuePoints){
-		// TODO add cue-point for now
+
+		if (this.createCuePoints) {
+		var callbacks = {
+			get: function(params) {
+				console.log('Ad VAST XML requested [' + params.id + ']');
+				// TODO
+			},
+			getAsset: function(params) {
+				console.log('Ad asset requested [' + params.id + ']');
+				// TODO
+			},
+			getImpression: function(params) {
+				console.log('Ad impression called [' + params.id + ']');
+				// TODO
+			},
+			getTracking: function(params) {
+				console.log('Ad tracking called [' + params.id + ']');
+				// TODO
+			},
+			getVideoClick: function(params) {
+				console.log('Ad video-click called [' + params.id + ']');
+				// TODO
+			}
+		};
+		var id = getUniqueId();
+		var sourceUrl = adServer.address + '/vast/get?id=' + id;
+		var startTime = syncPoint.offset + 15000;
+		var endTime = startTime + vast.register(id, callbacks);
+		this.createTimeCuePoint(sourceUrl, startTime, endTime);
+		console.log('Ad created [' + id + ']');
 	}
 };
 
@@ -620,4 +764,101 @@ var options = {
 	privileges : null,
 	serviceUrl: 'http://' + serverHost
 };
-adServer.create(options);
+adServer = kalturaAdServer.create(options);
+vast = adServer.getProvider('vast');
+
+vast.getOriginal				= vast.get;
+vast.getOriginalAssetUrl		= vast.getAssetUrl;
+vast.getOriginalImpressionUrl	= vast.getImpressionUrl;
+vast.getOriginalTrackingUrl		= vast.getTrackingUrl;
+vast.getOriginalVideoClickUrl	= vast.getVideoClickUrl;
+
+vast.callbacks = {};
+
+// register id for tracking
+vast.register = function(id, callbacks){
+	this.callbacks[id] = callbacks;
+	
+	var duration = 0;
+	for (var entryId in this.entries) {
+		duration += this.entries[entryId].duration;
+	}
+	
+	return duration;
+};
+
+vast.get = function(request, response, params){
+	if(params.id && this.callbacks[params.id] && this.callbacks[params.id].get){
+		this.callbacks[params.id].get(params);
+	}
+	
+	return this.getOriginal(request, response, params);
+};
+
+vast.urls = {};
+
+vast.getUrl = function(response, params, callbackName){
+	if(params.id && this.callbacks[params.id] && this.callbacks[params.id][callbackName]){
+		var callback = this.callbacks[params.id][callbackName];
+		callback(params);
+	}
+
+	if(params.urlId && this.urls[params.urlId]){
+		response.writeHead(302, {
+		  'Location': this.urls[params.urlId]
+		});
+		response.end('Redirected by player test.');
+	}
+
+	response.writeHead(404);
+	response.end('Asset not found!');
+};
+
+vast.setUrl = function(originalUrl, identifier, callbackName){
+	if(!params.id){
+		return originalUrl;
+	}
+	
+	var urlId = identifier + '-' + params.id;
+	this.urls[urlId] = originalUrl;
+	
+	return this.adServer.address + '/vast/' + callbackName + '?id=' + params.id + '&urlId=' + urlId;
+};
+
+vast.getAsset = function(request, response, params){
+	this.getUrl(response, params, 'getAsset');
+};
+
+vast.getAssetUrl = function(asset, params){
+	var originalUrl = this.getOriginalAssetUrl(asset, params);
+	return this.setUrl(originalUrl, 'asset', 'getAsset');
+};
+
+vast.getImpression = function(request, response, params){
+	this.getUrl(response, params, 'getImpression');
+};
+
+vast.getImpressionUrl = function(entry, params){
+	var originalUrl = this.getOriginalImpressionUrl(entry, params);
+	return this.setUrl(originalUrl, 'impression', 'getImpression');
+};
+
+vast.getTracking = function(request, response, params){
+	this.getUrl(response, params, 'getTracking');
+};
+
+vast.getTrackingUrl = function(entry, eventType, params){
+	var originalUrl = this.getOriginalTrackingUrl(entry, eventType, params);
+	return this.setUrl(originalUrl, 'tracking-' + eventType, 'getTracking');
+};
+
+vast.getVideoClick = function(request, response, params){
+	this.getUrl(response, params, 'getVideoClick');
+};
+
+vast.getVideoClickUrl = function(entry, eventType, params){
+	var originalUrl = this.getOriginalVideoClickUrl(entry, eventType, params);
+	return this.setUrl(originalUrl, 'videoClick-' + eventType, 'getVideoClick');
+};
+
+
