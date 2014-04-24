@@ -4,8 +4,22 @@
 	<property name="bin.dir" value="${basedir}/bin" />
 	<property name="native.dir" value="${basedir}/native" />
 
-	<target name="install" depends="install-TsId3Reader-plugin, install-TsCutter-plugin, install-TsStitcher-plugin, install-TsPreparer">
+	<target name="install" depends="install-TsId3Reader-plugin, install-TsCutter-plugin, install-TsStitcher-plugin, install-TsPreparer, download-vast-client-js">
+		<exec dir="${basedir}" executable="npm" failonerror="true">
+			<arg value="install" />
+		</exec>
+	</target>
 
+	<target name="download-vast-client-js">
+		<delete dir="${basedir}/vast-client-js" />
+		<exec dir="${basedir}" executable="git" failonerror="true">
+			<arg value="clone" />
+			<arg value="https://github.com/kaltura/vast-client-js" />
+		</exec>
+		<copy todir="${basedir}/vendor/vast-client-js" overwrite="true" failonerror="true">
+			<fileset dir="${basedir}/vast-client-js/src"/>
+		</copy>
+		<delete dir="${basedir}/vast-client-js" />
 	</target>
 
 	<target name="build-id3lib">
