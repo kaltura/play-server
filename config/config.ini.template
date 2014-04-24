@@ -12,6 +12,7 @@ domain = @CLOUD_HOSTNAME@
 internalDomain = @CLOUD_HOSTNAME@
 httpPort = 80
 secret = @CLOUD_SECRET@
+sharedTempPath = @CLOUD_SHARED_TEMP_PATH@
 
 [logger]
 debugEnabled = 0
