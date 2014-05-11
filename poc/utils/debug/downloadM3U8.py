@@ -1,3 +1,4 @@
+import urlparse
 import urllib
 import sys
 import os
@@ -29,6 +30,7 @@ for curLine in origManifest.split('\n'):
 	elif curLine.startswith('#EXTINF:') or curLine.startswith('#EXT-X-DISCONTINUITY'):
 		flavorInfo += '\n' + curLine
 	elif curLine[0] != '#':
+		curLine = urlparse.urljoin(url, curLine)
 		tsSegments.append((flavorInfo, curLine))
 		flavorInfo = ''
 	else:
