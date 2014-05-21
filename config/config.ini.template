@@ -24,6 +24,7 @@ errorPath = @LOG_DIR@/kaltura_play_error.log
 adMedia = 0
 adMediaExtension = 600
 adHandled = 600
+cuePoint = 600
 
 entryHandled = 20
 entryRequired = 600
