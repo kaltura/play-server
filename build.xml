@@ -100,7 +100,6 @@
 	</target>
 
 	<target name="install-TsCutter-plugin" depends="install-TsCutter, build-TsCutter-plugin">
-		<copy file="${native.dir}/node_addons/TsCutter/build/Release/TsCutter.node" todir="${bin.dir}" failonerror="true" />
 	</target>
 
 	<target name="install-TsStitcher-plugin" depends="build-TsStitcher-plugin">
