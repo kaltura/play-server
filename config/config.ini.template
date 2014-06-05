@@ -13,6 +13,7 @@ internalDomain = @CLOUD_HOSTNAME@
 httpPort = 80
 secret = @CLOUD_SECRET@
 sharedTempPath = @CLOUD_SHARED_TEMP_PATH@
+requestTimeout = 40
 
 [logger]
 debugEnabled = 0
