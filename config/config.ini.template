@@ -38,6 +38,8 @@ blackMedia = 600
 restoreableAction = 600
 serverProcess = 60
 
+adFileDownloadTimeout = 60
+
 [memcache]
 hostname = 127.0.0.1
 port = 11211
