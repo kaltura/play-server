@@ -60,4 +60,4 @@ retry = 30000
 ;idle = 5000, the idle timeout for the connections.
 
 [stream]
-latency = 10
+latency = 60
