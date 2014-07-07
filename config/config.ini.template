@@ -61,4 +61,6 @@ retry = 30000
 ;idle = 5000, the idle timeout for the connections.
 
 [stream]
-latency = 40
+latency = 60
+cdnCacheScope = public
+cdnMaxAge = 864000
