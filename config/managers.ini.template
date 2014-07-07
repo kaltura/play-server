@@ -3,7 +3,12 @@
 
 [stream]
 ;useCdn = 1
-latency = 40
+;latency should be > 40
+latency = 60
+
+[media]
+cdnCacheScope = public
+cdnMaxAge = 864000
 
 [ad]
 
