@@ -6,6 +6,7 @@
 latency = 40
 
 [ad]
+vastRequestTimeOut = 5
 
 [segment]
 
