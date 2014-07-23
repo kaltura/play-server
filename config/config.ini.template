@@ -62,6 +62,3 @@ retry = 30000
 ;failOverServers = undefined, the ability use these servers as failover when the dead server get's removed from the consistent hashing scheme. This must be an array of servers confirm the server_locations specification.
 ;keyCompression = true, compress keys using md5 if they exceed the maxKeySize option.
 ;idle = 5000, the idle timeout for the connections.
-
-[stream]
-latency = 40
