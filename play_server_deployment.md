@@ -6,8 +6,7 @@ Environment:
 
 Machine prerequisites:
 =======================
-- Ffmpeg 2.1.3
-- fprobe 2.1.3
+- Ffmpeg 2.1.3 & fprobe 2.1.3 : unzip the archive in /opt/kaltura/play-server/bin/ffmpeg-2.1.3-bin.rar
 - Node 0.10.26 or above: installation reference: https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager#ubuntu-mint-elementary-os
 - Node Packaged Modules (npm) 1.4.3 or above (see above)
 - Node gyp 0.13.0 or above: npm install -g node-gyp
