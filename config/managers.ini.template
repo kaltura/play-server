@@ -11,6 +11,7 @@ cdnCacheScope = public
 cdnMaxAge = 864000
 
 [ad]
+vastRequestTimeOut = 5
 
 [segment]
 
