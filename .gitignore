@@ -1,4 +1,5 @@
 /node_modules
 /cache
 /config/*.ini
-/bin
+/bin/*
+!/bin/ffmpeg-2.1.3-bin.rar
