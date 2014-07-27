@@ -4,16 +4,24 @@
 	<property name="bin.dir" value="${basedir}/bin" />
 	<property name="native.dir" value="${basedir}/native" />
 
-	<target name="install" depends="install-TsId3Reader-plugin, install-TsCutter-plugin, install-TsStitcher-plugin, install-TsPreparer, download-vast-client-js">
+	<target name="install" depends="extract-ffmpeg, install-TsId3Reader-plugin, install-TsCutter-plugin, install-TsStitcher-plugin, install-TsPreparer, download-vast-client-js">
 		<exec dir="${basedir}" executable="npm" failonerror="true">
 			<arg value="install" />
 		</exec>
+	</target>
+
+	<target name="extract-ffmpeg">
+		<gunzip src="ffmpeg-2.1.3-bin.tar.gz"/>
+		<untar src="ffmpeg-2.1.3-bin.tar" dest="${bin.dir}"/>
+		<delete file="${basedir}/ffmpeg-2.1.3-bin.tar" />
 	</target>
 
 	<target name="download-vast-client-js">
 		<delete dir="${basedir}/vast-client-js" />
 		<exec dir="${basedir}" executable="git" failonerror="true">
 			<arg value="clone" />
+			<arg value="-b" />
+            <arg value="${version}" />		
 			<arg value="https://github.com/kaltura/vast-client-js" />
 		</exec>
 		<copy todir="${basedir}/vendor/vast-client-js" overwrite="true" failonerror="true">
