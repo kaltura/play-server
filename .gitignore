@@ -2,4 +2,4 @@
 /cache
 /config/*.ini
 /bin/*
-!/bin/ffmpeg-2.1.3-bin.rar
+!/bin/ffmpeg-2.1.3-bin.tar.gz
