@@ -15,7 +15,8 @@ Machine prerequisites:
 
 Code:
 =======================
-Clone https://github.com/kaltura/play-server to /opt/kaltura/play-server
+Clone https://github.com/kaltura/play-server to /opt/kaltura/play-server :
+git clone -b v1.1 https://github.com/kaltura/play-server
 
 Install:
 =======================
