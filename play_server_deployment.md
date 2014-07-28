@@ -20,7 +20,7 @@ Install:
 =======================
  - cd /opt/kaltura/play-server
  - npm install
- - ant 
+ - ant -Dversion={version} (e.g -Dversion=v1.1)
  - ln -s /opt/kaltura/play-server/bin/ffmpeg [PATH to FFMPEG]
  - ln -s /opt/kaltura/play-server/bin/ffprobe [PATH to FFPROBE]
 
