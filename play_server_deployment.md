@@ -6,10 +6,14 @@ Environment:
 
 Machine prerequisites:
 =======================
+- Git (For Ubuntu: https://www.digitalocean.com/community/tutorials/how-to-install-git-on-ubuntu-12-04)
+- Memcahced (For Ubuntu https://www.digitalocean.com/community/tutorials/how-to-install-and-use-memcache-on-ubuntu-12-04)
+- Run apt-get install python-software-properties
 - Node 0.10.26 or above: installation reference: https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager#ubuntu-mint-elementary-os
 - Node Packaged Modules (npm) 1.4.3 or above (see above)
 - Node gyp 0.13.0 or above: npm install -g node-gyp
 - Apache Ant 1.8.2 or above: apt-get -u install ant
+- Run apt-get install libmemcached-dev
 
 Code:
 =======================
