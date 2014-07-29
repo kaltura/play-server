@@ -12,6 +12,7 @@ cdnMaxAge = 864000
 
 [ad]
 vastRequestTimeOut = 5
+durationCoefficient = 1
 
 [segment]
 
