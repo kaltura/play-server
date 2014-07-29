@@ -94,6 +94,7 @@
 
 	<target name="install-TsCutter" depends="build-TsCutter">
 		<copy file="${native.dir}/ts_cutter/ts_cutter" todir="${bin.dir}" failonerror="true" />
+		<chmod file="${bin.dir}/ts_cutter" perm="755"/>
 	</target>
 
 	<target name="install-id3lib" depends="build-id3lib">
@@ -105,10 +106,12 @@
 
 	<target name="install-TsPreparer" depends="build-TsPreparer">
 		<copy file="${native.dir}/ts_preparer/ts_preparer" todir="${bin.dir}" failonerror="true" />
+		<chmod file="${bin.dir}/ts_preparer" perm="755"/>
 	</target>
 
 	<target name="install-TsId3Reader-plugin" depends="install-id3lib, build-TsId3Reader-plugin">
 		<copy file="${native.dir}/node_addons/TsId3Reader/build/Release/TsId3Reader.node" todir="${bin.dir}" failonerror="true" />
+		<chmod file="${bin.dir}/TsId3Reader.node" perm="755"/>
 	</target>
 
 	<target name="install-TsCutter-plugin" depends="install-TsCutter, build-TsCutter-plugin">
@@ -116,6 +119,7 @@
 
 	<target name="install-TsStitcher-plugin" depends="build-TsStitcher-plugin">
 		<copy file="${native.dir}/node_addons/TsStitcher/build/Release/TsStitcher.node" todir="${bin.dir}" failonerror="true" />
+		<chmod file="${bin.dir}/TsStitcher.node" perm="755"/>
 	</target>
 
 </project>
