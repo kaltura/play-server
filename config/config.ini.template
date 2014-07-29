@@ -22,6 +22,7 @@ logPath = @LOG_DIR@/kaltura_play.log
 errorPath = @LOG_DIR@/kaltura_play_error.log
 
 [cache]
+hackWowzaUniqueSession = 0
 adMedia = 0
 adMediaExtension = 600
 adHandled = 600
