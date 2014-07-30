@@ -14,10 +14,10 @@
 		<gunzip src="${bin.dir}/ffmpeg-2.1.3-bin.tar.gz"/>
 		<untar src="${bin.dir}/ffmpeg-2.1.3-bin.tar" dest="${bin.dir}"/>
 		<delete file="${bin.dir}/ffmpeg-2.1.3-bin.tar" />
-		<chmod file="${bin.dir}/ffmpeg-2.1.3/ffmpeg" perm="755"/>
-		<chmod file="${bin.dir}/ffmpeg-2.1.3/ffprobe" perm="755"/>
-		<chmod file="${bin.dir}/ffmpeg-2.1.3/ffmpeg-2.1.3.sh" perm="755"/>
-		<chmod file="${bin.dir}/ffmpeg-2.1.3/ffprobe-2.1.3.sh" perm="755"/>
+		<chmod file="${bin.dir}/ffmpeg-2.1.3/ffmpeg" perm="700"/>
+		<chmod file="${bin.dir}/ffmpeg-2.1.3/ffprobe" perm="700"/>
+		<chmod file="${bin.dir}/ffmpeg-2.1.3/ffmpeg-2.1.3.sh" perm="700"/>
+		<chmod file="${bin.dir}/ffmpeg-2.1.3/ffprobe-2.1.3.sh" perm="700"/>
 	</target>
 
 	<target name="download-vast-client-js">
@@ -94,7 +94,7 @@
 
 	<target name="install-TsCutter" depends="build-TsCutter">
 		<copy file="${native.dir}/ts_cutter/ts_cutter" todir="${bin.dir}" failonerror="true" />
-		<chmod file="${bin.dir}/ts_cutter" perm="755"/>
+		<chmod file="${bin.dir}/ts_cutter" perm="700"/>
 	</target>
 
 	<target name="install-id3lib" depends="build-id3lib">
@@ -106,12 +106,12 @@
 
 	<target name="install-TsPreparer" depends="build-TsPreparer">
 		<copy file="${native.dir}/ts_preparer/ts_preparer" todir="${bin.dir}" failonerror="true" />
-		<chmod file="${bin.dir}/ts_preparer" perm="755"/>
+		<chmod file="${bin.dir}/ts_preparer" perm="700"/>
 	</target>
 
 	<target name="install-TsId3Reader-plugin" depends="install-id3lib, build-TsId3Reader-plugin">
 		<copy file="${native.dir}/node_addons/TsId3Reader/build/Release/TsId3Reader.node" todir="${bin.dir}" failonerror="true" />
-		<chmod file="${bin.dir}/TsId3Reader.node" perm="755"/>
+		<chmod file="${bin.dir}/TsId3Reader.node" perm="700"/>
 	</target>
 
 	<target name="install-TsCutter-plugin" depends="install-TsCutter, build-TsCutter-plugin">
@@ -119,7 +119,7 @@
 
 	<target name="install-TsStitcher-plugin" depends="build-TsStitcher-plugin">
 		<copy file="${native.dir}/node_addons/TsStitcher/build/Release/TsStitcher.node" todir="${bin.dir}" failonerror="true" />
-		<chmod file="${bin.dir}/TsStitcher.node" perm="755"/>
+		<chmod file="${bin.dir}/TsStitcher.node" perm="700"/>
 	</target>
 
 </project>
