@@ -15,6 +15,7 @@ Machine prerequisites:
 - Node gyp 0.13.0 or above: npm install -g node-gyp
 - Apache Ant 1.8.2 or above: apt-get -u install ant
 - Run apt-get install libmemcached-dev
+- Run apt-get install libfontconfig1
 
 Code:
 =======================
