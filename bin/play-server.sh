@@ -32,11 +32,7 @@ LOGFILE="/var/log/play-server.log"
 MIN_UPTIME="5000"
 SPIN_SLEEP_TIME="2000"
  
-# Add node to the path for situations in which the environment is passed.
 PATH=$NODE_BIN_DIR:$PATH
-# Export all environment variables that must be visible for the Node.js
-# application process forked by Forever. It will not see any of the other
-# variables defined in this script.
 export NODE_PATH=$NODE_PATH
  
 start() {
@@ -71,18 +67,6 @@ restart() {
 }
  
 status() {
-    # On Ubuntu this isn't even necessary. To find out whether the service is
-    # running, use "service my-application status" which bypasses this script
-    # entirely provided you used the service utility to start the process.
-    #
-    # The commented line below is the obvious way of checking whether or not a
-    # process is currently running via Forever, but in recent Forever versions
-    # when the service is started during Chef provisioning a dead pipe is left
-    # behind somewhere and that causes an EPIPE exception to be thrown.
-    # forever list | grep -q "$APPLICATION_PATH"
-    #
-    # So instead we add an extra layer of indirection with this to bypass that
-    # issue.
     echo `forever list` | grep -q "$APPLICATION_PATH"
     if [ "$?" -eq "0" ]; then
         echo "$NAME is running."
