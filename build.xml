@@ -4,7 +4,7 @@
 	<property name="bin.dir" value="${basedir}/bin" />
 	<property name="native.dir" value="${basedir}/native" />
 
-	<target name="install" depends="extract-ffmpeg, install-TsId3Reader-plugin, install-TsCutter-plugin, install-TsStitcher-plugin, install-TsPreparer, download-vast-client-js">
+	<target name="install" depends="extract-ffmpeg, install-TsId3Reader-plugin, install-TsCutter-plugin, install-TsStitcher-plugin, install-TsPreparer, download-vast-client-js, install-forever">
 		<exec dir="${basedir}" executable="npm" failonerror="true">
 			<arg value="install" />
 		</exec>
@@ -120,6 +120,19 @@
 	<target name="install-TsStitcher-plugin" depends="build-TsStitcher-plugin">
 		<copy file="${native.dir}/node_addons/TsStitcher/build/Release/TsStitcher.node" todir="${bin.dir}" failonerror="true" />
 		<chmod file="${bin.dir}/TsStitcher.node" perm="700"/>
+	</target>
+	
+	<target name="install-forever">
+		<exec executable="npm">
+			<arg value="install" />
+			<arg value="-g" />
+			<arg value="forever" />
+		</exec>
+	</target>
+	
+	<target name="play-server-service" depends="install-forever">
+		<symlink link="/etc/init.d/play-server" resource="${bin.dir}/play-server.sh" failonerror="true"/>
+		<chmod file="${bin.dir}/play-server.sh" perm="700"/>
 	</target>
 
 </project>
