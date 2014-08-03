@@ -11,9 +11,12 @@ domain = @CLOUD_HOSTNAME@
 ; domainPort = 80
 internalDomain = @CLOUD_HOSTNAME@
 httpPort = 80
+;httpsPort = 443
 secret = @CLOUD_SECRET@
 sharedTempPath = @CLOUD_SHARED_TEMP_PATH@
 requestTimeout = 40
+;keyFilePath = @KEY_FILE_PATH@
+;certFilePath = @CERT_FILE_PATH@
 
 [logger]
 debugEnabled = 0
