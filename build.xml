@@ -4,7 +4,7 @@
 	<property name="bin.dir" value="${basedir}/bin" />
 	<property name="native.dir" value="${basedir}/native" />
 
-	<target name="install" depends="extract-ffmpeg, install-TsId3Reader-plugin, install-TsCutter-plugin, install-TsStitcher-plugin, install-TsPreparer, download-vast-client-js, install-forever">
+	<target name="install" depends="extract-ffmpeg, install-TsId3Reader-plugin, install-TsCutter-plugin, install-TsStitcher-plugin, install-TsPreparer, download-vast-client-js, install-forever, copy-template-files">
 		<exec dir="${basedir}" executable="npm" failonerror="true">
 			<arg value="install" />
 		</exec>
@@ -133,6 +133,22 @@
 	<target name="play-server-service" depends="install-forever">
 		<symlink link="/etc/init.d/play-server" resource="${bin.dir}/play-server.sh" failonerror="true"/>
 		<chmod file="${bin.dir}/play-server.sh" perm="700"/>
+	</target>
+	
+	<target name="copy-template-files">
+		<copy file="${basedir}/config/config.ini.template" todir="${basedir}/config/config.ini" failonerror="true" />
+		<copy file="${basedir}/config/managers.ini.template" todir="${basedir}/config/managers.ini" failonerror="true" />
+	</target>
+	
+	<target name="replace-Config-file-tokens" depends="copy-template-files">
+		<replace file="${basedir}/config/config.ini" value="@TOKEN_VALU_NOT_FOUND@" propertyFile="${configFilePath}" failOnNoReplacements="true">
+		  	<replacefilter token="@SERVICE_URL@" property="user_input.SERVICE_URL"/>
+			<replacefilter token="@PLAY_PARTNER_ADMIN_SECRET@" property="user_input.PLAY_PARTNER_ADMIN_SECRET"/>
+		  	<replacefilter token="@CLOUD_HOSTNAME@" property="user_input.CLOUD_HOSTNAME"/>
+		  	<replacefilter token="@CLOUD_SECRET@" property="user_input.CLOUD_SECRET"/>
+			<replacefilter token="@CLOUD_SHARED_TEMP_PATH@" property="user_input.CLOUD_SHARED_TEMP_PATH"/>
+			<replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
+		</replace>
 	</target>
 
 </project>

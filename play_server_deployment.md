@@ -19,26 +19,17 @@ Machine prerequisites:
 
 Code:
 =======================
-Clone https://github.com/kaltura/play-server to /opt/kaltura/play-server :
+Clone https://github.com/kaltura/play-server to /opt/kaltura/play-server:
 git clone -b v1.1 https://github.com/kaltura/play-server
-
-Install:
-=======================
- - cd /opt/kaltura/play-server
- - npm install
- - ant -Dversion={version} (e.g -Dversion=v1.1)
- - ln -s /opt/kaltura/play-server/bin/ffmpeg [PATH to FFMPEG]
- - ln -s /opt/kaltura/play-server/bin/ffprobe [PATH to FFPROBE]
 
 Configure:
 =======================
-- cp /opt/kaltura/play-server/config/config.ini.template /opt/kaltura/play-server/config/config.ini
-- cp /opt/kaltura/play-server/config/managers.ini.template /opt/kaltura/play-server/config/managers.ini
+- cp /opt/kaltura/play-server/config/user_input.ini.template /opt/kaltura/play-server/config/user_input.ini
 - mkdir /opt/kaltura/shared/tmp
 - mkdir /opt/kaltura/shared/tmp/ad_download
 - mkdir /opt/kaltura/log
 
-Replace tokens in ini files:
+Replace tokens in user_input.ini file:
 =======================
 - @SERVICE_URL@ - Kaltura API server host name
 - @PLAY_PARTNER_ADMIN_SECRET@ - Admin secret of partner -6.
@@ -46,6 +37,14 @@ Replace tokens in ini files:
 - @CLOUD_SECRET@ - Random short string, e.g. 'abc'
 - @CLOUD_SHARED_TEMP_PATH@ - path to shared temp folder disc, e.g. /opt/kaltura/shared/tmp
 - @LOG_DIR@ - Path to logs folder, e.g. /opt/kaltura/log.
+
+Install:
+=======================
+ - cd /opt/kaltura/play-server
+ - npm install
+ - ant -Dversion={version} -DconfigFilePath={user_input file path} (e.g -Dversion=v1.1 -DconfigFilePath=/opt/kaltura/play-server/config/user_input.ini)
+ - ln -s /opt/kaltura/play-server/bin/ffmpeg [PATH to FFMPEG]
+ - ln -s /opt/kaltura/play-server/bin/ffprobe [PATH to FFPROBE]
 
 Execute:
 =======================
