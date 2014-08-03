@@ -46,6 +46,7 @@ Replace tokens in ini files:
 - @CLOUD_SECRET@ - Random short string, e.g. 'abc'
 - @CLOUD_SHARED_TEMP_PATH@ - path to shared temp folder disc, e.g. /opt/kaltura/shared/tmp
 - @LOG_DIR@ - Path to logs folder, e.g. /opt/kaltura/log.
+- If you are not running with a production environment Wowza license update hackWowzaUniqueSession to 1   
 
 Execute:
 =======================
