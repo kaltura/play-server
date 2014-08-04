@@ -17,6 +17,21 @@ Machine prerequisites:
 - Run apt-get install libmemcached-dev
 - Run apt-get install libfontconfig1
 
+Kaltura platform required changes:
+=======================
+- Please note for play-server needs version IX-9.19.1 at least for it to run. So if you are behind please update you Kaltura installation before continuing to any of the next steps.
+- Create play-server partner by running: mysql /opt/Kaltura/app/deployment/updates/sql/2014_08_04_create_play_partner.sql?
+- Add permission to play server partner by running: php /opt/Kaltura/app/deployment/updates/scripts/add_permissions/2014_08_04_play_server_partner_live.php
+- update admin.ini file to include the new partner configuration flag for play server. 
+To do that add the following section in you admin.ini file (need to clear cache for changes to take affect):
+moduls.enablePlayServer.enabled = true
+moduls.enablePlayServer.permissionType = 2
+moduls.enablePlayServer.label = Enable Play-Server
+moduls.enablePlayServer.permissionName = FEATURE_PLAY_SERVER
+moduls.enablePlayServer.basePermissionType =
+moduls.enablePlayServer.basePermissionName =
+moduls.enablePlayServer.group = GROUP_ENABLE_DISABLE_FEATURES
+
 Code:
 =======================
 Clone https://github.com/kaltura/play-server to /opt/kaltura/play-server :
