@@ -59,9 +59,7 @@ Install:
  - cd /opt/kaltura/play-server
  - npm install
  - ant -Dversion={version} -DconfigFilePath={user_input.ini file path} (e.g -Dversion=v1.1 -DconfigFilePath=/opt/kaltura/play-server/config/user_input.ini)
- - ln -s /opt/kaltura/play-server/bin/ffmpeg [PATH to FFMPEG]
- - ln -s /opt/kaltura/play-server/bin/ffprobe [PATH to FFPROBE]   
-
+ 
 Execute:
 =======================
 node /opt/kaltura/play-server/main.js

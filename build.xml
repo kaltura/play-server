@@ -11,6 +11,8 @@
 	</target>
 
 	<target name="extract-ffmpeg">
+		<symlink action="delete" link="${bin.dir}/ffmpeg"/>
+		<symlink action="delete" link="${bin.dir}/ffprobe"/>
 		<gunzip src="${bin.dir}/ffmpeg-2.1.3-bin.tar.gz"/>
 		<untar src="${bin.dir}/ffmpeg-2.1.3-bin.tar" dest="${bin.dir}"/>
 		<delete file="${bin.dir}/ffmpeg-2.1.3-bin.tar" />
@@ -18,6 +20,8 @@
 		<chmod file="${bin.dir}/ffmpeg-2.1.3-bin/ffprobe" perm="700"/>
 		<chmod file="${bin.dir}/ffmpeg-2.1.3-bin/ffmpeg-2.1.3.sh" perm="700"/>
 		<chmod file="${bin.dir}/ffmpeg-2.1.3-bin/ffprobe-2.1.3.sh" perm="700"/>
+		<symlink link="${bin.dir}/ffmpeg" resource="${bin.dir}/ffmpeg-2.1.3-bin/ffmpeg-2.1.3.sh"/>
+		<symlink link="${bin.dir}/ffprobe" resource="${bin.dir}/ffmpeg-2.1.3-bin/ffprobe-2.1.3.sh"/>
 	</target>
 
 	<target name="download-vast-client-js">
