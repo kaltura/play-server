@@ -23,7 +23,7 @@ Kaltura platform required changes:
 - Minimum html5 player lib version is v2.15.
 - Create play-server partner by running: mysql /opt/Kaltura/app/deployment/updates/sql/2014_08_04_create_play_partner.sql?
 - Add permission to play server partner by running: php /opt/Kaltura/app/deployment/updates/scripts/add_permissions/2014_08_04_play_server_partner_live.php
-- update local.ini file and set the play_server_host value to point to you play server host_name/load_balancer. 
+- update local.ini file and set the play_server_host value to point to your play server host_name/load_balancer. 
 - update admin.ini file to include the new partner configuration flag for play server. 
 To do that add the following section in you admin.ini file (need to clear cache for changes to take affect):
 moduls.enablePlayServer.enabled = true
