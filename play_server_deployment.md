@@ -20,6 +20,7 @@ Machine prerequisites:
 Kaltura platform required changes:
 =======================
 - Please note for play-server needs version IX-9.19.1 at least for it to run. So if you are behind please update you Kaltura installation before continuing to any of the next steps.
+- Minimum html5 player lib version is v2.15.
 - Create play-server partner by running: mysql /opt/Kaltura/app/deployment/updates/sql/2014_08_04_create_play_partner.sql?
 - Add permission to play server partner by running: php /opt/Kaltura/app/deployment/updates/scripts/add_permissions/2014_08_04_play_server_partner_live.php
 - update admin.ini file to include the new partner configuration flag for play server. 
@@ -51,17 +52,19 @@ Replace tokens in user_input.ini files:
 - @CLOUD_HOSTNAME@ - Hostname of the cloud load balancer.
 - @CLOUD_SECRET@ - Random short string, e.g. 'abc'
 - @CLOUD_SHARED_TEMP_PATH@ - path to shared temp folder disc, e.g. /opt/kaltura/shared/tmp
-- @LOG_DIR@ - Path to logs folder, e.g. /opt/kaltura/log.
-- If you are not running with a production environment Wowza license update hackWowzaUniqueSession to 1   
+- @LOG_DIR@ - Path to logs folder, e.g. /opt/kaltura/log.  
 
 Install:
 =======================
  - cd /opt/kaltura/play-server
  - npm install
  - ant -Dversion={version} -DconfigFilePath={user_input.ini file path} (e.g -Dversion=v1.1 -DconfigFilePath=/opt/kaltura/play-server/config/user_input.ini)
- - ln -s /opt/kaltura/play-server/bin/ffmpeg [PATH to FFMPEG]
- - ln -s /opt/kaltura/play-server/bin/ffprobe [PATH to FFPROBE]   
-
+ 
+ Post Install requirements:
+ =======================
+ - If you are not running with a production environment Wowza license update hackWowzaUniqueSession to 1.
+ - play server by default runs on port 80 for http, make sure this port is open. If it's not please change to the correct port in config.ini file.
+ 
 Execute:
 =======================
 node /opt/kaltura/play-server/main.js
