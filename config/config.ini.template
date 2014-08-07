@@ -48,7 +48,7 @@ serverProcess = 60
 adFileDownloadTimeout = 60
 
 [memcache]
-hostname = 127.0.0.1
+hostname = @MEMCACHE_HOST@
 port = 11211
 touchEnabled = 0
 ; See all option in https://www.npmjs.org/package/memcached
