@@ -68,4 +68,4 @@ Install:
  
 Execute:
 =======================
-node /opt/kaltura/play-server/main.js
+/etc/init.d/kaltura_play start

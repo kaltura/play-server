@@ -135,7 +135,7 @@
 	</target>
 	
 	<target name="play-server-service" depends="install-forever">
-		<symlink link="/etc/init.d/play-server" resource="${bin.dir}/play-server.sh" failonerror="true" overwrite="true"/>
+		<symlink link="/etc/init.d/kaltura_play" resource="${bin.dir}/play-server.sh" failonerror="true" overwrite="true"/>
 		<chmod file="${bin.dir}/play-server.sh" perm="700"/>
 	</target>
 	
