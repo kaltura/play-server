@@ -152,6 +152,7 @@
 		  	<replacefilter token="@CLOUD_SECRET@" property="user_input.CLOUD_SECRET"/>
 			<replacefilter token="@CLOUD_SHARED_TEMP_PATH@" property="user_input.CLOUD_SHARED_TEMP_PATH"/>
 			<replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
+			<replacefilter token="@MEMCACHE_HOST@" property="user_input.MEMCACHE_HOST"/>
 			<replacefilter token="@BIN_DIR@" value="${bin.dir}"/>
 		</replace>
 	</target>
