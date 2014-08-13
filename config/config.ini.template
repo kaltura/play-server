@@ -33,7 +33,7 @@ adHandled = 600
 cuePoint = 600
 uiConfConfig = 600
 playerConfig = 600
-entryAdTrackRequied = 600
+entryAdTrack = 600
 
 entryHandled = 20
 entryRequired = 600
