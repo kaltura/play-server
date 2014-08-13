@@ -15,6 +15,7 @@ httpPort = 80
 secret = @CLOUD_SECRET@
 sharedTempPath = @CLOUD_SHARED_TEMP_PATH@
 requestTimeout = 40
+segmentsHistoryLimit = 12
 ;keyFilePath = @KEY_FILE_PATH@
 ;certFilePath = @CERT_FILE_PATH@
 
