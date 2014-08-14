@@ -46,7 +46,7 @@ function insertAd() {
 	
 	insertAdBtn.prop('disabled',true);
 	
-	var insertAdRequest = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + videoTag.currentTime + "&adSlotDuration=" + window.adSlotDuration;
+	var insertAdRequest = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + videoTag.currentTime + "&vastUrl=" + window.vastUrl + "&adSlotDuration=" + window.adSlotDuration;
 	$.ajax({
 		url: insertAdRequest
 	}).done(function( data ) {
@@ -104,6 +104,7 @@ function start() {
 	window.origUrl = $("#origUrl").val();
 	window.autoAdInsert = $("#autoAdInsert").is(':checked');
 	window.adSlotDuration = $("#adSlotDuration").val();
+	window.vastUrl = $("#vastUrl").val();
 	window.entryId = $("#entryId").val();
  
 	var fullStitchedUrl = '@EXTERNAL_URL@/masterstitch.m3u8?entryId=' + window.entryId + '&url=' + encodeURIComponent(window.origUrl);
@@ -173,6 +174,10 @@ function start() {
 				<label for="adSlotDuration">Ad slot duration</label>
 				<input type="text" class="form-control" id="adSlotDuration" value="32">
 			</div>  
+			<div class="form-group">
+				<label for="vastUrl">VAST Url</label>
+				<input type="text" class="form-control" id="vastUrl" value="http://search.spotxchange.com/vast/2.00/79391?content_page_url={utility.random}&cb={utility.random}&VPI=MP4">
+			</div>  			
 			<div class="checkbox">
 				<label>
 					<input id="autoAdInsert" type="checkbox">Auto ad insertion

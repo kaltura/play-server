@@ -22,6 +22,8 @@ var exec = require('child_process').exec;
 var spawn = require('child_process').spawn;
 var fs = require('fs');
 
+require('./vastParser');
+
 // parameters
 const LOCAL_SERVER_PORT = 1337;
 const SERVER_EXTERNAL_DOMAIN = 'adstitchdemo.kaltura.com';
@@ -69,7 +71,7 @@ const MASTER_STITCH_URI = '/masterstitch.m3u8';
 const FLAVOR_STITCH_URI = '/flavorstitch.m3u8';
 const MASTER_PROXY_URI = '/masterproxy.m3u8';
 const FLAVOR_PROXY_URI = '/flavorproxy.m3u8';
-const INSERT_AD_URI = '/insertAd.js'
+const INSERT_AD_URI = '/insertAd.js';
 const START_TRACKER_URI = '/startAdTracker.js';
 const AD_SEGMENT_REDIRECT_URI = '/adRedirect.ts';
 const STITCH_SEGMENT_URI = '/stitchSegment.ts';
@@ -499,28 +501,37 @@ function readTrackerOutput(res, trackerOutputKey, successCallback, errorCallback
 	});
 }
 
-function allocateAdsForUser(res, entryId, adPositions, allocatedAds, adsToPrepare) {
+function allocateAdsForUser(res, entryId, adPositions, allocatedAds, adsToPrepare, callback) {
 	var newAllocatedAds = {};
-	
+	var adsCount = adPositions.length;
 	// find which ads should be prepared
 	for (var i = 0; i < adPositions.length; i++) {
 		var adPosition = adPositions[i];
 		if (allocatedAds[adPosition.cuePointId]) {
 			// already allocated
 			newAllocatedAds[adPosition.cuePointId] = allocatedAds[adPosition.cuePointId];
+			adsCount--;
+			if(adsCount == 0){
+				return callback(newAllocatedAds);
+			}
 			continue;
 		}
 		
 		res.log('requesting ad for user');
-
-		// XXXX TODO get via VAST
-		var adUrl = adPoolUrls[Math.floor(Math.random()*adPoolUrls.length)];		
 		
-		var adId = md5(adUrl);
-		adsToPrepare.push({adUrl: adUrl, adId: adId, entryId: entryId});		
-		newAllocatedAds[adPosition.cuePointId] = adId;
+		// get via VAST
+		vastParser.getAdMediaFiles(res, adPositions[i].vastUrl, adPositions[i].adSlotDuration*1000, function(adUrl){
+			if(adUrl){
+				var adId = md5(adUrl);
+				adsToPrepare.push({adUrl: adUrl, adId: adId, entryId: entryId});		
+				newAllocatedAds[adPosition.cuePointId] = adId;				
+			}
+			adsCount--;
+			if(adsCount == 0){
+				return callback(newAllocatedAds);
+			}			
+		});
 	}
-	return newAllocatedAds;
 }
 
 function processFlavorStitch(params, res) {
@@ -601,11 +612,11 @@ function processFlavorStitch(params, res) {
 		
 		var adsToPrepare = [];
 		
-		var newAllocatedAds = allocateAdsForUser(res, params.entryId, adPositions, allocatedAds, adsToPrepare);
-		memcache.set(allocatedAdsKey, JSON.stringify(newAllocatedAds), 3600, function (err) {});
-
-		// prepare the ads
-		prepareAdsForEntry(adsToPrepare);
+		allocateAdsForUser(res, params.entryId, adPositions, allocatedAds, adsToPrepare, function(newAllocatedAds){
+			memcache.set(allocatedAdsKey, JSON.stringify(newAllocatedAds), 3600, function (err) {});
+			// prepare the ads
+			prepareAdsForEntry(adsToPrepare);			
+		});
 	});
 }
 
@@ -942,7 +953,7 @@ function processFlavorProxy(queryParams, res) {
 	});
 }
 
-function doInsertAd(entryId, segmentId, segmentOffset, adSlotDuration, res) {
+function doInsertAd(entryId, segmentId, segmentOffset, vastUrl, adSlotDuration, res) {
 	res.log('inserting ad - segmentId=' + segmentId + ' segmentOffset=' + segmentOffset);	
 
 	var adPositionsKey = 'adPos-' + entryId;
@@ -978,6 +989,7 @@ function doInsertAd(entryId, segmentId, segmentOffset, adSlotDuration, res) {
 			startSegmentId: segmentId,
 			startSegmentOffset: segmentOffset,
 			adSlotDuration: parseInt(adSlotDuration),			// get from parameter
+			vastUrl: vastUrl,
 		};
 		
 		adPositions.push(newAd);
@@ -1003,7 +1015,7 @@ function processInsertAd(params, res) {
 	if (params.segmentId && params.segmentOffset) {
 		var segmentId = parseInt(params.segmentId);
 		var segmentOffset = parseFloat(params.segmentOffset);
-		doInsertAd(params.entryId, segmentId, segmentOffset, params.adSlotDuration, res);
+		doInsertAd(params.entryId, segmentId, segmentOffset, params.vastUrl, params.adSlotDuration, res);
 	} else if (params.currentTime && params.currentTime != '0' && params.uid) {
 		memcache.get('segmentOffsets-' + params.uid, function (err, segmentOffsets) {
 			if (err || !segmentOffsets) {
@@ -1018,7 +1030,7 @@ function processInsertAd(params, res) {
 				return;
 			}
 			
-			doInsertAd(params.entryId, translatedTime.segmentId, translatedTime.segmentOffset, params.adSlotDuration, res);
+			doInsertAd(params.entryId, translatedTime.segmentId, translatedTime.segmentOffset, params.vastUrl, params.adSlotDuration, res);
 		});
 	} else {
 		errorMissingParameter(res);
