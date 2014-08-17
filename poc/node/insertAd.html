@@ -6,12 +6,36 @@ body { padding: 15px; }
 </style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
 <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js" ></script>
+<script src="//www.kaltura.com/html5/html5lib/v2.16/mwEmbedLoader.php"></script>
 <script>
 
 const PRIO_NOTICE = 1;
 const PRIO_WARNING = 2;
 const PRIO_ERROR = 3;
 const PRIO_HIGH = 4;
+function embedPlayer(srcUrl){
+	mw.setConfig("LeadWithHLSOnFlash",true);
+	mw.setConfig("Kaltura.LeadWithHTML5",true);
+		mw.setConfig('EmbedPlayer.ReplaceSources', [
+			{
+				'type' : 'application/vnd.apple.mpegurl',
+				'src' : srcUrl
+			}
+		]);
+	kWidget.embed({
+		"targetId": "videoTag",
+		"wid": "_243342",
+		"uiconf_id": 25675992,
+		"cache_st": 1408262198,
+		"entry_id": "1_bhej6q2a",
+		"flashvars":{"liveCore":{"disableLiveCheck":true}}
+	});
+}
+
+function jsCallbackReady(playerId){
+	window.player = document.getElementById(playerId);
+}
+
 
 function outputMessage(msg, priority) {	
 	if (priority < window.currentMessagePriority) {
@@ -35,9 +59,12 @@ function outputMessage(msg, priority) {
 }
 
 function insertAd() {
-	var videoTag = $("#videoTag")[0];
-
-	if (videoTag.currentTime == 0) {
+	if (!window.player) {
+		outputMessage("Failed: could not get video player position", PRIO_ERROR);
+		return;
+	}
+	var currenttime = window.player.evaluate("{video.player.currentTime}");
+	if (currenttime == 0) {
 		outputMessage("Failed: could not get video player position", PRIO_ERROR);
 		return;
 	}
@@ -45,8 +72,7 @@ function insertAd() {
 	var insertAdBtn = $("#insertAdBtn");
 	
 	insertAdBtn.prop('disabled',true);
-	
-	var insertAdRequest = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + videoTag.currentTime + "&adSlotDuration=" + window.adSlotDuration;
+	var insertAdRequest = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + currenttime+ "&vastUrl=" + window.vastUrl + "&adSlotDuration=" + window.adSlotDuration;	
 	$.ajax({
 		url: insertAdRequest
 	}).done(function( data ) {
@@ -69,15 +95,14 @@ function startAdInsertTimer() {
 }
 
 function verifyPlayingRealTime() {
-	var videoTag = $("#videoTag")[0];
-
-	if (videoTag.currentTime == 0) {
+	var currenttime = window.player.evaluate("{video.player.currentTime}");
+	if (currenttime == 0) {
 		return;
 	}
 
-	var currentLag = videoTag.seekable.end(0) - videoTag.currentTime;
-	if (currentLag > 30)
-		outputMessage("Warning: player is lagging real-time by " + (Math.round(currentLag * 100) / 100) + " seconds, in order to place an ad seek to the end", PRIO_WARNING);
+	// var currentLag = videoTag.seekable.end(0) - videoTag.currentTime;
+	// if (currentLag > 30)
+	// 	outputMessage("Warning: player is lagging real-time by " + (Math.round(currentLag * 100) / 100) + " seconds, in order to place an ad seek to the end", PRIO_WARNING);
 }
 
 function checkWhetherStreamIsWatched() {
@@ -92,10 +117,9 @@ function checkWhetherStreamIsWatched() {
 }
 
 function notifyStatus() {
-	var videoTag = $("#videoTag")[0];
-
+	var currenttime = window.player.evaluate("{video.player.currentTime}");
 	$.ajax({
-		url: "@EXTERNAL_URL@/notifyStatusAdmin.js?currenttime=" + videoTag.currentTime + "&end=" + videoTag.seekable.end(0)
+		url: "@EXTERNAL_URL@/notifyStatusAdmin.js?currenttime=" + currenttime //+ "&end=" + videoTag.seekable.end(0)
 	});	
 }
 
@@ -104,6 +128,7 @@ function start() {
 	window.origUrl = $("#origUrl").val();
 	window.autoAdInsert = $("#autoAdInsert").is(':checked');
 	window.adSlotDuration = $("#adSlotDuration").val();
+	window.vastUrl = $("#vastUrl").val();
 	window.entryId = $("#entryId").val();
  
 	var fullStitchedUrl = '@EXTERNAL_URL@/masterstitch.m3u8?entryId=' + window.entryId + '&url=' + encodeURIComponent(window.origUrl);
@@ -115,9 +140,7 @@ function start() {
 	}).done(function( shortStitchedUrl ) {
 		// update video source
 		var videoUrl = '@EXTERNAL_URL@/masterproxy.m3u8?uid=@UID@&url=' + encodeURIComponent(window.origUrl);
-		var videoTag = $("#videoTag")[0];
-		videoTag.setAttribute("src", videoUrl);
-
+		embedPlayer(videoUrl);
 		// update the displayed stitched URL
 		$("#stitchedUrl").html(shortStitchedUrl);
 		
@@ -173,6 +196,10 @@ function start() {
 				<label for="adSlotDuration">Ad slot duration</label>
 				<input type="text" class="form-control" id="adSlotDuration" value="32">
 			</div>  
+			<div class="form-group">
+				<label for="vastUrl">VAST Url</label>
+				<input type="text" class="form-control" id="vastUrl" value="http://search.spotxchange.com/vast/2.00/79391?content_page_url={utility.random}&cb={utility.random}&VPI=MP4">
+			</div> 
 			<div class="checkbox">
 				<label>
 					<input id="autoAdInsert" type="checkbox">Auto ad insertion
@@ -198,7 +225,7 @@ function start() {
 		</p>
 		<div style="width:600px;">
 			<h4>Live Feed Monitor [Ad Ops]</h4>
-			<video id="videoTag" width="600" height="400" autoplay="" controls=""/>
+			<div id="videoTag" style="width:600px;height:400px"></div>
 		</div>
 		<div style="width:600px;text-align:center">
 			<button id="insertAdBtn" onclick="insertAd()" class="btn btn-danger">Click to Insert Ad</button>

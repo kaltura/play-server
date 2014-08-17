@@ -59,6 +59,7 @@ const FILE_CHUNK_SIZE = 2500 * TS_PACKET_LENGTH;
 
 // content types
 const CONTENT_TYPE_PLAIN_TEXT = 'text/plain';
+const CONTENT_TYPE_XML = 'application/xml';
 const CONTENT_TYPE_HTML = 'text/html';
 const CONTENT_TYPE_ICON = 'image/x-icon';
 const CONTENT_TYPE_M3U8 = 'application/vnd.apple.mpegurl';
@@ -80,6 +81,7 @@ const NOTIFY_ERROR_URI = '/notifyError.js';
 const NOTIFY_STATUS_URI = '/notifyStatus.js';
 const RESTART_SERVER_URI = '/restartServer.js';
 const FAVICON_ICO_URI = '/favicon.ico';
+const CROSS_DOMAIN_URI = '/crossdomain.xml';
 
 const AD_REQUEST_URL = 'http://dogusns-f.akamaihd.net/i/DOGUS_STAR/StarTV/Program/osesturkiye/suvedilara.mp4/segment1_0_av.ts?e=e933a313f6018d5d';
 
@@ -1341,14 +1343,15 @@ function handleHttpRequest(req, res) {
 		}, 1000);
 		break;
 		
+	case CROSS_DOMAIN_URI:
 	case FAVICON_ICO_URI:
-		fs.readFile(__dirname + '/favicon.ico', function (err, data) {
+		fs.readFile(__dirname + parsedUrl.pathname, function (err, data) {
 			if (err) {
 				errorFileNotFound(res);
 				return;
 			}
 			
-			res.writeHead(200, {'Content-Type': CONTENT_TYPE_ICON});
+			res.writeHead(200, {'Content-Type': parsedUrl.pathname == CROSS_DOMAIN_URI ? CONTENT_TYPE_XML : CONTENT_TYPE_ICON, 'Content-Length': data.length});
 			res.end(data);
 		});
 		break;
