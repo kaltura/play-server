@@ -1336,8 +1336,6 @@ function handleHttpRequest(req, res) {
 	case SHORT_URL_URI:
 		var shortUri = '/' + shortUrlCounter;
 		shortUrls[shortUri] = queryParams;
-		var pageIdIp_key = 'pageId-ip-' + shortUrlCounter;
-		memcache.set(pageIdIp_key, queryParams.IP, 86400, function (err) {});
 		shortUrlCounter++;
 		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
 		res.end(protocol + SERVER_EXTERNAL_URL + shortUri);		
