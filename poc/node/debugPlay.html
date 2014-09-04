@@ -5,12 +5,36 @@
 body { padding: 15px; }
 </style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
+<script src="//www.kaltura.com/html5/html5lib/v2.16/mwEmbedLoader.php"></script>
 <script>
 
 const PRIO_NOTICE = 1;
 const PRIO_WARNING = 2;
 const PRIO_ERROR = 3;
 const PRIO_HIGH = 4;
+
+function embedPlayer(srcUrl, targetId){
+	mw.setConfig("LeadWithHLSOnFlash",true);
+	mw.setConfig('Kaltura.LeadWithHTML5', true);
+	mw.setConfig('EmbedPlayer.ReplaceSources', [
+		{
+			'type' : 'application/vnd.apple.mpegurl',
+			'src' : srcUrl
+		}
+	]);
+	kWidget.embed({
+		"targetId": targetId,
+		"wid": "_243342",
+		"uiconf_id": 25675992,
+		"cache_st": 1408262198,
+		"entry_id": "1_bhej6q2a",
+		"flashvars":{"liveCore":{"disableLiveCheck":true}}
+	});
+}
+
+function jsCallbackReady(playerId){
+	window.player = document.getElementById(playerId);
+}
 
 function outputMessage(msg, priority) {	
 	if (priority < window.currentMessagePriority) {
@@ -51,20 +75,24 @@ function failed(e) {
 }
 
 function updateNextAdTime() {
-	var videoTag = $("#videoTag")[0];
+	if (!window.player) {
+		return;
+	}
 
-	if (window.adEndTime > videoTag.currentTime) {
-		outputMessage('Returning to live broadcast in ' + Math.round(window.adEndTime - videoTag.currentTime) + ' seconds', PRIO_NOTICE);
+	var currenttime = window.player.evaluate("{video.player.currentTime}");
+
+	if (window.adEndTime > currenttime) {
+		outputMessage('Returning to live broadcast in ' + Math.round(window.adEndTime - currenttime + ' seconds', PRIO_NOTICE));
 		return;
 	}
 	
-	requestUrl = '@EXTERNAL_URL@/getNextAdTime.js?entryId=@ENTRY_ID@&uid=@UID@&currentTime=' + videoTag.currentTime;
+	requestUrl = '@EXTERNAL_URL@/getNextAdTime.js?entryId=@ENTRY_ID@&uid=@UID@&currentTime=' + currenttime;
 	$.ajax({
 		url: requestUrl,
 	}).done(function(result) {
 		result = JSON.parse(result);
 		if (window.cuePointId && window.cuePointId != result.cuePointId) {
-			window.adEndTime = videoTag.currentTime + window.adDuration - 1;		// empirically -1 improves the result
+			window.adEndTime = currenttime + window.adDuration - 1;		// empirically -1 improves the result
 			outputMessage('Returning to live broadcast in ' + window.adDuration + ' seconds', PRIO_NOTICE);
 		} else {
 			outputMessage(result.message, PRIO_NOTICE);
@@ -76,35 +104,39 @@ function updateNextAdTime() {
 window.setInterval(updateNextAdTime, 1000);
 
 window.setInterval(function () {
-	var videoTag = $("#videoTag")[0];
+        if (!window.player) {
+                return;
+        }
+
+	var currenttime = window.player.evaluate("{video.player.currentTime}");
 	
-	if (videoTag.currentTime != 0) {
-		if (window.lastCurrentTime == videoTag.currentTime && !window.notifiedError) {
+	if (currenttime != 0) {
+		if (window.lastCurrentTime == currenttime && !window.notifiedError) {
 			$.ajax({
 				url: "@EXTERNAL_URL@/notifyError.js?reason=stuck&url=" + encodeURIComponent("@URL@"),
 			});
 			window.notifiedError = true;
 		} else {
-			window.lastCurrentTime = videoTag.currentTime;
+			window.lastCurrentTime = currenttime;
 		}
 		
 		var endPos = '';
-		if (videoTag.seekable && videoTag.seekable.length) {
-			endPos = videoTag.seekable.end(0);
-		}
+		// if (videoTag.seekable && videoTag.seekable.length) {
+		// 	endPos = videoTag.seekable.end(0);
+		// }
 		
 		var bufferEnd = '';
-		if (videoTag.buffered && videoTag.buffered.length) {
-			bufferEnd = videoTag.buffered.end(0);
-		}
+		// if (videoTag.buffered && videoTag.buffered.length) {
+		// 	bufferEnd = videoTag.buffered.end(0);
+		// }
 		
 		var playedEnd = '';
-		if (videoTag.played && videoTag.played.length) {
-			playedEnd = videoTag.played.end(0);
-		}		
+		// if (videoTag.played && videoTag.played.length) {
+		// 	playedEnd = videoTag.played.end(0);
+		// }		
 		
 		$.ajax({
-			url: "@EXTERNAL_URL@/notifyStatus.js?currenttime=" + videoTag.currentTime + "&end=" + endPos + "&buffer=" + bufferEnd + "&played=" + playedEnd,
+			url: "@EXTERNAL_URL@/notifyStatus.js?currenttime=" + currentTime + "&end=" + endPos + "&buffer=" + bufferEnd + "&played=" + playedEnd,
 		});	
 	}
 }, 10000);
@@ -113,13 +145,21 @@ window.setInterval(function () {
 </head>
 <body>
 <h2>Demo - Frame Accurate Ad Insertion</h2>
+
 <div style="width:600px;">
-	<h4>Viewer's Screen (Broadcast Output)</h4>
-	<video id="videoTag" width="600" height="400" src="@URL@&uid=@UID@" autoplay controls onerror="failed(event)"></video>
+        <h4>Viewer's Screen (Broadcast Output)</h4>
+        <div>
+                <div id="videoTag" style="width:600px;height:400px;"></div>
+        </div>
+
+        <!-- <video id="videoTag" width="600" height="400" src="@URL@&uid=@UID@" autoplay controls onerror="failed(event)"></video> -->
 </div>
 <br>
 <div style="width:600px;">
 	<textarea id="output" class="form-control" rows="2"></textarea>
 </div>
+<script>
+embedPlayer("@URL@&uid=@UID@", "videoTag");
+</script>
 </body>
 </html>
