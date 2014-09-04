@@ -1074,16 +1074,13 @@ function processInsertAdPage(protocol, res) {
 			return;
 		}
 		
-		crypto.randomBytes(8, function(ex, buf) {
+		crypto.randomBytes(4, function(ex, buf) {
 			var uid = buf.toString('hex');
-			var uidUk = uid.slice(0, 8);
-		    var uidSpain = uid.slice(8, 16);;
 			
-			res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
-			res.end(data.replaceAll('@UID_UK@', uidUk).
-						 replaceAll('@UID_SPAIN@', uidSpain).
-						 replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL).
-						 replaceAll('@PROTOCOL@', protocol));
+            res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
+            res.end(data.replaceAll('@UID@', uid).
+            				replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL).
+        					replaceAll('@PROTOCOL@', protocol));
 		});
 	});
 }
