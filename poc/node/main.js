@@ -501,7 +501,7 @@ function readTrackerOutput(res, trackerOutputKey, successCallback, errorCallback
 	});
 }
 
-function allocateAdsForUser(res, entryId, adPositions, allocatedAds, adsToPrepare, callback) {
+function allocateAdsForUser(res, entryId, adPositions, allocatedAds, adsToPrepare, uid, callback) {
 	var newAllocatedAds = {};
 	var adsCount = adPositions.length;
 	// find which ads should be prepared
@@ -519,8 +519,21 @@ function allocateAdsForUser(res, entryId, adPositions, allocatedAds, adsToPrepar
 		
 		res.log('requesting ad for user');
 		
+		/*
+		//ad IP to vast url request
+        if(ip == '91.142.215.121')
+        	var vastUrl = 'http://search.spotxchange.com/vast/2.0/96156?content_page_url=http://kalturatest.com&VPI=MP4&ip_addr=91.142.215.121';
+		else
+			var vastUrl = 'http://search.spotxchange.com/vast/2.0/96157?content_page_url=http://kalturatest.com&VPI=MP4&ip_addr=46.20.235.45';
+		*/
+		
+		//get user ip to stich ad by	
+		var userAndIp = uid.split("_");
+		var ip = userAndIp[1];
+		
 		// get via VAST
-		vastParser.getAdMediaFiles(res, adPositions[i].vastUrl, adPositions[i].adSlotDuration*1000, function(adUrl){
+		var vastUrl = adPositions[i].vastUrl + '&ip_addr=' + ip;
+		vastParser.getAdMediaFiles(res, vastUrl, adPositions[i].adSlotDuration*1000, function(adUrl){
 			if(adUrl){
 				var adId = md5(adUrl);
 				adsToPrepare.push({adUrl: adUrl, adId: adId, entryId: entryId});		
@@ -612,7 +625,7 @@ function processFlavorStitch(params, res) {
 		
 		var adsToPrepare = [];
 		
-		allocateAdsForUser(res, params.entryId, adPositions, allocatedAds, adsToPrepare, function(newAllocatedAds){
+		allocateAdsForUser(res, params.entryId, adPositions, allocatedAds, adsToPrepare, params.uid, function(newAllocatedAds){
 			memcache.set(allocatedAdsKey, JSON.stringify(newAllocatedAds), 3600, function (err) {});
 			// prepare the ads
 			prepareAdsForEntry(adsToPrepare);			
@@ -1061,11 +1074,14 @@ function processInsertAdPage(protocol, res) {
 			return;
 		}
 		
-		crypto.randomBytes(4, function(ex, buf) {
+		crypto.randomBytes(8, function(ex, buf) {
 			var uid = buf.toString('hex');
+			var uidUk = uid.slice(0, 8);
+		    var uidSpain = uid.slice(8, 16);;
 			
 			res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
-			res.end(data.replaceAll('@UID@', uid).
+			res.end(data.replaceAll('@UID_UK@', uidUk).
+						 replaceAll('@UID_SPAIN@', uidSpain).
 						 replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL).
 						 replaceAll('@PROTOCOL@', protocol));
 		});
@@ -1323,6 +1339,8 @@ function handleHttpRequest(req, res) {
 	case SHORT_URL_URI:
 		var shortUri = '/' + shortUrlCounter;
 		shortUrls[shortUri] = queryParams;
+		var pageIdIp_key = 'pageId-ip-' + shortUrlCounter;
+		memcache.set(pageIdIp_key, queryParams.IP, 86400, function (err) {});
 		shortUrlCounter++;
 		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
 		res.end(protocol + SERVER_EXTERNAL_URL + shortUri);		
@@ -1394,7 +1412,7 @@ function handleHttpRequest(req, res) {
 							
 					res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
 					
-					data = data.replaceAll('@UID@', uid).
+					data = data.replaceAll('@UID@', uid + '_' + shortUrls[parsedUrl.pathname].IP).
 								replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL);
 								
 					for (var key in shortUrls[parsedUrl.pathname]) {
