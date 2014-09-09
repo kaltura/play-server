@@ -42,8 +42,10 @@ git clone -b v1.1 https://github.com/kaltura/play-server
 Configure:
 =======================
 - cp /opt/kaltura/play-server/config/user_input.ini.template /opt/kaltura/play-server/config/user_input.ini
-- mkdir /opt/kaltura/shared/tmp
-- mkdir /opt/kaltura/shared/tmp/ad_download
+- mkdir @CLOUD_SHARED_BASE_PATH@
+- mkdir @CLOUD_SHARED_BASE_PATH@/ad_download
+- mkdir @CLOUD_SHARED_BASE_PATH@/ad_transcode
+- mkdir @CLOUD_SHARED_BASE_PATH@/ad_segments
 - mkdir /opt/kaltura/log
 
 Replace tokens in user_input.ini files:
@@ -53,6 +55,7 @@ Replace tokens in user_input.ini files:
 - @CLOUD_HOSTNAME@ - Hostname of the cloud load balancer.
 - @CLOUD_SECRET@ - Random short string, e.g. 'abc'
 - @CLOUD_SHARED_TEMP_PATH@ - path to shared temp folder disc, e.g. /opt/kaltura/shared/tmp
+- @CLOUD_SHARED_BASE_PATH@ - path to shared folder disc, e.g. /opt/kaltura/shared/
 - @LOG_DIR@ - Path to logs folder, e.g. /opt/kaltura/log.  
 
 Install:
