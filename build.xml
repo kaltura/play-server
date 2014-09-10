@@ -150,7 +150,7 @@
 			<replacefilter token="@PLAY_PARTNER_ADMIN_SECRET@" property="user_input.PLAY_PARTNER_ADMIN_SECRET"/>
 		  	<replacefilter token="@CLOUD_HOSTNAME@" property="user_input.CLOUD_HOSTNAME"/>
 		  	<replacefilter token="@CLOUD_SECRET@" property="user_input.CLOUD_SECRET"/>
-			<replacefilter token="@CLOUD_SHARED_TEMP_PATH@" property="user_input.CLOUD_SHARED_TEMP_PATH"/>
+			<replacefilter token="@CLOUD_SHARED_BASE_PATH@" property="user_input.CLOUD_SHARED_BASE_PATH"/>
 			<replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
 			<replacefilter token="@BIN_DIR@" value="${bin.dir}"/>
 		</replace>
