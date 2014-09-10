@@ -54,7 +54,6 @@ Replace tokens in user_input.ini files:
 - @PLAY_PARTNER_ADMIN_SECRET@ - Admin secret of partner -6.
 - @CLOUD_HOSTNAME@ - Hostname of the cloud load balancer.
 - @CLOUD_SECRET@ - Random short string, e.g. 'abc'
-- @CLOUD_SHARED_TEMP_PATH@ - path to shared temp folder disc, e.g. /opt/kaltura/shared/tmp
 - @CLOUD_SHARED_BASE_PATH@ - path to shared folder disc, e.g. /opt/kaltura/shared/
 - @LOG_DIR@ - Path to logs folder, e.g. /opt/kaltura/log.  
 
