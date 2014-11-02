@@ -33,7 +33,7 @@ uiConfConfig = 600
 entryAdTrack = 600
 
 entryHandled = 20
-entryRequired = 600
+entryRequired = 300
 masterManifest = 600
 renditionManifest = 20
 encodingParams = 600
