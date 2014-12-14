@@ -17,8 +17,6 @@ cdnMaxAge = 864000
 ; domainPort = 80
 
 [ad]
-vastRequestTimeOut = 5
-durationCoefficient = 1
 ;domain = @AD_SERVICE_HOSTNAME@
 ; domainPort = 80
 
@@ -31,6 +29,8 @@ durationCoefficient = 1
 ; domainPort = 80
 
 [adIntegration]
+vastRequestTimeOut = 5
+durationCoefficient = 1
 ;domain = @AD_INTEGRATION_SERVICE_HOSTNAME@
 ; domainPort = 80
 
