@@ -6,7 +6,7 @@ body { padding: 15px; }
 </style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
 <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js" ></script>
-<script src="//www.kaltura.com/html5/html5lib/v2.16/mwEmbedLoader.php"></script>
+<script src="//www.kaltura.com/html5/html5lib/v2.24.1/mwEmbedLoader.php"></script>
 <script>
 
 const PRIO_NOTICE = 1;
@@ -72,7 +72,8 @@ function insertAd() {
 	var insertAdBtn = $("#insertAdBtn");
 	
 	insertAdBtn.prop('disabled',true);
-	var insertAdRequest = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + currenttime+ "&vastUrl=" + window.vastUrl + "&adSlotDuration=" + window.adSlotDuration;	
+	var insertAdRequest = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + currenttime+ "&vastUrl=" + window.vastUrl + "&adSlotDuration=" + window.adSlotDuration;
+	var insertAdRequestSpain = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + currenttime+ "&vastUrl=" + window.vastUrl + "&adSlotDuration=" + window.adSlotDuration;
 	$.ajax({
 		url: insertAdRequest
 	}).done(function( data ) {
@@ -189,7 +190,7 @@ function callShortUrl(shortUrlRequest, callback){
 			<div class="form-group">
 				<label for="origUrl">URL</label>
 					<div class="input-group">
-						<input id="origUrl" type="text" class="form-control" value="@PROTOCOL@cdnapisec.kaltura.com/content/shared/doguslive.m3u8">
+						<input id="origUrl" type="text" class="form-control" value="@PROTOCOL@cdnapisec.kaltura.com/content/shared/abcnewslive.m3u8">
 						<div class="input-group-btn">
 							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Preset <span class="caret"></span></button>
 							<ul class="dropdown-menu pull-right">
@@ -213,7 +214,7 @@ function callShortUrl(shortUrlRequest, callback){
 			</div>  
 			<div class="form-group">
 				<label for="vastUrl">VAST Url</label>
-				<input type="text" class="form-control" id="vastUrl" value="http://search.spotxchange.com/vast/2.00/79391?content_page_url={utility.random}&cb={utility.random}&VPI=MP4">
+				<input type="text" class="form-control" id="vastUrl" value="http://search.spotxchange.com/vast/2.0/96156?content_page_url={utility.random}&cb={utility.random}&VPI=MP4">
 			</div> 
 			<div class="checkbox">
 				<label>
