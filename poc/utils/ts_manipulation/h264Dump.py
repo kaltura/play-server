@@ -69,6 +69,15 @@ def seq_parameter_set_rbsp( parser ):
 	reserved_zero_5bits = parser.u(5, 'reserved_zero_5bits')
 	level_idc = parser.u(8, 'level_idc')
 	seq_parameter_set_id = parser.ue('seq_parameter_set_id')
+	
+	if profile_idc in set([100,110,122,244, 44, 83, 86,118,128,138,144]):
+		chroma_format_idc = parser.ue('chroma_format_idc')
+		if chroma_format_idc == 3:
+			residual_color_transform_flag = parser.u(1, 'residual_color_transform_flag')
+		bit_depth_luma = parser.ue('bit_depth_luma')
+		bit_depth_chroma = parser.ue('bit_depth_chroma')
+		transform_bypass = parser.u(1, 'transform_bypass')
+	
 	log2_max_frame_num_minus4 = parser.ue('log2_max_frame_num_minus4')
 	pic_order_cnt_type = parser.ue('pic_order_cnt_type')
 	if( pic_order_cnt_type == 0 ):

@@ -61,6 +61,7 @@ const FILE_CHUNK_SIZE = 2500 * TS_PACKET_LENGTH;
 
 // content types
 const CONTENT_TYPE_PLAIN_TEXT = 'text/plain';
+const CONTENT_TYPE_XML = 'application/xml';
 const CONTENT_TYPE_HTML = 'text/html';
 const CONTENT_TYPE_ICON = 'image/x-icon';
 const CONTENT_TYPE_M3U8 = 'application/vnd.apple.mpegurl';
@@ -82,6 +83,7 @@ const NOTIFY_ERROR_URI = '/notifyError.js';
 const NOTIFY_STATUS_URI = '/notifyStatus.js';
 const RESTART_SERVER_URI = '/restartServer.js';
 const FAVICON_ICO_URI = '/favicon.ico';
+const CROSS_DOMAIN_URI = '/crossdomain.xml';
 
 const AD_REQUEST_URL = 'http://dogusns-f.akamaihd.net/i/DOGUS_STAR/StarTV/Program/osesturkiye/suvedilara.mp4/segment1_0_av.ts?e=e933a313f6018d5d';
 
@@ -252,6 +254,32 @@ function startTrackers(urlsToTrack) {
 	});
 }
 
+function getUrlFromM3U8Line(curLine) {
+	var curUrl = '';
+	var curPrefix = '';
+	var curSuffix = '';
+
+	if (curLine.length && curLine[0] != '#')
+	{
+		curUrl = curLine;
+	}
+	else if (curLine.startsWith('#EXT-X-MEDIA'))
+	{
+		var uriStartPos = curLine.search('URI="');
+		var uriEndPos = curLine.substring(uriStartPos + 5).search('"');
+		if (uriStartPos >= 0 && uriEndPos >= 0)
+		{
+			uriStartPos += 5;
+			uriEndPos += uriStartPos;
+			curPrefix = curLine.substring(0, uriStartPos);
+			curUrl = curLine.substring(uriStartPos, uriEndPos);
+			curSuffix = curLine.substring(uriEndPos);
+		}
+	}
+	
+	return {url: curUrl, prefix: curPrefix, suffix: curSuffix};
+}
+
 function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 	var attributes = {};
 	var split = manifest.split('\n');
@@ -266,13 +294,14 @@ function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 
 	for (var i = 0; i < split.length; i++) {
 		var curLine = split[i].trim();
-
-		if (curLine.length && curLine[0] != '#') {
-			curLine = url.resolve(masterUrl, curLine);
+		var curUrl = getUrlFromM3U8Line(curLine);
+		
+		if (curUrl.url) {
+			curUrl.url = url.resolve(masterUrl, curUrl.url);
 			var trackerParams = {
-				url: curLine,
+				url: curUrl.url,
 				trackerRequiredKey: 'required-' + baseParams.entryId,
-				trackerOutputKey: 'trackerOutput-' + md5(curLine + baseParams.entryId),
+				trackerOutputKey: 'trackerOutput-' + md5(curUrl.url + baseParams.entryId),
 				adPositionsKey: 'adPos-' + baseParams.entryId,
 				lastUsedSegmentKey: 'lastUsedSegment-' + baseParams.entryId,
 				ffmpegParamsKey: 'ffmpegParams-' + baseParams.entryId,
@@ -297,7 +326,7 @@ function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 				uid: baseParams.uid
 			};
 			
-			result += protocol + SERVER_EXTERNAL_URL + FLAVOR_STITCH_URI + '?' + querystring.stringify(flavorStitchParams) + '\n';
+			result += curUrl.prefix + protocol + SERVER_EXTERNAL_URL + FLAVOR_STITCH_URI + '?' + querystring.stringify(flavorStitchParams) + curUrl.suffix + '\n';
 			
 			attributes = {};
 			continue;
@@ -501,7 +530,7 @@ function readTrackerOutput(res, trackerOutputKey, successCallback, errorCallback
 	});
 }
 
-function allocateAdsForUser(res, entryId, adPositions, allocatedAds, adsToPrepare, uid, callback) {
+function allocateAdsForUser(res, entryId, uid, adPositions, allocatedAds, adsToPrepare, uid, callback) {
 	var newAllocatedAds = {};
 	var adsCount = adPositions.length;
 	// find which ads should be prepared
@@ -519,25 +548,30 @@ function allocateAdsForUser(res, entryId, adPositions, allocatedAds, adsToPrepar
 		
 		res.log('requesting ad for user');
 		
-		/*
-		//ad IP to vast url request
-        if(ip == '91.142.215.121')
-        	var vastUrl = 'http://search.spotxchange.com/vast/2.0/96156?content_page_url=http://kalturatest.com&VPI=MP4&ip_addr=91.142.215.121';
-		else
-			var vastUrl = 'http://search.spotxchange.com/vast/2.0/96157?content_page_url=http://kalturatest.com&VPI=MP4&ip_addr=46.20.235.45';
-		*/
 		
 		//get user ip to stich ad by	
 		var userAndIp = uid.split("_");
 		var ip = userAndIp[1];
+	
+		// ad IP to vast url request
+		var vastUrl;
+
+		//ad IP to vast url request
+		if(ip == '91.142.215.121')
+			vastUrl = 'http://search.spotxchange.com/vast/2.0/96156?content_page_url=http://kalturatest.com&VPI=MP4&ip_addr=91.142.215.121';
+		else
+			vastUrl = 'http://search.spotxchange.com/vast/2.0/96157?content_page_url=http://kalturatest.com&VPI=MP4&ip_addr=46.20.235.45';
 		
-		// get via VAST
-		var vastUrl = adPositions[i].vastUrl + '&ip_addr=' + ip;
-		vastParser.getAdMediaFiles(res, vastUrl, adPositions[i].adSlotDuration*1000, function(adUrl){
+		// get via VAST	
+		vastParser.getAdMediaFiles(res, vastUrl, adPositions[i].adSlotDuration*1000, function(adUrl, trackingInfo){
 			if(adUrl){
 				var adId = md5(adUrl);
 				adsToPrepare.push({adUrl: adUrl, adId: adId, entryId: entryId});		
-				newAllocatedAds[adPosition.cuePointId] = adId;				
+				newAllocatedAds[adPosition.cuePointId] = adId;		
+				res.log('saving tracking info to memcache with key: ' + 'trackingInfo-' + adId + '-' + uid + ' value: ' + JSON.stringify(trackingInfo));	
+				memcache.set('trackingInfo-' + adId + '-' + uid, trackingInfo, 600, function (err) {
+					res.log('Failed to set tracking info in cache:' + err);
+				});	
 			}
 			adsCount--;
 			if(adsCount == 0){
@@ -593,7 +627,7 @@ function processFlavorStitch(params, res) {
 		getHttpUrl(params.masterUrl, function (urlData) {
 			stitchMasterM3U8(params.masterUrl, urlData, {entryId: params.entryId});
 		}, function (err) {});			
-	}, 30);
+	}, 200);
 		
 	// mark the tracker as required
 	var currentTime = Math.floor(new Date().getTime() / 1000);
@@ -602,33 +636,29 @@ function processFlavorStitch(params, res) {
 	// get ads allocated to the user
 	var allocatedAdsKey = 'allocatedAds-' + params.uid;
 	var adPositionsKey = 'adPos-' + params.entryId;
-	memcache.getMulti([allocatedAdsKey, adPositionsKey], function (err, data) {
-		if (err) {
-			// XXXX
-		}
+	memcache.get(adPositionsKey, function(err, data){
+		console.log('got inserted ad:'+JSON.stringify(data));
+		var adPositions = data;
+		memcache.get(allocatedAdsKey, function(err, data){
+			allocatedAds = data;
+			res.log('allocated ads ' + allocatedAds);
+        	        if (allocatedAds)
+	                        allocatedAds = JSON.parse(allocatedAds);
+                	else
+                        	allocatedAds = {};
+			res.log('got ad positions ' + adPositions);
+	                if (adPositions)
+        	                adPositions = JSON.parse(adPositions);
+                	else
+                        	adPositions = {};
+			var adsToPrepare = [];
+	                allocateAdsForUser(res, params.entryId, params.uid, adPositions, allocatedAds, adsToPrepare, params.uid, function(newAllocatedAds){
+        	                memcache.set(allocatedAdsKey, JSON.stringify(newAllocatedAds), 3600, function (err) {});
+                	        // prepare the ads
+                        	prepareAdsForEntry(adsToPrepare);
 
-		// parse allocated ads
-		allocatedAds = data[allocatedAdsKey];
-		res.log('allocated ads ' + allocatedAds);
-		if (allocatedAds)
-			allocatedAds = JSON.parse(allocatedAds);
-		else
-			allocatedAds = {};
+                	});
 
-		// allocate ads for the user
-		var adPositions = data[adPositionsKey];
-		res.log('got ad positions ' + adPositions);
-		if (adPositions)
-			adPositions = JSON.parse(adPositions);
-		else
-			adPositions = {};
-		
-		var adsToPrepare = [];
-		
-		allocateAdsForUser(res, params.entryId, adPositions, allocatedAds, adsToPrepare, params.uid, function(newAllocatedAds){
-			memcache.set(allocatedAdsKey, JSON.stringify(newAllocatedAds), 3600, function (err) {});
-			// prepare the ads
-			prepareAdsForEntry(adsToPrepare);			
 		});
 	});
 }
@@ -645,10 +675,11 @@ function proxyMasterM3U8(masterUrl, manifest, uid) {
 	
 	for (var i = 0; i < split.length; i++) {
 		var curLine = split[i].trim();
-
-		if (curLine.length && curLine[0] != '#') {
-			curLine = url.resolve(masterUrl, curLine);
-			result += protocol + SERVER_EXTERNAL_URL + FLAVOR_PROXY_URI + '?' + querystring.stringify({'uid': uid, 'url': curLine}) + '\n';
+		var curUrl = getUrlFromM3U8Line(curLine);
+		
+		if (curUrl.url) {
+			curUrl.url = url.resolve(masterUrl, curUrl.url);
+			result += curUrl.prefix + protocol + SERVER_EXTERNAL_URL + FLAVOR_PROXY_URI + '?' + querystring.stringify({'uid': uid, 'url': curUrl.url}) + curUrl.suffix + '\n';
 			continue;
 		}
 
@@ -973,7 +1004,7 @@ function doInsertAd(entryId, segmentId, segmentOffset, vastUrl, adSlotDuration, 
 	var lastUsedSegmentKey = 'lastUsedSegment-' + entryId;
 
 	memcache.getMulti([adPositionsKey, lastUsedSegmentKey], function (err, data) {
-		res.log('last used segment is ' + data[lastUsedSegmentKey]);
+		res.log('last used segment is ' + data[lastUsedSegmentKey] + 'data:' + JSON.stringify(data));
 		if (err) {
 			errorResponse(res, 400, 'failed to get current ad positions');
 			return;
@@ -1101,6 +1132,9 @@ function processAdSegmentRedirect(queryParams, res) {
 		} else {
 			adId = 'none';
 		}
+
+		var trackingId = 'trackingInfo-' + adId + '-' + queryParams.uid;
+		vastParser.sendBeacon(res, trackingId, parseInt(queryParams.segmentIndex),parseInt(queryParams.outputStart), parseInt(queryParams.outputEnd), memcache);
 
 		// update the query parameters
 		delete queryParams.uid;
@@ -1289,7 +1323,7 @@ function handleHttpRequest(req, res) {
 	var parsedUrl = url.parse(req.url);
 	var queryParams = querystring.parse(parsedUrl.query);
 	
-	res.log('handling request');
+	res.log('handling request: ' + parsedUrl.pathname);
 	res.dir(queryParams);
 	
 	switch (parsedUrl.pathname) {
@@ -1336,6 +1370,8 @@ function handleHttpRequest(req, res) {
 	case SHORT_URL_URI:
 		var shortUri = '/' + shortUrlCounter;
 		shortUrls[shortUri] = queryParams;
+		var pageIdIp_key = 'pageId-ip-' + shortUrlCounter;
+		memcache.set(pageIdIp_key, queryParams.IP, 86400, function (err) {});
 		shortUrlCounter++;
 		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
 		res.end(protocol + SERVER_EXTERNAL_URL + shortUri);		
@@ -1366,14 +1402,15 @@ function handleHttpRequest(req, res) {
 		}, 1000);
 		break;
 		
+	case CROSS_DOMAIN_URI:
 	case FAVICON_ICO_URI:
-		fs.readFile(__dirname + '/favicon.ico', function (err, data) {
+		fs.readFile(__dirname + parsedUrl.pathname, function (err, data) {
 			if (err) {
 				errorFileNotFound(res);
 				return;
 			}
 			
-			res.writeHead(200, {'Content-Type': CONTENT_TYPE_ICON});
+			res.writeHead(200, {'Content-Type': parsedUrl.pathname == CROSS_DOMAIN_URI ? CONTENT_TYPE_XML : CONTENT_TYPE_ICON, 'Content-Length': data.length});
 			res.end(data);
 		});
 		break;
