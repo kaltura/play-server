@@ -48,7 +48,7 @@ vastParser = {
 		response.log('Parsing ad from: ' + vastUrl);
 		parse(vastUrl, function(adServerResponse) {
 			if (!adServerResponse) {
-				response.error('Failed to get Ad server response');
+				response.log('Failed to get Ad server response');
 				return callback();
 			}				
 			var ad = selectAdByDuration(adServerResponse, duration/1000);

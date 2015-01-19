@@ -69,7 +69,7 @@ int get_frames_callback(void* context, const char* line)
 
 frame_info_t* get_frames(const char* ffprobe_bin, const char** files, int file_count, int* frame_count)
 {
-	get_frames_state_t state = { { 0 } };
+	get_frames_state_t state = { { 0 }, { NULL, 0, 0} };
 	char *command;
 	int command_len;
 	int cur_file;
@@ -118,7 +118,7 @@ frame_info_t* get_frames_single(const char* ffprobe_bin, const char* input_file,
 
 frame_info_t* parse_ffprobe_output(char* input_buffer, int length, int* frame_count)
 {
-	get_frames_state_t state = { { 0 } };
+	get_frames_state_t state = { { 0 }, { NULL, 0, 0} };
 	char* end_pos = input_buffer + length;
 	char* new_line_pos;
 	char* cur_pos;

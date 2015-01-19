@@ -81,13 +81,17 @@ const GET_NEXT_AD_TIME_URI = '/getNextAdTime.js';
 const SHORT_URL_URI = '/shortUrl.js';
 const NOTIFY_ERROR_URI = '/notifyError.js';
 const NOTIFY_STATUS_URI = '/notifyStatus.js';
+const NOTIFY_STATUS_ADMIN_URI = '/notifyStatusAdmin.js';
 const RESTART_SERVER_URI = '/restartServer.js';
 const FAVICON_ICO_URI = '/favicon.ico';
 const CROSS_DOMAIN_URI = '/crossdomain.xml';
 
-const AD_REQUEST_URL = 'http://dogusns-f.akamaihd.net/i/DOGUS_STAR/StarTV/Program/osesturkiye/suvedilara.mp4/segment1_0_av.ts?e=e933a313f6018d5d';
-
 const NO_DVR_M3U8_TS_COUNT = 3;
+
+// paths
+const PLAY_ERROR_LOG_PATH = '/tmp/playErrorLog/';
+const MANIFEST_PATH = '/tmp/manifests/';
+const TS_FILES_PATH = '/tmp/tsFiles/';
 
 var memcache = new memcached(MEMCACHE_URL);
 
@@ -382,7 +386,7 @@ function processMasterStitch(params, res) {
 var m3u8FileCounter = 1;
 
 function logManifestToFile(res, manifestString) {
-	var outputFileName = "/tmp/manifests/" + (m3u8FileCounter % 10) + ".m3u8";
+	var outputFileName = MANIFEST_PATH + (m3u8FileCounter % 10) + ".m3u8";
 	fs.writeFile(outputFileName, manifestString, function(err) {
 		if(err) {
 			res.log(err);
@@ -1289,7 +1293,7 @@ function processStitchSegment(queryParams, res) {
 					// output the TS
 					res.writeHead(200, {'Content-Type': CONTENT_TYPE_MPEG2TS});
 					
-					var tsDebugFileName = '/tmp/tsFiles/' + (tsFileCounter % 10) + '.ts';
+					var tsDebugFileName = TS_FILES_PATH + (tsFileCounter % 10) + '.ts';
 					res.log('saving ts file to ' + tsDebugFileName);
 					var tsDebugFile = fs.openSync(tsDebugFileName, 'w');
 					tsFileCounter++;
@@ -1379,7 +1383,7 @@ function handleHttpRequest(req, res) {
 		
 	case NOTIFY_ERROR_URI:
 		
-		var cmdLine = "python " + __dirname + "/../utils/debug/debugStream.py '" + queryParams.url + "' /tmp/playErrorLog/x.m3u8";
+		var cmdLine = "python " + __dirname + "/../utils/debug/debugStream.py '" + queryParams.url + "' " + PLAY_ERROR_LOG_PATH + "x.m3u8";
 
 		res.log('Executing: ' + cmdLine);
 
@@ -1389,6 +1393,7 @@ function handleHttpRequest(req, res) {
 		// fall through
 		
 	case NOTIFY_STATUS_URI:
+	case NOTIFY_STATUS_ADMIN_URI:
 		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
 		res.end('logged');		
 		break;
@@ -1462,6 +1467,18 @@ function handleHttpRequest(req, res) {
 		break;
 	}
 }
+
+var mkdirIfNotExist = function (path) {
+  try {
+    fs.mkdirSync(path);
+  } catch(e) {
+    if ( e.code != 'EEXIST' ) throw e;
+  }
+}
+
+mkdirIfNotExist(PLAY_ERROR_LOG_PATH);
+mkdirIfNotExist(MANIFEST_PATH);
+mkdirIfNotExist(TS_FILES_PATH);
 
 var memcachebin = new memcachedbin();
 
