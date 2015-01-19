@@ -1,5 +1,6 @@
 #include "mpegTsStreamInfo.h"
 #include <linux/stddef.h>
+#include <stdlib.h>
 
 void streams_info_hash_init(streams_info_t* hash)
 {

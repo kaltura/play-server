@@ -5,7 +5,7 @@
 body { padding: 15px; }
 </style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
-<script src="//www.kaltura.com/html5/html5lib/v2.16/mwEmbedLoader.php"></script>
+<script src="//www.kaltura.com/html5/html5lib/v2.24.1/mwEmbedLoader.php"></script>
 <script>
 
 const PRIO_NOTICE = 1;
@@ -80,9 +80,12 @@ function updateNextAdTime() {
 	}
 
 	var currenttime = window.player.evaluate("{video.player.currentTime}");
+	if (!currenttime) {
+		return;
+	}
 
 	if (window.adEndTime > currenttime) {
-		outputMessage('Returning to live broadcast in ' + Math.round(window.adEndTime - currenttime + ' seconds', PRIO_NOTICE));
+		outputMessage('Returning to live broadcast in ' + Math.round(window.adEndTime - currenttime) + ' seconds', PRIO_NOTICE);
 		return;
 	}
 	
