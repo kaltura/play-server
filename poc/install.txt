@@ -1,0 +1,84 @@
+# ubuntu packages
+sudo apt-get install git
+sudo apt-get install nodejs
+sudo apt-get install npm
+sudo apt-get install libmemcached-dev
+sudo apt-get install memcached
+sudo apt-get install mediainfo
+sudo apt-get install libfontconfig1
+sudo vi /etc/memcached.conf		# increase memory
+sudo service memcached restart
+
+# ffmpeg
+cd /tmp/
+wget lbd.kaltura.com/ffmpeg-2.1.tar.gz
+sudo mkdir -p /web/content/shared/bin/ffmpeg-2.1-bin/
+cd /web/content/shared/bin/ffmpeg-2.1-bin/
+sudo tar -zxvf /tmp/ffmpeg-2.1.tar.gz
+
+# python modules
+sudo apt-get install python-setuptools
+cd /tmp
+git clone https://github.com/linsomniac/python-memcached
+cd python-memcached
+sudo python setup.py install
+cd /tmp
+wget https://pypi.python.org/packages/source/c/construct/construct-2.5.1.tar.gz
+tar -zxvf construct-2.5.1.tar.gz
+cd construct-2.5.1/
+sudo python setup.py install
+
+# log folder
+sudo mkdir /var/log/node
+sudo chown ubuntu:ubuntu /var/log/node
+sudo ln -s /usr/bin/nodejs /usr/bin/node
+
+# ad-stitching repos
+cd /opt
+sudo mkdir kaltura
+sudo chown ubuntu:ubuntu kaltura
+cd /opt/kaltura
+git clone https://github.com/kaltura/vast-client-js
+git clone https://github.com/kaltura/play-server
+cd /opt/kaltura/vast-client-js/
+git checkout v1.1
+cd /opt/kaltura/play-server/
+git checkout v1.1
+
+# node modules
+npm config set registry http://registry.npmjs.org/
+npm install --save nan
+npm install follow-redirects
+npm install temp
+npm install memcached
+npm install coffee-script
+
+# id3lib
+cd /opt/kaltura/play-server/native/vendor/id3lib-3.8.3/
+./configure
+make
+sudo make install
+
+# native node addons
+cd /opt/kaltura/play-server/native/node_addons/TsCutter/
+node-gyp configure
+node-gyp build
+cd /opt/kaltura/play-server/native/node_addons/TsId3Reader/
+node-gyp configure
+node-gyp build
+cd /opt/kaltura/play-server/native/node_addons/TsStitcher/
+node-gyp configure
+node-gyp build
+
+# native processes
+cd /opt/kaltura/play-server/native/ts_preparer/
+gcc ../common/src/basicIo.c ../common/src/common.c ../common/src/dynamicBuffer.c ../common/src/ffprobe.c ../common/src/mpegTs.c ../common/src/mpegTsStreamInfo.c ts_preparer.c -o ts_preparer -I../common/include -Wall -lmemcached
+
+# config params
+vi /opt/kaltura/play-server/node_modules/memcached/lib/utils.js		# comment the else if of: The key should not contain any whitespace or new lines
+vi /opt/kaltura/play-server/poc/node/main.js				# fix the server host & port
+vi /opt/kaltura/play-server/poc/node/insertAd.html			# update the stream URLs
+
+# execute
+cd /opt/kaltura/play-server/poc/node/
+sudo node main.js
