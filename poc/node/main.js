@@ -753,17 +753,15 @@ function parseFlavorM3U8(manifestUrl, manifestContent){
 				break;
 				
 			case 'EXTINF':
-				if(value.substr(-1) == ',')
-					value = value.trim(0, value.length - 1);
+				value = value.split(',')[0];
 
 				value = parseFloat(value);
-				segmentInfo[key] = parseFloat(value);
+				segmentInfo[key] = value;
 				segmentInfo.duration = value;
 				break;
 				
 			case 'EXT-X-DISCONTINUITY':
-				if(value.substr(-1) == ',')
-					value = value.trim(0, value.length - 1);
+				value = value.split(',')[0];
 				
 				segmentInfo[key] = value;
 				break;

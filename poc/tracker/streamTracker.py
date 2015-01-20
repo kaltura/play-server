@@ -131,8 +131,7 @@ def parseM3U8(manifestUrl, streamData):
 			footer[key] = value
 			
 		elif key in ['EXTINF', 'EXT-X-DISCONTINUITY']:
-			if value.endswith(','):
-				value = value[:-1]
+			value = value.split(',')[0]
 			if key in ['EXTINF']:
 				value = float(value)
 			segmentInfo[key] = value
