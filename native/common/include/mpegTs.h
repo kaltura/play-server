@@ -2,6 +2,7 @@
 #define __MPEGTS_H__
 
 #include "mpegTsStructs.h"
+#include "dynamicBuffer.h"
 #include "common.h"
 
 #define TS_PACKET_LENGTH (188)
@@ -18,6 +19,12 @@
 
 #define STREAM_TYPE_AUDIO_AAC       0x0f
 #define STREAM_TYPE_VIDEO_H264      0x1b
+
+#define MIN_AUDIO_STREAM_ID (0xC0)
+#define MAX_AUDIO_STREAM_ID (0xDF)
+
+#define MIN_VIDEO_STREAM_ID (0xE0)
+#define MAX_VIDEO_STREAM_ID (0xEF)
 
 enum {
 	MEDIA_TYPE_NONE,
@@ -38,6 +45,15 @@ typedef struct {
 	uint8_t dts;
 } timestamp_offsets_t;
 
+typedef struct {
+	int media_type;
+	int pos;					// file offset
+	timestamps_t timestamps;	// measured in 90KHz
+	int duration;				// measured in 90KHz
+	timestamp_offsets_t timestamp_offsets;
+	bool_t is_iframe;
+} frame_info_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -51,12 +67,19 @@ void update_pts(pts_t* pts, int64_t pts_val);
 void set_pts(pts_t* pts, int indicator, int64_t pts_val);
 
 void reset_timestamps(timestamps_t* timestamps);
-void get_timestamp_offsets(const byte_t* packet_start, timestamp_offsets_t* timestamp_offsets);
 void get_timestamps(const byte_t* packet_start, const timestamp_offsets_t* timestamp_offsets, timestamps_t* timestamps);
-void update_timestamps(byte_t* packet_start, const timestamp_offsets_t* timestamp_offsets, const timestamps_t* timestamps, int timestamp_offset);
+void update_timestamps(byte_t* packet_start, const timestamp_offsets_t* timestamp_offsets, const timestamps_t* timestamps, int timestamp_offset, int pts_delay);
 
-bool_t frame_has_pcr(const byte_t* packet_offset);
 int64_t get_pts_from_packet(const byte_t* packet, int size);
+
+bool_t get_frames(
+	dynamic_buffer_t* buffers_start,
+	int buffer_count,
+	char* frames_text,
+	int frames_text_size, 
+	frame_info_t** frames,
+	int* frame_count, 
+	bool_t use_first_pcr);
 
 #ifdef __cplusplus
 }

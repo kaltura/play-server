@@ -9,10 +9,9 @@
 #define INVALID_CONTINUITY_COUNTER (0xFF)
 
 typedef struct {
-	int pid;
+	int16_t pid;
 	uint8_t start_cc;
 	uint8_t end_cc;
-	uint16_t padding;
 } stream_info_t;
 
 typedef struct {

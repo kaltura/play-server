@@ -107,7 +107,7 @@ function verifyPlayingRealTime() {
 }
 
 function checkWhetherStreamIsWatched() {
-	var requestUrl = "@EXTERNAL_URL@/isWatched.js?entryId=" + window.entryId;
+	var requestUrl = "@EXTERNAL_URL@/isWatched.js?uid=@UID@&entryId=" + window.entryId;
 	$.ajax({
 		url: requestUrl
 	}).done(function(isWatched) {
@@ -120,7 +120,7 @@ function checkWhetherStreamIsWatched() {
 function notifyStatus() {
 	var currenttime = window.player.evaluate("{video.player.currentTime}");
 	$.ajax({
-		url: "@EXTERNAL_URL@/notifyStatusAdmin.js?currenttime=" + currenttime //+ "&end=" + videoTag.seekable.end(0)
+		url: "@EXTERNAL_URL@/notifyStatusAdmin.js?uid=@UID@&currenttime=" + currenttime //+ "&end=" + videoTag.seekable.end(0)
 	});	
 }
 

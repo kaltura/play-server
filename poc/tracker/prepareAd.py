@@ -10,7 +10,7 @@ import os
 
 FFMPEG_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffmpeg-2.1.sh'
 FFPROBE_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffprobe-2.1.sh'
-TS_PREPARER_PATH = os.path.join(os.path.dirname(__file__), '../../native/ts_preparer/ts_preparer')
+TS_PREPARER_PATH = 'node %s' % os.path.join(os.path.dirname(__file__), '../../native/node_addons/TsPreparer/TsPreparer.js')
 MEMCACHE_HOST = 'localhost'
 MEMCACHE_PORT = 11211
 
@@ -91,7 +91,7 @@ if not os.path.exists(outputFileName):
 	executeCommand(cmdLine)
 
 # save to memcache
-cmdLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, outputFileName, FFPROBE_PATH, MEMCACHE_HOST, MEMCACHE_PORT, 0, outputKey]))
+cmdLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, MEMCACHE_HOST, MEMCACHE_PORT, 0, outputKey, FFMPEG_PATH, FFPROBE_PATH, 'nocut', outputFileName]))
 executeCommand(cmdLine)
 
 writeOutput('done')
