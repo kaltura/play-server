@@ -4,7 +4,7 @@
 	<property name="bin.dir" value="${basedir}/bin" />
 	<property name="native.dir" value="${basedir}/native" />
 
-	<target name="install" depends="extract-ffmpeg, install-TsId3Reader-plugin, install-TsPreparer-plugin, install-TsStitcher-plugin, download-vast-client-js, play-server-service, replace-Config-file-tokens">
+	<target name="install" depends="extract-ffmpeg, install-TsId3Reader-plugin, build-TsPreparer-plugin, build-TsStitcher-plugin, download-vast-client-js, play-server-service, replace-Config-file-tokens">
 		<exec dir="${basedir}" executable="npm" failonerror="true">
 			<arg value="install" />
 		</exec>
@@ -72,18 +72,8 @@
 	</target>
 
 	<target name="install-TsId3Reader-plugin" depends="install-id3lib, build-TsId3Reader-plugin">
-		<copy file="${native.dir}/node_addons/TsId3Reader/build/Release/TsId3Reader.node" todir="${bin.dir}" failonerror="true" />
-		<chmod file="${bin.dir}/TsId3Reader.node" perm="700"/>
 	</target>
 
-	<target name="install-TsPreparer-plugin" depends="build-TsPreparer-plugin">
-	</target>
-
-	<target name="install-TsStitcher-plugin" depends="build-TsStitcher-plugin">
-		<copy file="${native.dir}/node_addons/TsStitcher/build/Release/TsStitcher.node" todir="${bin.dir}" failonerror="true" />
-		<chmod file="${bin.dir}/TsStitcher.node" perm="700"/>
-	</target>
-	
 	<target name="install-forever">
 		<exec executable="npm" failonerror="true">
 			<arg value="install" />

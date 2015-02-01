@@ -5,7 +5,7 @@
  */
 
 var tsPreparer = require('../../../lib/media/KalturaTsPreparer');
-var memjs = require('memjs')
+var memjs = require('memjs');
 
 if (typeof String.prototype.startsWith != 'function') {
   String.prototype.startsWith = function (str){
@@ -82,7 +82,7 @@ else {
 
 // prepare the TS file
 process.env['MEMCACHIER_SERVERS'] = memcacheHost + ':' + memcachePort;
-var memcache = memjs.Client.create()
+var memcache = memjs.Client.create();
 
 if (mode == 'nocut') {
 	tsPreparer.prepareTsFiles(ffprobeBin, inputFiles, prepareTsCallback);
