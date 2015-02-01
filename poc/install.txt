@@ -52,6 +52,7 @@ npm install follow-redirects
 npm install temp
 npm install memcached
 npm install coffee-script
+npm install memjs
 
 # id3lib
 cd /opt/kaltura/play-server/native/vendor/id3lib-3.8.3/
@@ -60,19 +61,15 @@ make
 sudo make install
 
 # native node addons
-cd /opt/kaltura/play-server/native/node_addons/TsCutter/
-node-gyp configure
-node-gyp build
-cd /opt/kaltura/play-server/native/node_addons/TsId3Reader/
+cd /opt/kaltura/play-server/native/node_addons/TsPreparer/
 node-gyp configure
 node-gyp build
 cd /opt/kaltura/play-server/native/node_addons/TsStitcher/
 node-gyp configure
 node-gyp build
-
-# native processes
-cd /opt/kaltura/play-server/native/ts_preparer/
-gcc ../common/src/basicIo.c ../common/src/common.c ../common/src/dynamicBuffer.c ../common/src/ffprobe.c ../common/src/mpegTs.c ../common/src/mpegTsStreamInfo.c ts_preparer.c -o ts_preparer -I../common/include -Wall -lmemcached
+cd /opt/kaltura/play-server/native/node_addons/TsId3Reader/
+node-gyp configure
+node-gyp build
 
 # config params
 vi /opt/kaltura/play-server/node_modules/memcached/lib/utils.js		# comment the else if of: The key should not contain any whitespace or new lines

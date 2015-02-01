@@ -71,7 +71,7 @@ function failed(e) {
 	
 	window.notifiedError = true;
 	$.ajax({
-		url: "@EXTERNAL_URL@/notifyError.js?url=" + encodeURIComponent("@URL@"),
+		url: "@EXTERNAL_URL@/notifyError.js?uid=@UID@&url=" + encodeURIComponent("@URL@"),
 	});
 }
 
@@ -117,7 +117,7 @@ window.setInterval(function () {
 	if (currenttime != 0) {
 		if (window.lastCurrentTime == currenttime && !window.notifiedError) {
 			$.ajax({
-				url: "@EXTERNAL_URL@/notifyError.js?reason=stuck&url=" + encodeURIComponent("@URL@"),
+				url: "@EXTERNAL_URL@/notifyError.js?uid=@UID@&reason=stuck&url=" + encodeURIComponent("@URL@"),
 			});
 			window.notifiedError = true;
 		} else {
@@ -140,7 +140,7 @@ window.setInterval(function () {
 		// }		
 		
 		$.ajax({
-			url: "@EXTERNAL_URL@/notifyStatus.js?currenttime=" + currentTime + "&end=" + endPos + "&buffer=" + bufferEnd + "&played=" + playedEnd,
+			url: "@EXTERNAL_URL@/notifyStatus.js?uid=@UID@&currenttime=" + currentTime + "&end=" + endPos + "&buffer=" + bufferEnd + "&played=" + playedEnd,
 		});	
 	}
 }, 10000);

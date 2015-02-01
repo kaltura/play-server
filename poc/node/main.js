@@ -160,7 +160,7 @@ function getHttpUrl(urlStr, success, error) {
 			return;
 		}
 		
-		fullData = '';
+		var fullData = '';
 		res.on('data',function(data){
 			fullData += data;
 		});
@@ -913,6 +913,7 @@ function processGetNextAdTime(queryParams, res) {
 	
 		var translatedTime = translateTimeToSegmentId(segmentOffsets, parseFloat(queryParams.currentTime));
 		if (!translatedTime) {
+			res.log('time=' + queryParams.currentTime + ' offsets=' + JSON.stringify(segmentOffsets));
 			errorResponse(res, 400, 'failed to translate player time');
 			return;
 		}
@@ -1072,6 +1073,7 @@ function processInsertAd(params, res) {
 			var translatedTime = translateTimeToSegmentId(segmentOffsets, parseFloat(params.currentTime));
 
 			if (!translatedTime) {
+				res.log('time=' + params.currentTime + ' offsets=' + JSON.stringify(segmentOffsets));
 				errorResponse(res, 400, 'failed to translate player time to a segment id, reload the player');
 				return;
 			}

@@ -4,7 +4,7 @@
 	<property name="bin.dir" value="${basedir}/bin" />
 	<property name="native.dir" value="${basedir}/native" />
 
-	<target name="install" depends="extract-ffmpeg, install-TsId3Reader-plugin, install-TsCutter-plugin, install-TsStitcher-plugin, install-TsPreparer, download-vast-client-js, play-server-service, replace-Config-file-tokens">
+	<target name="install" depends="extract-ffmpeg, install-TsId3Reader-plugin, install-TsPreparer-plugin, install-TsStitcher-plugin, download-vast-client-js, play-server-service, replace-Config-file-tokens">
 		<exec dir="${basedir}" executable="npm" failonerror="true">
 			<arg value="install" />
 		</exec>
@@ -43,38 +43,6 @@
 		<exec dir="${native.dir}/vendor/id3lib-3.8.3" executable="make" failonerror="true" />
 	</target>
 
-	<target name="build-TsPreparer">
-		<exec dir="${native.dir}/ts_preparer" executable="gcc" failonerror="true">
-			<arg value="../common/src/basicIo.c" />
-			<arg value="../common/src/common.c" />
-			<arg value="../common/src/dynamicBuffer.c" />
-			<arg value="../common/src/ffprobe.c" />
-			<arg value="../common/src/mpegTs.c" />
-			<arg value="../common/src/mpegTsStreamInfo.c" />
-			<arg value="ts_preparer.c" />
-			<arg value="-o" />
-			<arg value="ts_preparer" />
-			<arg value="-I../common/include" />
-			<arg value="-Wall" />
-			<arg value="-lmemcached" />
-		</exec>
-	</target>
-
-	<target name="build-TsCutter">
-		<exec dir="${native.dir}/ts_cutter" executable="gcc" failonerror="true">
-			<arg value="../common/src/basicIo.c" />
-			<arg value="../common/src/common.c" />
-			<arg value="../common/src/dynamicBuffer.c" />
-			<arg value="../common/src/ffprobe.c" />
-			<arg value="../common/src/mpegTs.c" />
-			<arg value="ts_cutter.c" />
-			<arg value="-o" />
-			<arg value="ts_cutter" />
-			<arg value="-I../common/include" />
-			<arg value="-Wall" />
-		</exec>
-	</target>
-
 	<target name="build-TsId3Reader-plugin">
 		<exec dir="${native.dir}/node_addons/TsId3Reader" executable="node-gyp" failonerror="true">
 			<arg value="configure" />
@@ -82,8 +50,8 @@
 		</exec>
 	</target>
 
-	<target name="build-TsCutter-plugin">
-		<exec dir="${native.dir}/node_addons/TsCutter" executable="node-gyp" failonerror="true">
+	<target name="build-TsPreparer-plugin">
+		<exec dir="${native.dir}/node_addons/TsPreparer" executable="node-gyp" failonerror="true">
 			<arg value="configure" />
 			<arg value="build" />
 		</exec>
@@ -96,11 +64,6 @@
 		</exec>
 	</target>
 
-	<target name="install-TsCutter" depends="build-TsCutter">
-		<copy file="${native.dir}/ts_cutter/ts_cutter" todir="${bin.dir}" failonerror="true" />
-		<chmod file="${bin.dir}/ts_cutter" perm="700"/>
-	</target>
-
 	<target name="install-id3lib" depends="build-id3lib">
 		<exec dir="${native.dir}/vendor/id3lib-3.8.3" executable="make" failonerror="true">
 			<arg value="install" />
@@ -108,17 +71,12 @@
 		<exec executable="ldconfig" failonerror="true" />
 	</target>
 
-	<target name="install-TsPreparer" depends="build-TsPreparer">
-		<copy file="${native.dir}/ts_preparer/ts_preparer" todir="${bin.dir}" failonerror="true" />
-		<chmod file="${bin.dir}/ts_preparer" perm="700"/>
-	</target>
-
 	<target name="install-TsId3Reader-plugin" depends="install-id3lib, build-TsId3Reader-plugin">
 		<copy file="${native.dir}/node_addons/TsId3Reader/build/Release/TsId3Reader.node" todir="${bin.dir}" failonerror="true" />
 		<chmod file="${bin.dir}/TsId3Reader.node" perm="700"/>
 	</target>
 
-	<target name="install-TsCutter-plugin" depends="install-TsCutter, build-TsCutter-plugin">
+	<target name="install-TsPreparer-plugin" depends="build-TsPreparer-plugin">
 	</target>
 
 	<target name="install-TsStitcher-plugin" depends="build-TsStitcher-plugin">
