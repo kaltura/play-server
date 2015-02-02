@@ -60,11 +60,11 @@ kalturaTsPreparer.cutTsFiles(ffmpegBin, ffprobeBin, cutOffset, leftPortion, inpu
 	var outputLayout = tsStitcher.buildLayout(data.metadata, null, [], 0, 0, 0);
 	var outputState = {};
 	var curChunk = new Buffer(0);
-	new Buffer(0)
 	
 	while (curChunk != null) {
+		var processResult;
 		do {
-			var processResult = tsStitcher.processChunk(
+			processResult = tsStitcher.processChunk(
 				outputLayout,
 				curChunk,
 				outputState);
@@ -83,7 +83,7 @@ kalturaTsPreparer.cutTsFiles(ffmpegBin, ffprobeBin, cutOffset, leftPortion, inpu
 			if (processResult.action == PBA_CLONE_CURRENT_CHUNK)
 			{
 				console.log('Cloning chunk buffer');
-				chunkClone = new Buffer(curChunk.length);
+				var chunkClone = new Buffer(curChunk.length);
 				curChunk.copy(chunkClone);
 				curChunk = chunkClone;
 			}

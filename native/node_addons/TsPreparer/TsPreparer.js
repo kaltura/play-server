@@ -81,8 +81,7 @@ else {
 }
 
 // prepare the TS file
-process.env['MEMCACHIER_SERVERS'] = memcacheHost + ':' + memcachePort;
-var memcache = memjs.Client.create();
+var memcache = memjs.Client.create(memcacheHost + ':' + memcachePort);
 
 if (mode == 'nocut') {
 	tsPreparer.prepareTsFiles(ffprobeBin, inputFiles, prepareTsCallback);

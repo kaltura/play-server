@@ -24,6 +24,6 @@ FormatTime.prototype.getDateTime = function () {
 
     return year + "/" + month + "/" + day + " " + hour + ":" + min + ":" + sec;
 
-}
+};
 
 module.exports = new FormatTime();
