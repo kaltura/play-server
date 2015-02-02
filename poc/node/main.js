@@ -125,7 +125,7 @@ Array.prototype.getUnique = function(){
       u[this[i]] = 1;
    }
    return a;
-}
+};
 
 function md5(str) {
 	return crypto.createHash('md5').update(str).digest('hex');
@@ -146,7 +146,7 @@ function errorMissingParameter(res) {
 }
 
 function getHttpUrl(urlStr, success, error) {
-	parsedUrl = url.parse(urlStr)
+	var parsedUrl = url.parse(urlStr);
 	var options = {
 		hostname: parsedUrl.hostname,
 		port: parsedUrl.port,
@@ -165,12 +165,12 @@ function getHttpUrl(urlStr, success, error) {
 			fullData += data;
 		});
 		res.on('end',function(){
-			success(fullData)
+			success(fullData);
 		});
 	});
 	
 	req.on('error', function (e) { 
-		error(e.message)
+		error(e.message);
 	});
 
 	req.end();
@@ -179,10 +179,10 @@ function getHttpUrl(urlStr, success, error) {
 function splitM3U8TagAttributes(attributes) {
 	var result = [];
 	while (attributes.length) {
-		commaPos = attributes.indexOf(',');
-		quotePos = attributes.indexOf('"');
+		var commaPos = attributes.indexOf(',');
+		var quotePos = attributes.indexOf('"');
 		if (quotePos >= 0 && quotePos < commaPos) {
-			quoteEndPos = attributes.indexOf('"', quotePos + 1);
+			var quoteEndPos = attributes.indexOf('"', quotePos + 1);
 			commaPos = attributes.indexOf(',', quoteEndPos);
 		}
 		if (commaPos < 0) {
@@ -214,10 +214,10 @@ function parseM3U8TagAttributes(curLine) {
 }
 
 function startTrackerExclusive(trackerInfo) {
-	memcache.add(trackerInfo['trackerOutputKey'], '', 60, function (err) {
+	memcache.add(trackerInfo.trackerOutputKey, '', 60, function (err) {
 		if (err)
 			return;		// someone else grabbed the lock
-		console.log('Starting tracker on ' + trackerInfo['url']);
+		console.log('Starting tracker on ' + trackerInfo.url);
 		
 		var encodedTrackerInfo = new Buffer(JSON.stringify(trackerInfo)).toString('base64');
 		var signature = md5(SERVER_SECRET + encodedTrackerInfo);
@@ -232,7 +232,7 @@ function startTrackerExclusive(trackerInfo) {
 }
 
 function startTrackers(urlsToTrack) {
-	trackerOutputKeys = urlsToTrack.map(function (urlToTrack) { return urlToTrack['trackerOutputKey']; });
+	var trackerOutputKeys = urlsToTrack.map(function (urlToTrack) { return urlToTrack.trackerOutputKey; });
 	
 	memcache.getMulti(trackerOutputKeys, function (err, data) {
 		if (err)
@@ -241,7 +241,7 @@ function startTrackers(urlsToTrack) {
 		var shouldStartTrackers = false;
 		for (var i = 0; i < urlsToTrack.length; i++) {
 			var urlToTrack = urlsToTrack[i];
-			if (!data[urlToTrack['trackerOutputKey']])
+			if (!data[urlToTrack.trackerOutputKey])
 				shouldStartTrackers = true;
 		}
 
@@ -251,7 +251,7 @@ function startTrackers(urlsToTrack) {
 		memcache.add(urlsToTrack[0].ffmpegParamsKey, '', 60, function (err) {
 			for (var i = 0; i < urlsToTrack.length; i++) {
 				var urlToTrack = urlsToTrack[i];
-				if (!data[urlToTrack['trackerOutputKey']])
+				if (!data[urlToTrack.trackerOutputKey])
 					startTrackerExclusive(urlToTrack);
 			}
 		});
@@ -312,12 +312,12 @@ function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 				adSegmentRedirectUrl: SERVER_EXTERNAL_HTTP_URL + AD_SEGMENT_REDIRECT_URI,
 				entryId: baseParams.entryId
 			};
-			if (attributes['BANDWIDTH'])
-				trackerParams['bitrate'] = attributes['BANDWIDTH'];
-			if (attributes['RESOLUTION']) {
-				var resolution = attributes['RESOLUTION'].split('x');
-				trackerParams['width'] = resolution[0];
-				trackerParams['height'] = resolution[1];
+			if (attributes.BANDWIDTH)
+				trackerParams.bitrate = attributes.BANDWIDTH;
+			if (attributes.RESOLUTION) {
+				var resolution = attributes.RESOLUTION.split('x');
+				trackerParams.width = resolution[0];
+				trackerParams.height = resolution[1];
 			}
 			
 			urlsToTrack.push(trackerParams);
@@ -325,8 +325,8 @@ function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 			var flavorStitchParams = {
 				entryId: baseParams.entryId,
 				masterUrl: masterUrl, 
-				trackerRequiredKey: trackerParams['trackerRequiredKey'],
-				trackerOutputKey: trackerParams['trackerOutputKey'],
+				trackerRequiredKey: trackerParams.trackerRequiredKey,
+				trackerOutputKey: trackerParams.trackerOutputKey,
 				uid: baseParams.uid
 			};
 			
@@ -374,7 +374,7 @@ function processMasterStitch(params, res) {
 			}, function (err) {
 				res.log('Error : ' + err);
 				cb({statusCode:400, body:err});
-			})
+			});
 		},
 		function (data) {	// callback
 			res.writeHead(data.statusCode, {'Content-Type': CONTENT_TYPE_M3U8});
@@ -534,7 +534,7 @@ function readTrackerOutput(res, trackerOutputKey, successCallback, errorCallback
 	});
 }
 
-function allocateAdsForUser(res, entryId, uid, adPositions, allocatedAds, adsToPrepare, uid, callback) {
+function allocateAdsForUser(res, entryId, uid, adPositions, allocatedAds, adsToPrepare, callback) {
 	var newAllocatedAds = {};
 	var adsCount = adPositions.length;
 	// find which ads should be prepared
@@ -644,7 +644,7 @@ function processFlavorStitch(params, res) {
 		console.log('got inserted ad:'+JSON.stringify(data));
 		var adPositions = data;
 		memcache.get(allocatedAdsKey, function(err, data){
-			allocatedAds = data;
+			var allocatedAds = data;
 			res.log('allocated ads ' + allocatedAds);
         	        if (allocatedAds)
 	                        allocatedAds = JSON.parse(allocatedAds);
@@ -656,7 +656,7 @@ function processFlavorStitch(params, res) {
                 	else
                         	adPositions = {};
 			var adsToPrepare = [];
-	                allocateAdsForUser(res, params.entryId, params.uid, adPositions, allocatedAds, adsToPrepare, params.uid, function(newAllocatedAds){
+	                allocateAdsForUser(res, params.entryId, params.uid, adPositions, allocatedAds, adsToPrepare, function(newAllocatedAds){
         	                memcache.set(allocatedAdsKey, JSON.stringify(newAllocatedAds), 3600, function (err) {});
                 	        // prepare the ads
                         	prepareAdsForEntry(adsToPrepare);
@@ -779,7 +779,7 @@ function buildFlavorM3U8(manifest) {
 	var headers = manifest.headers;
 	var segments = manifest.segments;
 	var footers = manifest.footers;
-	result = '';
+	var result = '';
 	
 	for(var key in headers){
 		var value = headers[key];
@@ -791,7 +791,7 @@ function buildFlavorM3U8(manifest) {
 		
 	for(var i = 0; i < segments.length; i++){
 		var segment = segments[i];
-		segmentUrl = segment.url;
+		var segmentUrl = segment.url;
 			
 		result += '#EXTINF:' + segment.duration.toFixed(3) + ',\n';
 		result += segmentUrl + '\n';
@@ -1142,7 +1142,7 @@ function processAdSegmentRedirect(queryParams, res) {
 
 		// update the query parameters
 		delete queryParams.uid;
-		queryParams['adId'] = adId;
+		queryParams.adId = adId;
 
 		// redirect
 		res.writeHead(302, {
@@ -1161,8 +1161,9 @@ function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, ad
 		return;
 	}
 	
+	var processResult;
 	do {
-		var processResult = stitcher.processChunk(
+		processResult = stitcher.processChunk(
 			outputLayout,
 			curChunk,
 			outputState);
@@ -1183,7 +1184,7 @@ function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, ad
 		if (processResult.action == PBA_CLONE_CURRENT_CHUNK)
 		{
 			res.log('cloning chunk buffer');
-			chunkClone = new Buffer(curChunk.length);
+			var chunkClone = new Buffer(curChunk.length);
 			curChunk.copy(chunkClone);
 			curChunk = chunkClone;
 		}
@@ -1312,10 +1313,10 @@ function handleHttpRequest(req, res) {
 	res.setHeader('X-Kaltura-Session', sessionId);
 	res.log = function (msg) {
 		console.log(formatTime.getDateTime() + ' [' + sessionId + '] ' + msg);
-	}
+	};
 	res.dir = function (obj) {
 		res.log(util.inspect(obj));
-	}
+	};
 	
 	accessLog(req, res);
 	
@@ -1421,7 +1422,7 @@ function handleHttpRequest(req, res) {
 		break;
 		
 	case '/':
-		var hostName = req.headers['host'];
+		var hostName = req.headers.host;
 		if (hostName && hostName.trim().toLowerCase() != SERVER_EXTERNAL_DOMAIN) {
 			res.writeHead(302, {
 				'Location': SERVER_EXTERNAL_HTTP_URL
@@ -1474,7 +1475,7 @@ var mkdirIfNotExist = function (path) {
   } catch(e) {
     if ( e.code != 'EEXIST' ) throw e;
   }
-}
+};
 
 mkdirIfNotExist(PLAY_ERROR_LOG_PATH);
 mkdirIfNotExist(MANIFEST_PATH);
