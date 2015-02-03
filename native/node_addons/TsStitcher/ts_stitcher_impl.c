@@ -13,6 +13,7 @@ typedef struct {
 	const metadata_frame_info_t* video_frames;
 	int32_t start_pos[MEDIA_TYPE_COUNT];
 	int32_t end_pos[MEDIA_TYPE_COUNT];
+	bool_t cyclic;
 } internal_ad_section_t;
 
 typedef struct {
@@ -76,6 +77,7 @@ internal_ad_section_t* convert_external_layout_to_internal(
 	
 	// add the pre ad section
 	cur_output_section->chunk_type = CHUNK_TYPE_PRE_AD;
+	cur_output_section->cyclic = FALSE;
 	cur_output_section->video_header = pre_ad_header;
 	cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
 	memset(cur_output_section->start_pos, 0, sizeof(cur_output_section->start_pos));
@@ -137,6 +139,7 @@ internal_ad_section_t* convert_external_layout_to_internal(
 					
 					// pre ad filler
 					cur_output_section->chunk_type = ad_section->filler_chunk_type;
+					cur_output_section->cyclic = TRUE;
 					cur_output_section->video_header = ad_section->filler_header;
 					cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
 					cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
@@ -151,6 +154,7 @@ internal_ad_section_t* convert_external_layout_to_internal(
 			
 			// ad
 			cur_output_section->chunk_type = ad_section->ad_chunk_type;
+			cur_output_section->cyclic = FALSE;
 			cur_output_section->video_header = ad_section->ad_header;
 			cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
 			cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
@@ -173,6 +177,7 @@ internal_ad_section_t* convert_external_layout_to_internal(
 			cur_pos[MEDIA_TYPE_AUDIO] < end_pos[MEDIA_TYPE_AUDIO])
 		{
 			cur_output_section->chunk_type = ad_section->filler_chunk_type;
+			cur_output_section->cyclic = TRUE;
 			cur_output_section->video_header = ad_section->filler_header;
 			cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
 			cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
@@ -188,6 +193,7 @@ internal_ad_section_t* convert_external_layout_to_internal(
 	if (post_ad_header != NULL)
 	{
 		cur_output_section->chunk_type = CHUNK_TYPE_POST_AD;
+		cur_output_section->cyclic = FALSE;
 		cur_output_section->video_header = post_ad_header;
 		cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
 		cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
@@ -348,7 +354,15 @@ bool_t build_layout_impl(
 			{
 				if (frame_index >= ad_section->video_header->frame_count)
 				{
-					frame_index -= ad_section->video_header->frame_count;
+					if (ad_section->cyclic)
+					{
+						frame_index -= ad_section->video_header->frame_count;
+					}
+					else
+					{
+						next_frame = NULL;
+						break;
+					}
 				}
 				
 				next_frame = &ad_section->video_frames[frame_index];
