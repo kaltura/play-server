@@ -22,6 +22,8 @@ var exec = require('child_process').exec;
 var spawn = require('child_process').spawn;
 var fs = require('fs');
 
+require('./vastParser');
+
 // parameters
 const LOCAL_SERVER_PORT = 1337;
 const SERVER_EXTERNAL_DOMAIN = 'adstitchdemo.kaltura.com';
@@ -70,7 +72,7 @@ const MASTER_STITCH_URI = '/masterstitch.m3u8';
 const FLAVOR_STITCH_URI = '/flavorstitch.m3u8';
 const MASTER_PROXY_URI = '/masterproxy.m3u8';
 const FLAVOR_PROXY_URI = '/flavorproxy.m3u8';
-const INSERT_AD_URI = '/insertAd.js'
+const INSERT_AD_URI = '/insertAd.js';
 const START_TRACKER_URI = '/startAdTracker.js';
 const AD_SEGMENT_REDIRECT_URI = '/adRedirect.ts';
 const STITCH_SEGMENT_URI = '/stitchSegment.ts';
@@ -79,13 +81,17 @@ const GET_NEXT_AD_TIME_URI = '/getNextAdTime.js';
 const SHORT_URL_URI = '/shortUrl.js';
 const NOTIFY_ERROR_URI = '/notifyError.js';
 const NOTIFY_STATUS_URI = '/notifyStatus.js';
+const NOTIFY_STATUS_ADMIN_URI = '/notifyStatusAdmin.js';
 const RESTART_SERVER_URI = '/restartServer.js';
 const FAVICON_ICO_URI = '/favicon.ico';
 const CROSS_DOMAIN_URI = '/crossdomain.xml';
 
-const AD_REQUEST_URL = 'http://dogusns-f.akamaihd.net/i/DOGUS_STAR/StarTV/Program/osesturkiye/suvedilara.mp4/segment1_0_av.ts?e=e933a313f6018d5d';
-
 const NO_DVR_M3U8_TS_COUNT = 3;
+
+// paths
+const PLAY_ERROR_LOG_PATH = '/tmp/playErrorLog/';
+const MANIFEST_PATH = '/tmp/manifests/';
+const TS_FILES_PATH = '/tmp/tsFiles/';
 
 var memcache = new memcached(MEMCACHE_URL);
 
@@ -119,7 +125,7 @@ Array.prototype.getUnique = function(){
       u[this[i]] = 1;
    }
    return a;
-}
+};
 
 function md5(str) {
 	return crypto.createHash('md5').update(str).digest('hex');
@@ -140,7 +146,7 @@ function errorMissingParameter(res) {
 }
 
 function getHttpUrl(urlStr, success, error) {
-	parsedUrl = url.parse(urlStr)
+	var parsedUrl = url.parse(urlStr);
 	var options = {
 		hostname: parsedUrl.hostname,
 		port: parsedUrl.port,
@@ -154,17 +160,17 @@ function getHttpUrl(urlStr, success, error) {
 			return;
 		}
 		
-		fullData = '';
+		var fullData = '';
 		res.on('data',function(data){
 			fullData += data;
 		});
 		res.on('end',function(){
-			success(fullData)
+			success(fullData);
 		});
 	});
 	
 	req.on('error', function (e) { 
-		error(e.message)
+		error(e.message);
 	});
 
 	req.end();
@@ -173,10 +179,10 @@ function getHttpUrl(urlStr, success, error) {
 function splitM3U8TagAttributes(attributes) {
 	var result = [];
 	while (attributes.length) {
-		commaPos = attributes.indexOf(',');
-		quotePos = attributes.indexOf('"');
+		var commaPos = attributes.indexOf(',');
+		var quotePos = attributes.indexOf('"');
 		if (quotePos >= 0 && quotePos < commaPos) {
-			quoteEndPos = attributes.indexOf('"', quotePos + 1);
+			var quoteEndPos = attributes.indexOf('"', quotePos + 1);
 			commaPos = attributes.indexOf(',', quoteEndPos);
 		}
 		if (commaPos < 0) {
@@ -208,10 +214,10 @@ function parseM3U8TagAttributes(curLine) {
 }
 
 function startTrackerExclusive(trackerInfo) {
-	memcache.add(trackerInfo['trackerOutputKey'], '', 60, function (err) {
+	memcache.add(trackerInfo.trackerOutputKey, '', 60, function (err) {
 		if (err)
 			return;		// someone else grabbed the lock
-		console.log('Starting tracker on ' + trackerInfo['url']);
+		console.log('Starting tracker on ' + trackerInfo.url);
 		
 		var encodedTrackerInfo = new Buffer(JSON.stringify(trackerInfo)).toString('base64');
 		var signature = md5(SERVER_SECRET + encodedTrackerInfo);
@@ -226,7 +232,7 @@ function startTrackerExclusive(trackerInfo) {
 }
 
 function startTrackers(urlsToTrack) {
-	trackerOutputKeys = urlsToTrack.map(function (urlToTrack) { return urlToTrack['trackerOutputKey']; });
+	var trackerOutputKeys = urlsToTrack.map(function (urlToTrack) { return urlToTrack.trackerOutputKey; });
 	
 	memcache.getMulti(trackerOutputKeys, function (err, data) {
 		if (err)
@@ -235,7 +241,7 @@ function startTrackers(urlsToTrack) {
 		var shouldStartTrackers = false;
 		for (var i = 0; i < urlsToTrack.length; i++) {
 			var urlToTrack = urlsToTrack[i];
-			if (!data[urlToTrack['trackerOutputKey']])
+			if (!data[urlToTrack.trackerOutputKey])
 				shouldStartTrackers = true;
 		}
 
@@ -245,11 +251,37 @@ function startTrackers(urlsToTrack) {
 		memcache.add(urlsToTrack[0].ffmpegParamsKey, '', 60, function (err) {
 			for (var i = 0; i < urlsToTrack.length; i++) {
 				var urlToTrack = urlsToTrack[i];
-				if (!data[urlToTrack['trackerOutputKey']])
+				if (!data[urlToTrack.trackerOutputKey])
 					startTrackerExclusive(urlToTrack);
 			}
 		});
 	});
+}
+
+function getUrlFromM3U8Line(curLine) {
+	var curUrl = '';
+	var curPrefix = '';
+	var curSuffix = '';
+
+	if (curLine.length && curLine[0] != '#')
+	{
+		curUrl = curLine;
+	}
+	else if (curLine.startsWith('#EXT-X-MEDIA'))
+	{
+		var uriStartPos = curLine.search('URI="');
+		var uriEndPos = curLine.substring(uriStartPos + 5).search('"');
+		if (uriStartPos >= 0 && uriEndPos >= 0)
+		{
+			uriStartPos += 5;
+			uriEndPos += uriStartPos;
+			curPrefix = curLine.substring(0, uriStartPos);
+			curUrl = curLine.substring(uriStartPos, uriEndPos);
+			curSuffix = curLine.substring(uriEndPos);
+		}
+	}
+	
+	return {url: curUrl, prefix: curPrefix, suffix: curSuffix};
 }
 
 function stitchMasterM3U8(masterUrl, manifest, baseParams) {
@@ -266,25 +298,26 @@ function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 
 	for (var i = 0; i < split.length; i++) {
 		var curLine = split[i].trim();
-
-		if (curLine.length && curLine[0] != '#') {
-			curLine = url.resolve(masterUrl, curLine);
+		var curUrl = getUrlFromM3U8Line(curLine);
+		
+		if (curUrl.url) {
+			curUrl.url = url.resolve(masterUrl, curUrl.url);
 			var trackerParams = {
-				url: curLine,
+				url: curUrl.url,
 				trackerRequiredKey: 'required-' + baseParams.entryId,
-				trackerOutputKey: 'trackerOutput-' + md5(curLine + baseParams.entryId),
+				trackerOutputKey: 'trackerOutput-' + md5(curUrl.url + baseParams.entryId),
 				adPositionsKey: 'adPos-' + baseParams.entryId,
 				lastUsedSegmentKey: 'lastUsedSegment-' + baseParams.entryId,
 				ffmpegParamsKey: 'ffmpegParams-' + baseParams.entryId,
 				adSegmentRedirectUrl: SERVER_EXTERNAL_HTTP_URL + AD_SEGMENT_REDIRECT_URI,
 				entryId: baseParams.entryId
 			};
-			if (attributes['BANDWIDTH'])
-				trackerParams['bitrate'] = attributes['BANDWIDTH'];
-			if (attributes['RESOLUTION']) {
-				var resolution = attributes['RESOLUTION'].split('x');
-				trackerParams['width'] = resolution[0];
-				trackerParams['height'] = resolution[1];
+			if (attributes.BANDWIDTH)
+				trackerParams.bitrate = attributes.BANDWIDTH;
+			if (attributes.RESOLUTION) {
+				var resolution = attributes.RESOLUTION.split('x');
+				trackerParams.width = resolution[0];
+				trackerParams.height = resolution[1];
 			}
 			
 			urlsToTrack.push(trackerParams);
@@ -292,12 +325,12 @@ function stitchMasterM3U8(masterUrl, manifest, baseParams) {
 			var flavorStitchParams = {
 				entryId: baseParams.entryId,
 				masterUrl: masterUrl, 
-				trackerRequiredKey: trackerParams['trackerRequiredKey'],
-				trackerOutputKey: trackerParams['trackerOutputKey'],
+				trackerRequiredKey: trackerParams.trackerRequiredKey,
+				trackerOutputKey: trackerParams.trackerOutputKey,
 				uid: baseParams.uid
 			};
 			
-			result += protocol + SERVER_EXTERNAL_URL + FLAVOR_STITCH_URI + '?' + querystring.stringify(flavorStitchParams) + '\n';
+			result += curUrl.prefix + protocol + SERVER_EXTERNAL_URL + FLAVOR_STITCH_URI + '?' + querystring.stringify(flavorStitchParams) + curUrl.suffix + '\n';
 			
 			attributes = {};
 			continue;
@@ -341,7 +374,7 @@ function processMasterStitch(params, res) {
 			}, function (err) {
 				res.log('Error : ' + err);
 				cb({statusCode:400, body:err});
-			})
+			});
 		},
 		function (data) {	// callback
 			res.writeHead(data.statusCode, {'Content-Type': CONTENT_TYPE_M3U8});
@@ -353,7 +386,7 @@ function processMasterStitch(params, res) {
 var m3u8FileCounter = 1;
 
 function logManifestToFile(res, manifestString) {
-	var outputFileName = "/tmp/manifests/" + (m3u8FileCounter % 10) + ".m3u8";
+	var outputFileName = MANIFEST_PATH + (m3u8FileCounter % 10) + ".m3u8";
 	fs.writeFile(outputFileName, manifestString, function(err) {
 		if(err) {
 			res.log(err);
@@ -501,28 +534,55 @@ function readTrackerOutput(res, trackerOutputKey, successCallback, errorCallback
 	});
 }
 
-function allocateAdsForUser(res, entryId, adPositions, allocatedAds, adsToPrepare) {
+function allocateAdsForUser(res, entryId, uid, adPositions, allocatedAds, adsToPrepare, callback) {
 	var newAllocatedAds = {};
-	
+	var adsCount = adPositions.length;
 	// find which ads should be prepared
 	for (var i = 0; i < adPositions.length; i++) {
 		var adPosition = adPositions[i];
 		if (allocatedAds[adPosition.cuePointId]) {
 			// already allocated
 			newAllocatedAds[adPosition.cuePointId] = allocatedAds[adPosition.cuePointId];
+			adsCount--;
+			if(adsCount == 0){
+				return callback(newAllocatedAds);
+			}
 			continue;
 		}
 		
 		res.log('requesting ad for user');
-
-		// XXXX TODO get via VAST
-		var adUrl = adPoolUrls[Math.floor(Math.random()*adPoolUrls.length)];		
 		
-		var adId = md5(adUrl);
-		adsToPrepare.push({adUrl: adUrl, adId: adId, entryId: entryId});		
-		newAllocatedAds[adPosition.cuePointId] = adId;
+		
+		//get user ip to stich ad by	
+		var userAndIp = uid.split("_");
+		var ip = userAndIp[1];
+	
+		// ad IP to vast url request
+		var vastUrl;
+
+		//ad IP to vast url request
+		if(ip == '91.142.215.121')
+			vastUrl = 'http://search.spotxchange.com/vast/2.0/96156?content_page_url=http://kalturatest.com&VPI=MP4&ip_addr=91.142.215.121';
+		else
+			vastUrl = 'http://search.spotxchange.com/vast/2.0/96157?content_page_url=http://kalturatest.com&VPI=MP4&ip_addr=46.20.235.45';
+		
+		// get via VAST	
+		vastParser.getAdMediaFiles(res, vastUrl, adPositions[i].adSlotDuration*1000, function(adUrl, trackingInfo){
+			if(adUrl){
+				var adId = md5(adUrl);
+				adsToPrepare.push({adUrl: adUrl, adId: adId, entryId: entryId});		
+				newAllocatedAds[adPosition.cuePointId] = adId;		
+				res.log('saving tracking info to memcache with key: ' + 'trackingInfo-' + adId + '-' + uid + ' value: ' + JSON.stringify(trackingInfo));	
+				memcache.set('trackingInfo-' + adId + '-' + uid, trackingInfo, 600, function (err) {
+					res.log('Failed to set tracking info in cache:' + err);
+				});	
+			}
+			adsCount--;
+			if(adsCount == 0){
+				return callback(newAllocatedAds);
+			}			
+		});
 	}
-	return newAllocatedAds;
 }
 
 function processFlavorStitch(params, res) {
@@ -571,7 +631,7 @@ function processFlavorStitch(params, res) {
 		getHttpUrl(params.masterUrl, function (urlData) {
 			stitchMasterM3U8(params.masterUrl, urlData, {entryId: params.entryId});
 		}, function (err) {});			
-	}, 30);
+	}, 200);
 		
 	// mark the tracker as required
 	var currentTime = Math.floor(new Date().getTime() / 1000);
@@ -580,34 +640,30 @@ function processFlavorStitch(params, res) {
 	// get ads allocated to the user
 	var allocatedAdsKey = 'allocatedAds-' + params.uid;
 	var adPositionsKey = 'adPos-' + params.entryId;
-	memcache.getMulti([allocatedAdsKey, adPositionsKey], function (err, data) {
-		if (err) {
-			// XXXX
-		}
+	memcache.get(adPositionsKey, function(err, data){
+		console.log('got inserted ad:'+JSON.stringify(data));
+		var adPositions = data;
+		memcache.get(allocatedAdsKey, function(err, data){
+			var allocatedAds = data;
+			res.log('allocated ads ' + allocatedAds);
+        	        if (allocatedAds)
+	                        allocatedAds = JSON.parse(allocatedAds);
+                	else
+                        	allocatedAds = {};
+			res.log('got ad positions ' + adPositions);
+	                if (adPositions)
+        	                adPositions = JSON.parse(adPositions);
+                	else
+                        	adPositions = {};
+			var adsToPrepare = [];
+	                allocateAdsForUser(res, params.entryId, params.uid, adPositions, allocatedAds, adsToPrepare, function(newAllocatedAds){
+        	                memcache.set(allocatedAdsKey, JSON.stringify(newAllocatedAds), 3600, function (err) {});
+                	        // prepare the ads
+                        	prepareAdsForEntry(adsToPrepare);
 
-		// parse allocated ads
-		allocatedAds = data[allocatedAdsKey];
-		res.log('allocated ads ' + allocatedAds);
-		if (allocatedAds)
-			allocatedAds = JSON.parse(allocatedAds);
-		else
-			allocatedAds = {};
+                	});
 
-		// allocate ads for the user
-		var adPositions = data[adPositionsKey];
-		res.log('got ad positions ' + adPositions);
-		if (adPositions)
-			adPositions = JSON.parse(adPositions);
-		else
-			adPositions = {};
-		
-		var adsToPrepare = [];
-		
-		var newAllocatedAds = allocateAdsForUser(res, params.entryId, adPositions, allocatedAds, adsToPrepare);
-		memcache.set(allocatedAdsKey, JSON.stringify(newAllocatedAds), 3600, function (err) {});
-
-		// prepare the ads
-		prepareAdsForEntry(adsToPrepare);
+		});
 	});
 }
 
@@ -623,10 +679,11 @@ function proxyMasterM3U8(masterUrl, manifest, uid) {
 	
 	for (var i = 0; i < split.length; i++) {
 		var curLine = split[i].trim();
-
-		if (curLine.length && curLine[0] != '#') {
-			curLine = url.resolve(masterUrl, curLine);
-			result += protocol + SERVER_EXTERNAL_URL + FLAVOR_PROXY_URI + '?' + querystring.stringify({'uid': uid, 'url': curLine}) + '\n';
+		var curUrl = getUrlFromM3U8Line(curLine);
+		
+		if (curUrl.url) {
+			curUrl.url = url.resolve(masterUrl, curUrl.url);
+			result += curUrl.prefix + protocol + SERVER_EXTERNAL_URL + FLAVOR_PROXY_URI + '?' + querystring.stringify({'uid': uid, 'url': curUrl.url}) + curUrl.suffix + '\n';
 			continue;
 		}
 
@@ -696,17 +753,15 @@ function parseFlavorM3U8(manifestUrl, manifestContent){
 				break;
 				
 			case 'EXTINF':
-				if(value.substr(-1) == ',')
-					value = value.trim(0, value.length - 1);
+				value = value.split(',')[0];
 
 				value = parseFloat(value);
-				segmentInfo[key] = parseFloat(value);
+				segmentInfo[key] = value;
 				segmentInfo.duration = value;
 				break;
 				
 			case 'EXT-X-DISCONTINUITY':
-				if(value.substr(-1) == ',')
-					value = value.trim(0, value.length - 1);
+				value = value.split(',')[0];
 				
 				segmentInfo[key] = value;
 				break;
@@ -724,7 +779,7 @@ function buildFlavorM3U8(manifest) {
 	var headers = manifest.headers;
 	var segments = manifest.segments;
 	var footers = manifest.footers;
-	result = '';
+	var result = '';
 	
 	for(var key in headers){
 		var value = headers[key];
@@ -736,7 +791,7 @@ function buildFlavorM3U8(manifest) {
 		
 	for(var i = 0; i < segments.length; i++){
 		var segment = segments[i];
-		segmentUrl = segment.url;
+		var segmentUrl = segment.url;
 			
 		result += '#EXTINF:' + segment.duration.toFixed(3) + ',\n';
 		result += segmentUrl + '\n';
@@ -858,6 +913,7 @@ function processGetNextAdTime(queryParams, res) {
 	
 		var translatedTime = translateTimeToSegmentId(segmentOffsets, parseFloat(queryParams.currentTime));
 		if (!translatedTime) {
+			res.log('time=' + queryParams.currentTime + ' offsets=' + JSON.stringify(segmentOffsets));
 			errorResponse(res, 400, 'failed to translate player time');
 			return;
 		}
@@ -944,14 +1000,14 @@ function processFlavorProxy(queryParams, res) {
 	});
 }
 
-function doInsertAd(entryId, segmentId, segmentOffset, adSlotDuration, res) {
+function doInsertAd(entryId, segmentId, segmentOffset, vastUrl, adSlotDuration, res) {
 	res.log('inserting ad - segmentId=' + segmentId + ' segmentOffset=' + segmentOffset);	
 
 	var adPositionsKey = 'adPos-' + entryId;
 	var lastUsedSegmentKey = 'lastUsedSegment-' + entryId;
 
 	memcache.getMulti([adPositionsKey, lastUsedSegmentKey], function (err, data) {
-		res.log('last used segment is ' + data[lastUsedSegmentKey]);
+		res.log('last used segment is ' + data[lastUsedSegmentKey] + 'data:' + JSON.stringify(data));
 		if (err) {
 			errorResponse(res, 400, 'failed to get current ad positions');
 			return;
@@ -980,6 +1036,7 @@ function doInsertAd(entryId, segmentId, segmentOffset, adSlotDuration, res) {
 			startSegmentId: segmentId,
 			startSegmentOffset: segmentOffset,
 			adSlotDuration: parseInt(adSlotDuration),			// get from parameter
+			vastUrl: vastUrl,
 		};
 		
 		adPositions.push(newAd);
@@ -1005,7 +1062,7 @@ function processInsertAd(params, res) {
 	if (params.segmentId && params.segmentOffset) {
 		var segmentId = parseInt(params.segmentId);
 		var segmentOffset = parseFloat(params.segmentOffset);
-		doInsertAd(params.entryId, segmentId, segmentOffset, params.adSlotDuration, res);
+		doInsertAd(params.entryId, segmentId, segmentOffset, params.vastUrl, params.adSlotDuration, res);
 	} else if (params.currentTime && params.currentTime != '0' && params.uid) {
 		memcache.get('segmentOffsets-' + params.uid, function (err, segmentOffsets) {
 			if (err || !segmentOffsets) {
@@ -1016,11 +1073,12 @@ function processInsertAd(params, res) {
 			var translatedTime = translateTimeToSegmentId(segmentOffsets, parseFloat(params.currentTime));
 
 			if (!translatedTime) {
+				res.log('time=' + params.currentTime + ' offsets=' + JSON.stringify(segmentOffsets));
 				errorResponse(res, 400, 'failed to translate player time to a segment id, reload the player');
 				return;
 			}
 			
-			doInsertAd(params.entryId, translatedTime.segmentId, translatedTime.segmentOffset, params.adSlotDuration, res);
+			doInsertAd(params.entryId, translatedTime.segmentId, translatedTime.segmentOffset, params.vastUrl, params.adSlotDuration, res);
 		});
 	} else {
 		errorMissingParameter(res);
@@ -1054,10 +1112,10 @@ function processInsertAdPage(protocol, res) {
 		crypto.randomBytes(4, function(ex, buf) {
 			var uid = buf.toString('hex');
 			
-			res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
-			res.end(data.replaceAll('@UID@', uid).
-						 replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL).
-						 replaceAll('@PROTOCOL@', protocol));
+            res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
+            res.end(data.replaceAll('@UID@', uid).
+            				replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL).
+        					replaceAll('@PROTOCOL@', protocol));
 		});
 	});
 }
@@ -1079,9 +1137,12 @@ function processAdSegmentRedirect(queryParams, res) {
 			adId = 'none';
 		}
 
+		var trackingId = 'trackingInfo-' + adId + '-' + queryParams.uid;
+		vastParser.sendBeacon(res, trackingId, parseInt(queryParams.segmentIndex),parseInt(queryParams.outputStart), parseInt(queryParams.outputEnd), memcache);
+
 		// update the query parameters
 		delete queryParams.uid;
-		queryParams['adId'] = adId;
+		queryParams.adId = adId;
 
 		// redirect
 		res.writeHead(302, {
@@ -1100,8 +1161,9 @@ function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, ad
 		return;
 	}
 	
+	var processResult;
 	do {
-		var processResult = stitcher.processChunk(
+		processResult = stitcher.processChunk(
 			outputLayout,
 			curChunk,
 			outputState);
@@ -1122,7 +1184,7 @@ function outputStitchedSegment(outputLayout, outputState, curChunk, preAdKey, ad
 		if (processResult.action == PBA_CLONE_CURRENT_CHUNK)
 		{
 			res.log('cloning chunk buffer');
-			chunkClone = new Buffer(curChunk.length);
+			var chunkClone = new Buffer(curChunk.length);
 			curChunk.copy(chunkClone);
 			curChunk = chunkClone;
 		}
@@ -1232,7 +1294,7 @@ function processStitchSegment(queryParams, res) {
 					// output the TS
 					res.writeHead(200, {'Content-Type': CONTENT_TYPE_MPEG2TS});
 					
-					var tsDebugFileName = '/tmp/tsFiles/' + (tsFileCounter % 10) + '.ts';
+					var tsDebugFileName = TS_FILES_PATH + (tsFileCounter % 10) + '.ts';
 					res.log('saving ts file to ' + tsDebugFileName);
 					var tsDebugFile = fs.openSync(tsDebugFileName, 'w');
 					tsFileCounter++;
@@ -1251,10 +1313,10 @@ function handleHttpRequest(req, res) {
 	res.setHeader('X-Kaltura-Session', sessionId);
 	res.log = function (msg) {
 		console.log(formatTime.getDateTime() + ' [' + sessionId + '] ' + msg);
-	}
+	};
 	res.dir = function (obj) {
 		res.log(util.inspect(obj));
-	}
+	};
 	
 	accessLog(req, res);
 	
@@ -1266,7 +1328,7 @@ function handleHttpRequest(req, res) {
 	var parsedUrl = url.parse(req.url);
 	var queryParams = querystring.parse(parsedUrl.query);
 	
-	res.log('handling request');
+	res.log('handling request: ' + parsedUrl.pathname);
 	res.dir(queryParams);
 	
 	switch (parsedUrl.pathname) {
@@ -1313,6 +1375,8 @@ function handleHttpRequest(req, res) {
 	case SHORT_URL_URI:
 		var shortUri = '/' + shortUrlCounter;
 		shortUrls[shortUri] = queryParams;
+		var pageIdIp_key = 'pageId-ip-' + shortUrlCounter;
+		memcache.set(pageIdIp_key, queryParams.IP, 86400, function (err) {});
 		shortUrlCounter++;
 		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
 		res.end(protocol + SERVER_EXTERNAL_URL + shortUri);		
@@ -1320,7 +1384,7 @@ function handleHttpRequest(req, res) {
 		
 	case NOTIFY_ERROR_URI:
 		
-		var cmdLine = "python " + __dirname + "/../utils/debug/debugStream.py '" + queryParams.url + "' /tmp/playErrorLog/x.m3u8";
+		var cmdLine = "python " + __dirname + "/../utils/debug/debugStream.py '" + queryParams.url + "' " + PLAY_ERROR_LOG_PATH + "x.m3u8";
 
 		res.log('Executing: ' + cmdLine);
 
@@ -1330,6 +1394,7 @@ function handleHttpRequest(req, res) {
 		// fall through
 		
 	case NOTIFY_STATUS_URI:
+	case NOTIFY_STATUS_ADMIN_URI:
 		res.writeHead(200, {'Content-Type': CONTENT_TYPE_PLAIN_TEXT});
 		res.end('logged');		
 		break;
@@ -1357,7 +1422,7 @@ function handleHttpRequest(req, res) {
 		break;
 		
 	case '/':
-		var hostName = req.headers['host'];
+		var hostName = req.headers.host;
 		if (hostName && hostName.trim().toLowerCase() != SERVER_EXTERNAL_DOMAIN) {
 			res.writeHead(302, {
 				'Location': SERVER_EXTERNAL_HTTP_URL
@@ -1385,7 +1450,7 @@ function handleHttpRequest(req, res) {
 							
 					res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
 					
-					data = data.replaceAll('@UID@', uid).
+					data = data.replaceAll('@UID@', uid + '_' + shortUrls[parsedUrl.pathname].IP).
 								replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL);
 								
 					for (var key in shortUrls[parsedUrl.pathname]) {
@@ -1403,6 +1468,18 @@ function handleHttpRequest(req, res) {
 		break;
 	}
 }
+
+var mkdirIfNotExist = function (path) {
+  try {
+    fs.mkdirSync(path);
+  } catch(e) {
+    if ( e.code != 'EEXIST' ) throw e;
+  }
+};
+
+mkdirIfNotExist(PLAY_ERROR_LOG_PATH);
+mkdirIfNotExist(MANIFEST_PATH);
+mkdirIfNotExist(TS_FILES_PATH);
 
 var memcachebin = new memcachedbin();
 

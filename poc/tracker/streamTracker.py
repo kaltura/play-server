@@ -14,8 +14,7 @@ import json
 import sys
 import os
 
-TS_CUTTER_PATH = 'node %s' % os.path.join(os.path.dirname(__file__), '../../native/node_addons/TsCutter/TsCutter.js')
-TS_PREPARER_PATH = os.path.join(os.path.dirname(__file__), '../../native/ts_preparer/ts_preparer')
+TS_PREPARER_PATH = 'node %s' % os.path.join(os.path.dirname(__file__), '../../native/node_addons/TsPreparer/TsPreparer.js')
 FFPROBE_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffprobe-2.1.sh'
 FFMPEG_PATH = '/web/content/shared/bin/ffmpeg-2.1-bin/ffmpeg-2.1.sh'
 
@@ -59,10 +58,6 @@ def executeCommand(cmdLine):
   	writeOutput(commands.getoutput(cmdLine))
 	writeOutput('command took %s' % (time.time() - startTime))
 
-def addVideoToMemcache(fileName, outputKey, expiry = 0):
-	cmdLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, fileName, FFPROBE_PATH, MEMCACHE_HOST, MEMCACHE_PORT, expiry, outputKey]))
-	executeCommand(cmdLine)
-
 def videoExistsInMemcache(memcache, key):
 	metadata = memcache.get('%s-metadata' % key)
 	if metadata == None:
@@ -86,15 +81,8 @@ def cutTsFiles(videoKey, buffer, position, portion):
 	path2 = getUrl(url2, '.ts')
 	path3 = getUrl(url3, '.ts')
 	
-	# cut the TS to a temp file
-	outputFile = os.path.join(tempDownloadPath, videoKey + '.ts')
-	commandLine = ' '.join([TS_CUTTER_PATH, outputFile, FFMPEG_PATH, FFPROBE_PATH, position, portion, path1, path2, path3])
+	commandLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, MEMCACHE_HOST, MEMCACHE_PORT, MAX_DVR_LENGTH, videoKey, FFMPEG_PATH, FFPROBE_PATH, portion, position, path1, path2, path3]))
 	executeCommand(commandLine)
-	
-	# XXXX TODO - can get the video metadata from ts_cutter instead of running ffprobe here
-	
-	# save the result to memcache
-	addVideoToMemcache(outputFile, videoKey, MAX_DVR_LENGTH)
 	
 def parseM3U8(manifestUrl, streamData):
 	header = {}
@@ -131,8 +119,7 @@ def parseM3U8(manifestUrl, streamData):
 			footer[key] = value
 			
 		elif key in ['EXTINF', 'EXT-X-DISCONTINUITY']:
-			if value.endswith(','):
-				value = value[:-1]
+			value = value.split(',')[0]
 			if key in ['EXTINF']:
 				value = float(value)
 			segmentInfo[key] = value
@@ -247,14 +234,14 @@ class ManifestStitcher:
 				# create pre ad ts
 				videoKey = 'preAd-%s-%s' % (liveStreamUrlHash, self.cuePointId)
 				if not videoExistsInMemcache(memcache, videoKey):
-					cutTsFiles(videoKey, buffer, self.adStartOffset, 'left')
+					cutTsFiles(videoKey, buffer, self.adStartOffset, 'leftcut')
 			
 			if (self.adCurOffset + curSegmentDuration <= self.adEndOffset and 
 				self.adCurOffset + curSegmentDuration + nextSegmentDuration > self.adEndOffset):
 				# create post ad ts
 				videoKey = 'postAd-%s-%s' % (liveStreamUrlHash, self.cuePointId)
 				if not videoExistsInMemcache(memcache, videoKey):
-					cutTsFiles(videoKey, buffer, self.adEndOffset - self.adCurOffset, 'right')
+					cutTsFiles(videoKey, buffer, self.adEndOffset - self.adCurOffset, 'rightcut')
 
 			if self.adCurOffset > self.adEndOffset:
 				outputEnd = 0		# last segment
@@ -365,7 +352,9 @@ if not videoExistsInMemcache(memcache, blackVideoKey):
 	tempFileName = os.path.join(tempDownloadPath, blackVideoKey + '.ts')
 	cmdLine = ' '.join([FFMPEG_PATH, blackTSEncodingParams, ' -y %s' % tempFileName])
 	executeCommand(cmdLine)
-	addVideoToMemcache(tempFileName, blackVideoKey)
+	cmdLine = ' '.join(map(lambda x: str(x), [TS_PREPARER_PATH, MEMCACHE_HOST, MEMCACHE_PORT, 0, blackVideoKey, FFMPEG_PATH, FFPROBE_PATH, 'nocut', tempFileName]))
+	executeCommand(cmdLine)
+	
 
 # main loop
 manifestStitcher = ManifestStitcher()

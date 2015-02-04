@@ -6,7 +6,7 @@ body { padding: 15px; }
 </style>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" ></script>
 <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js" ></script>
-<script src="//www.kaltura.com/html5/html5lib/v2.16/mwEmbedLoader.php"></script>
+<script src="//www.kaltura.com/html5/html5lib/v2.24.1/mwEmbedLoader.php"></script>
 <script>
 
 const PRIO_NOTICE = 1;
@@ -28,7 +28,7 @@ function embedPlayer(srcUrl){
 		"uiconf_id": 25675992,
 		"cache_st": 1408262198,
 		"entry_id": "1_bhej6q2a",
-		"flashvars":{"autoPlay": true, "liveCore":{"disableLiveCheck":true}}
+		"flashvars":{"liveCore":{"disableLiveCheck":true}}
 	});
 }
 
@@ -72,7 +72,8 @@ function insertAd() {
 	var insertAdBtn = $("#insertAdBtn");
 	
 	insertAdBtn.prop('disabled',true);
-	var insertAdRequest = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + currenttime+ "&vastUrl=" + window.vastUrl + "&adSlotDuration=" + window.adSlotDuration;	
+	var insertAdRequest = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + currenttime+ "&vastUrl=" + window.vastUrl + "&adSlotDuration=" + window.adSlotDuration;
+	var insertAdRequestSpain = "@EXTERNAL_URL@/insertAd.js?entryId=" + window.entryId + "&uid=@UID@&currentTime=" + currenttime+ "&vastUrl=" + window.vastUrl + "&adSlotDuration=" + window.adSlotDuration;
 	$.ajax({
 		url: insertAdRequest
 	}).done(function( data ) {
@@ -106,7 +107,7 @@ function verifyPlayingRealTime() {
 }
 
 function checkWhetherStreamIsWatched() {
-	var requestUrl = "@EXTERNAL_URL@/isWatched.js?entryId=" + window.entryId;
+	var requestUrl = "@EXTERNAL_URL@/isWatched.js?uid=@UID@&entryId=" + window.entryId;
 	$.ajax({
 		url: requestUrl
 	}).done(function(isWatched) {
@@ -119,7 +120,7 @@ function checkWhetherStreamIsWatched() {
 function notifyStatus() {
 	var currenttime = window.player.evaluate("{video.player.currentTime}");
 	$.ajax({
-		url: "@EXTERNAL_URL@/notifyStatusAdmin.js?currenttime=" + currenttime //+ "&end=" + videoTag.seekable.end(0)
+		url: "@EXTERNAL_URL@/notifyStatusAdmin.js?uid=@UID@&currenttime=" + currenttime //+ "&end=" + videoTag.seekable.end(0)
 	});	
 }
 
@@ -134,31 +135,46 @@ function start() {
 	var fullStitchedUrl = '@EXTERNAL_URL@/masterstitch.m3u8?entryId=' + window.entryId + '&url=' + encodeURIComponent(window.origUrl);
 	
 	// create a short stitched URL
-	var shortUrlRequest = "@EXTERNAL_URL@/shortUrl.js?URL=" + encodeURIComponent(fullStitchedUrl) + '&ENTRY_ID=' + window.entryId;
+	var shortUrlRequestUK = "@EXTERNAL_URL@/shortUrl.js?URL=" + encodeURIComponent(fullStitchedUrl) + '&ENTRY_ID=' + window.entryId + '&IP=46.20.235.45';
+	callShortUrl(shortUrlRequestUK, function(shortStitchedUrl){
+		// update video source
+		var videoUrl = '@EXTERNAL_URL@/masterproxy.m3u8?uid=@UID@&url=' + encodeURIComponent(window.origUrl);
+		embedPlayer(videoUrl);		
+	
+		// update the displayed stitched URL
+		$("#stitchedUrlUK").html(shortStitchedUrl);
+	});
+	
+	var shortUrlRequestSpain = "@EXTERNAL_URL@/shortUrl.js?URL=" + encodeURIComponent(fullStitchedUrl) + '&ENTRY_ID=' + window.entryId + '&IP=91.142.215.121';
+	callShortUrl(shortUrlRequestSpain, function(shortStitchedUrl){
+		// update the displayed stitched URL
+		$("#stitchedUrlSpain").html(shortStitchedUrl);
+	});
+	
+	// hide the form, show the player
+	$("#screen1Div").hide();
+	$("#screen2Div").show();	 
+	 
+	// start timers
+	if (window.autoAdInsert) {
+		startAdInsertTimer();
+	}
+	setInterval(verifyPlayingRealTime, 10000);
+	setInterval(checkWhetherStreamIsWatched, 5000);
+	setInterval(notifyStatus, 5000);		// XXXX remove
+}
+
+function callShortUrl(shortUrlRequest, callback){
 	$.ajax({
 		url: shortUrlRequest
 	}).done(function( shortStitchedUrl ) {
-		// update video source
-		var videoUrl = '@EXTERNAL_URL@/masterproxy.m3u8?uid=@UID@&url=' + encodeURIComponent(window.origUrl);
-		embedPlayer(videoUrl);
-		// update the displayed stitched URL
-		$("#stitchedUrl").html(shortStitchedUrl);
-		
-		// hide the form, show the player
-		$("#screen1Div").hide();
-		$("#screen2Div").show();	 
-	 
-		// start timers
-		if (window.autoAdInsert) {
-			startAdInsertTimer();
-		}
-		setInterval(verifyPlayingRealTime, 10000);
-		setInterval(checkWhetherStreamIsWatched, 5000);
-		setInterval(notifyStatus, 5000);		// XXXX remove
+		callback(shortStitchedUrl);
 	}).fail(function( data ) {
-		alert('Failed to get short url');
+		alert('Failed to get short url' + shortUrlRequest);
 	});
 }
+
+
 </script>
 </head>
 <body>
@@ -174,7 +190,7 @@ function start() {
 			<div class="form-group">
 				<label for="origUrl">URL</label>
 					<div class="input-group">
-						<input id="origUrl" type="text" class="form-control" value="@PROTOCOL@cdnapisec.kaltura.com/content/shared/doguslive.m3u8">
+						<input id="origUrl" type="text" class="form-control" value="@PROTOCOL@cdnapisec.kaltura.com/content/shared/abcnewslive.m3u8">
 						<div class="input-group-btn">
 							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Preset <span class="caret"></span></button>
 							<ul class="dropdown-menu pull-right">
@@ -198,7 +214,7 @@ function start() {
 			</div>  
 			<div class="form-group">
 				<label for="vastUrl">VAST Url</label>
-				<input type="text" class="form-control" id="vastUrl" value="http://search.spotxchange.com/vast/2.00/79391?content_page_url={utility.random}&cb={utility.random}&VPI=MP4">
+				<input type="text" class="form-control" id="vastUrl" value="http://search.spotxchange.com/vast/2.0/96156?content_page_url={utility.random}&cb={utility.random}&VPI=MP4">
 			</div> 
 			<div class="checkbox">
 				<label>
@@ -218,7 +234,8 @@ function start() {
 
 		<p>Demo Flow:
 		<ol>
-		<li>Open the Viewer's Screen URL on a different browser tab or mobile device (recommended): <b id="stitchedUrl"></b>
+		<li>Open the UK Viewer's Screen URL on a different browser tab or mobile device (recommended): <b id="stitchedUrlUK"></b>
+		<li>Open the Spain Viewer's Screen URL on a different browser tab or mobile device (recommended): <b id="stitchedUrlSpain"></b>
 		<li>Insert the ad into the live stream based on the monitor below by clicking on the "Insert Ad" button.
 		<li>View the ads as it shows up on the Viewer's Screen
 		</ol>		

@@ -121,18 +121,22 @@ NAN_METHOD(BuildLayout) {
 	{
 		return NanThrowTypeError("Pre-ad segment must not be null");
 	}
-
-	if (argBuffers[1] == NULL && args[5]->Int32Value() == 0)
-	{
-		return NanThrowTypeError("Post-ad segment must not be null in the last segment");
-	}
 	
 	// parse the ad sections array
 	Local<Array> adSectionsArray = args[2].As<Array>();
 	size_t adSectionsCount = adSectionsArray->Length();
-	if (adSectionsCount < 1)
+	
+	// Note: allowing a special case where adSections=[], postAd=null, outputEnd=0 for the command line TsCutter
+	if (adSectionsCount > 0 || argBuffers[1] != NULL || args[5]->Int32Value() != 0)
 	{
-		return NanThrowTypeError("Ad sections array must not be empty");
+		if (adSectionsCount < 1)
+		{
+			return NanThrowTypeError("Ad sections array must not be empty");
+		}
+		if (argBuffers[1] == NULL && args[5]->Int32Value() == 0)
+		{
+			return NanThrowTypeError("Post-ad segment must not be null in the last segment");
+		}
 	}
 	
 	ad_section_t* adSections = (ad_section_t*)malloc(sizeof(ad_section_t) * adSectionsCount);

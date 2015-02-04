@@ -13,10 +13,12 @@ typedef struct {
 	const metadata_frame_info_t* video_frames;
 	int32_t start_pos[MEDIA_TYPE_COUNT];
 	int32_t end_pos[MEDIA_TYPE_COUNT];
+	bool_t cyclic;
 } internal_ad_section_t;
 
 typedef struct {
 	streams_info_t streams_info;
+	uint16_t pcr_pid;
 } output_header_t;
 
 typedef struct {
@@ -24,7 +26,8 @@ typedef struct {
 	uint32_t pos;
 	uint32_t size;
 	int32_t chunk_type;
-	uint16_t pid;
+	uint16_t src_pid;
+	uint16_t dst_pid;
 	uint8_t pcr_offset;
 	uint8_t pts_offset;
 	uint8_t dts_offset;
@@ -74,6 +77,7 @@ internal_ad_section_t* convert_external_layout_to_internal(
 	
 	// add the pre ad section
 	cur_output_section->chunk_type = CHUNK_TYPE_PRE_AD;
+	cur_output_section->cyclic = FALSE;
 	cur_output_section->video_header = pre_ad_header;
 	cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
 	memset(cur_output_section->start_pos, 0, sizeof(cur_output_section->start_pos));
@@ -135,6 +139,7 @@ internal_ad_section_t* convert_external_layout_to_internal(
 					
 					// pre ad filler
 					cur_output_section->chunk_type = ad_section->filler_chunk_type;
+					cur_output_section->cyclic = TRUE;
 					cur_output_section->video_header = ad_section->filler_header;
 					cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
 					cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
@@ -149,6 +154,7 @@ internal_ad_section_t* convert_external_layout_to_internal(
 			
 			// ad
 			cur_output_section->chunk_type = ad_section->ad_chunk_type;
+			cur_output_section->cyclic = FALSE;
 			cur_output_section->video_header = ad_section->ad_header;
 			cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
 			cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
@@ -171,6 +177,7 @@ internal_ad_section_t* convert_external_layout_to_internal(
 			cur_pos[MEDIA_TYPE_AUDIO] < end_pos[MEDIA_TYPE_AUDIO])
 		{
 			cur_output_section->chunk_type = ad_section->filler_chunk_type;
+			cur_output_section->cyclic = TRUE;
 			cur_output_section->video_header = ad_section->filler_header;
 			cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
 			cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
@@ -186,6 +193,7 @@ internal_ad_section_t* convert_external_layout_to_internal(
 	if (post_ad_header != NULL)
 	{
 		cur_output_section->chunk_type = CHUNK_TYPE_POST_AD;
+		cur_output_section->cyclic = FALSE;
 		cur_output_section->video_header = post_ad_header;
 		cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
 		cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
@@ -228,6 +236,7 @@ static void init_output_header(
 	stream_info_t* streams_data;
 	bool_t is_media_pid;
 
+	output_header->pcr_pid = pre_ad_header->pcr_pid;
 	output_header->streams_info = pre_ad_header->streams_info;
 	
 	for (streams_data = streams_data_start; streams_data < streams_data_end; streams_data++)
@@ -250,7 +259,7 @@ static void init_output_header(
 			streams_data->end_cc = streams_data->start_cc - 1;
 		}
 		
-		if (output_end == 0)
+		if (output_end == 0 && post_ad_header != NULL)
 		{		
 			streams_data->end_cc = post_ad_header->streams_info.data[streams_data - streams_data_start].end_cc;
 		}
@@ -345,7 +354,15 @@ bool_t build_layout_impl(
 			{
 				if (frame_index >= ad_section->video_header->frame_count)
 				{
-					frame_index -= ad_section->video_header->frame_count;
+					if (ad_section->cyclic)
+					{
+						frame_index -= ad_section->video_header->frame_count;
+					}
+					else
+					{
+						next_frame = NULL;
+						break;
+					}
 				}
 				
 				next_frame = &ad_section->video_frames[frame_index];
@@ -447,7 +464,9 @@ bool_t build_layout_impl(
 			output_packet.pos = next_frame->pos;
 			output_packet.size = next_frame->size;
 			output_packet.chunk_type = ad_section->chunk_type;
-			output_packet.pid = pre_ad_header->media_info[media_type].pid;
+
+			output_packet.src_pid = next_frame->src_pid;
+			output_packet.dst_pid = pre_ad_header->media_info[media_type].pid;
 			memcpy(result->data + packet_start_pos, PS(output_packet));
 			
 			// update last packet per media type
@@ -509,12 +528,43 @@ bool_t build_layout(
 	return status;
 }
 
-byte_t* create_null_packets(stream_info_t* stream_info, size_t* result_buffer_size)
+static void 
+init_pcr_packet(byte_t* packet, uint16_t pcr_pid, u_char* delayed_pcr)
+{
+	static const char pcr_packet_header[] = { 0x47, 0x00, 0x00, 0x20, 0xB7, 0x10 };
+
+	memcpy(packet, PS(pcr_packet_header));
+	mpeg_ts_header_set_PID(packet, pcr_pid);	
+	memcpy(packet + sizeof(pcr_packet_header), delayed_pcr, sizeof_pcr);
+}
+
+static byte_t* 
+create_pcr_packet(uint16_t pcr_pid, u_char* delayed_pcr, size_t* result_buffer_size)
+{
+	byte_t* result;
+
+	result = (byte_t*)malloc(TS_PACKET_LENGTH);
+	if (result == NULL)
+	{
+		return NULL;
+	}
+
+	memset(result, 0xFF, TS_PACKET_LENGTH);	
+	init_pcr_packet(result, pcr_pid, delayed_pcr);
+	
+	*result_buffer_size = TS_PACKET_LENGTH;
+	
+	return result;
+}
+
+
+byte_t* create_null_packets(stream_info_t* stream_info, size_t* result_buffer_size, uint16_t pcr_pid, u_char* delayed_pcr)
 {
 	static const char null_packet_header[] = { 0x47, 0x00, 0x00, 0x30, 0xB7, 0x00 };
 	byte_t* cur_pos;
 	byte_t* end_pos;
 	byte_t* result;
+	size_t null_packets_size;
 	size_t buffer_size;
 	int packet_count;
 
@@ -527,7 +577,13 @@ byte_t* create_null_packets(stream_info_t* stream_info, size_t* result_buffer_si
 		return NULL;
 	}
 	
-	buffer_size = packet_count * TS_PACKET_LENGTH;
+	null_packets_size = packet_count * TS_PACKET_LENGTH;
+	
+	buffer_size = null_packets_size;
+	if (delayed_pcr != NULL)
+	{
+		buffer_size += TS_PACKET_LENGTH;
+	}
 	
 	result = (byte_t*)malloc(buffer_size);
 	if (result == NULL)
@@ -537,7 +593,7 @@ byte_t* create_null_packets(stream_info_t* stream_info, size_t* result_buffer_si
 	
 	memset(result, 0xFF, buffer_size);
 
-	end_pos = result + buffer_size;
+	end_pos = result + null_packets_size;
 	
 	for (cur_pos = result; cur_pos < end_pos; cur_pos += TS_PACKET_LENGTH)
 	{
@@ -548,6 +604,11 @@ byte_t* create_null_packets(stream_info_t* stream_info, size_t* result_buffer_si
 		stream_info->start_cc &= 0x0F;
 		mpeg_ts_header_set_continuityCounter(cur_pos, stream_info->start_cc);
 		stream_info->start_cc++;
+	}
+	
+	if (delayed_pcr != NULL)
+	{
+		init_pcr_packet(cur_pos, pcr_pid, delayed_pcr);
 	}
 	
 	*result_buffer_size = buffer_size;
@@ -595,6 +656,7 @@ void process_chunk(
 	byte_t* end_pos = layout_buffer + layout_size;
 	byte_t* packet_chunk_pos;
 	byte_t* cur_ts_packet;
+	byte_t* delayed_pcr = NULL;
 	bool_t first_output = TRUE;
 	uint32_t packet_start_offset;
 	uint32_t packet_end_offset;
@@ -667,7 +729,16 @@ void process_chunk(
 			packet_chunk_pos = chunk_buffer + cur_packet->pos - output_state->chunk_start_offset;
 			if (cur_packet->pcr_offset != NO_OFFSET)
 			{
-				memcpy(packet_chunk_pos + cur_packet->pcr_offset, cur_pos, sizeof_pcr);
+				if (output_header->pcr_pid != cur_packet->dst_pid)
+				{
+					mpeg_ts_adaptation_field_set_pcrFlag(packet_chunk_pos + sizeof_mpeg_ts_header, 0);
+					memset(packet_chunk_pos + cur_packet->pcr_offset, 0xff, sizeof_pcr);
+					delayed_pcr = cur_pos;
+				}
+				else
+				{
+					memcpy(packet_chunk_pos + cur_packet->pcr_offset, cur_pos, sizeof_pcr);
+				}
 				cur_pos += sizeof_pcr;
 			}
 			if (cur_packet->pts_offset != NO_OFFSET)
@@ -683,13 +754,18 @@ void process_chunk(
 		}
 
 		// update continuity counters and PID
-		stream_info = streams_info_hash_get(&output_header->streams_info, cur_packet->pid);
+		stream_info = streams_info_hash_get(&output_header->streams_info, cur_packet->dst_pid);
 		for (cur_offset = packet_start_offset; cur_offset < packet_end_offset; cur_offset += TS_PACKET_LENGTH)
 		{
 			cur_ts_packet = chunk_buffer + cur_offset;
 			
-			mpeg_ts_header_set_PID(cur_ts_packet, cur_packet->pid);
+			if (mpeg_ts_header_get_PID(cur_ts_packet) != cur_packet->src_pid)
+			{
+				continue;
+			}
 			
+			mpeg_ts_header_set_PID(cur_ts_packet, cur_packet->dst_pid);
+
 			if (stream_info != NULL)
 			{
 				stream_info->start_cc &= 0x0F;
@@ -697,11 +773,17 @@ void process_chunk(
 				stream_info->start_cc++;
 			}
 		}
-				
+						
 		if (cur_packet->pos + cur_packet->size != output_state->chunk_start_offset + output->chunk_output_end)
 		{
 			// need the next chunk to complete the packet
 			output_state->chunk_start_offset += chunk_size;
+			
+			if (delayed_pcr != NULL)
+			{
+				output->output_buffer = create_pcr_packet(output_header->pcr_pid, delayed_pcr, &output->output_buffer_size);
+			}
+			
 			return;
 		}
 		
@@ -712,7 +794,7 @@ void process_chunk(
 		if (cur_packet->last_packet)
 		{
 			// it's the last packet of the stream - output null packets to adjust the continuity counters
-			output->output_buffer = create_null_packets(stream_info, &output->output_buffer_size);
+			output->output_buffer = create_null_packets(stream_info, &output->output_buffer_size, output_header->pcr_pid, delayed_pcr);
 			if (output->output_buffer != NULL)
 			{
 				// output the null packets before continuing
@@ -720,6 +802,19 @@ void process_chunk(
 				return;
 			}
 		}
+		
+		if (delayed_pcr != NULL)
+		{
+			output->output_buffer = create_pcr_packet(output_header->pcr_pid, delayed_pcr, &output->output_buffer_size);
+			if (output->output_buffer != NULL)
+			{
+				// output the pcr packet before continuing
+				output->action = PBA_CALL_AGAIN;
+				return;
+			}
+			
+			delayed_pcr = NULL;
+		}		
 	}
 	
 	// we're done

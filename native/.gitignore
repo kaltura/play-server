@@ -2,7 +2,6 @@
 *.lo
 *.la
 stamp-h1
-ts_cutter/ts_cutter
 vendor/id3lib-3.8.3/Makefile
 vendor/id3lib-3.8.3/config.h
 vendor/id3lib-3.8.3/config.log
@@ -38,4 +37,3 @@ vendor/id3lib-3.8.3/zlib/src/.deps/
 vendor/id3lib-3.8.3/zlib/src/Makefile
 node_addons/TsId3Reader/build/
 node_addons/TsStitcher/build/
-ts_preparer/ts_preparer
