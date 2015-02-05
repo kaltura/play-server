@@ -1,9 +1,11 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+// includes
 #include <stddef.h>
 #include <stdint.h>
 
+// macros
 #define PS(x) &x, sizeof(x)
 #define STARTS_WITH_STATIC(str, prefix) (strncmp(str, prefix, sizeof(prefix) - 1) == 0)
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
@@ -12,17 +14,20 @@
 
 #ifndef TRUE
 #define TRUE (1)
+#endif
+
+#ifndef FALSE
 #define FALSE (0)
 #endif
 
+// typedefs
 typedef unsigned char byte_t;
 typedef int bool_t;
 
+// functions
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
-
-double microtime();
 
 bool_t search_pattern(const byte_t* buffer, size_t size, const byte_t* pattern, size_t pattern_size);
 

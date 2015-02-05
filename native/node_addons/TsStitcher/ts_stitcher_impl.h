@@ -1,10 +1,12 @@
 #ifndef __TS_STITCHER_IMPL_H__
 #define __TS_STITCHER_IMPL_H__
 
+// headers
 #include "mpegTsMetadata.h"
 #include "dynamicBuffer.h"
 #include "common.h"
 
+// typedefs
 enum 
 {
 	CHUNK_TYPE_INVALID  =  -1,
@@ -17,7 +19,7 @@ typedef enum {
 	ALIGN_LEFT,
 	ALIGN_MIDDLE,
 	ALIGN_RIGHT,	
-} ad_section_alignment;
+} ad_section_alignment_t;
 
 typedef enum {
 	PBA_CALL_AGAIN,
@@ -32,12 +34,12 @@ typedef struct {
 	const metadata_header_t* filler_header;
 	int32_t start_pos;		// 0 = start after previous
 	int32_t end_pos;		// 0 = use video duration
-	ad_section_alignment alignment;
+	int32_t alignment;
 } ad_section_t;
 
 typedef struct {
 	uint32_t layout_pos;
-	int chunk_type;
+	int32_t chunk_type;
 	uint32_t chunk_start_offset;
 } output_state_t;
 
@@ -49,6 +51,7 @@ typedef struct {
 	process_buffer_action_t action;
 } process_output_t;
 
+// functions
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -66,11 +69,11 @@ bool_t build_layout(
 void process_chunk(
 	// input
 	byte_t* layout_buffer,
-	uint32_t layout_size,
+	size_t layout_size,
 	
 	// inout
 	byte_t* chunk_buffer,
-	uint32_t chunk_size,
+	size_t chunk_size,
 	output_state_t* output_state,
 	
 	// output
@@ -78,7 +81,7 @@ void process_chunk(
 
 bool_t is_metadata_buffer_valid(const void* buffer, size_t size);
 
-uint32_t get_chunk_count(const void* metadata);
+uint32_t get_data_size(const void* metadata);
 
 #ifdef __cplusplus
 }

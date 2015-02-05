@@ -441,7 +441,7 @@ function prepareAdFlavor(encodingParams, adUrl, adId) {
 		}
 		
 		var requiredKeys = [outputKey + '-metadata', outputKey + '-header'];		
-		var chunkCount = stitcher.getChunkCount(metadata);
+		var chunkCount = Math.ceil(stitcher.getDataSize(metadata) / FILE_CHUNK_SIZE);
 		for (var i = 0; i < chunkCount; i++) {
 			requiredKeys.push(outputKey + '-' + i);
 		}

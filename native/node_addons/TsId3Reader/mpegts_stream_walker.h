@@ -1,8 +1,10 @@
 #ifndef __MPEGTS_STREAM_WALKER_H__
 #define __MPEGTS_STREAM_WALKER_H__
 
+// includes
 #include "mpegTsPacketizer.h"
 
+// typedefs
 typedef struct {
 	int audio_pid;
 	int video_pid;
@@ -12,6 +14,7 @@ typedef struct {
 	ts_packetizer_state_t packetizer_state;
 } stream_walker_state_t;
 
+// functions
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */

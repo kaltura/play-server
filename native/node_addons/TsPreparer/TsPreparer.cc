@@ -5,7 +5,8 @@
 using namespace v8;
 using namespace node;
 
-dynamic_buffer_t* ParseArrayOfBuffers(Local<Value> value, size_t* resultCount)
+static dynamic_buffer_t* 
+ParseArrayOfBuffers(Local<Value> value, size_t* resultCount)
 {
 	if (!value->IsArray())
 	{
@@ -49,12 +50,22 @@ dynamic_buffer_t* ParseArrayOfBuffers(Local<Value> value, size_t* resultCount)
 	return buffers;
 }
 
+static void 
+FreePartsArray(ts_preparer_part_t* parts, size_t partsCount)
+{
+	for (size_t i = 0; i < partsCount; i++)
+	{
+		free(parts[i].buffers);
+	}
+	free(parts);
+}
+
 /*
 	Parameters
-		Array<Buffer> fileBuffers,
-		String framesInfo,
-		Number cutOffset
-		Boolean leftPortion
+	0	Array<Buffer> tsBuffers,
+	1	String framesInfo,
+	2	Number cutOffset
+	3	Boolean leftPortion
 		
 	Returns
 		Object
@@ -64,7 +75,8 @@ dynamic_buffer_t* ParseArrayOfBuffers(Local<Value> value, size_t* resultCount)
 			Number rightOffset
 			Buffer originalFrames
 */
-NAN_METHOD(GetCutDetails) {
+NAN_METHOD(GetCutDetails)
+{
 	NanScope();
 	
 	if (args.Length() < 4) 
@@ -117,7 +129,7 @@ NAN_METHOD(GetCutDetails) {
 		&original_frames_count))
 	{
 		free(fileBuffers);
-		return NanThrowTypeError("Failed to get the cut details");
+		return NanThrowError("Failed to get the cut details");
 	}
 
 	free(fileBuffers);
@@ -139,14 +151,15 @@ NAN_METHOD(GetCutDetails) {
 
 /*
 	Parameters
-		Buffer fileBuffer
+	0	Buffer tsBuffer
 		
 	Returns
 		Object
 			Number pat
 			Number pmt
 */
-NAN_METHOD(FindLastPatPmtPackets) {
+NAN_METHOD(FindLastPatPmtPackets)
+{
 	NanScope();
 
 	if (args.Length() < 1) 
@@ -155,16 +168,12 @@ NAN_METHOD(FindLastPatPmtPackets) {
 	}
 	
 	// validate source buffer
-	if (!args[0]->IsObject())
+	if (!args[0]->IsObject() || !Buffer::HasInstance(args[0]))
 	{
 		return NanThrowTypeError("Argument 1 must be a buffer");
 	}
 	
 	Local<Object> bufferObject = args[0]->ToObject();
-	if (!Buffer::HasInstance(bufferObject))
-	{
-		return NanThrowTypeError("Argument 1 must be a buffer");
-	}
 	
 	byte_t* sourceBuffer = (byte_t*)Buffer::Data(bufferObject);
 	byte_t* lastPatPacket;
@@ -186,19 +195,9 @@ NAN_METHOD(FindLastPatPmtPackets) {
 	NanReturnValue(result);
 }
 
-static void 
-FreePartsArray(ts_preparer_part_t* parts, size_t partsCount)
-{
-	for (size_t i = 0; i < partsCount; i++)
-	{
-		free(parts[i].buffers);
-	}
-	free(parts);
-}
-
 /*
 	Parameters
-		Array<Object> parts
+	0	Array<Object> parts
 			Array<Buffer> buffers
 			Buffer frames
 			Number framesPosShift
@@ -210,7 +209,8 @@ FreePartsArray(ts_preparer_part_t* parts, size_t partsCount)
 			Buffer header
 			Buffer data
 */
-NAN_METHOD(PrepareTs) {
+NAN_METHOD(PrepareTs)
+{
 	NanScope();
 	
 	if (args.Length() < 1) 
@@ -228,7 +228,7 @@ NAN_METHOD(PrepareTs) {
 	size_t partsCount = partsArray->Length();
 	if (partsCount < 1)
 	{
-		return NanThrowTypeError("Part array cannot be empty");
+		return NanThrowTypeError("Parts array cannot be empty");
 	}
 	
 	ts_preparer_part_t* parts = (ts_preparer_part_t*)malloc(sizeof(parts[0]) * partsCount);
@@ -260,18 +260,13 @@ NAN_METHOD(PrepareTs) {
 		
 		// frames
 		Local<Value> frames = curObject->Get(String::NewSymbol("frames"));
-		if (!frames->IsObject())
+		if (!frames->IsObject() || !Buffer::HasInstance(frames))
 		{
 			FreePartsArray(parts, partsCount);
 			return NanThrowTypeError("Each part must contain a frames buffer");
 		}
 		
 		Local<Object> framesBuffer = frames->ToObject();
-		if (!Buffer::HasInstance(framesBuffer))
-		{
-			FreePartsArray(parts, partsCount);
-			return NanThrowTypeError("Each part must contain a frames buffer");
-		}
 
 		parts[i].frames = (frame_info_t*)Buffer::Data(framesBuffer);
 		parts[i].frame_count = Buffer::Length(framesBuffer) / sizeof(frame_info_t);
@@ -333,13 +328,14 @@ NAN_METHOD(PrepareTs) {
 
 /*
 	Parameters
-		Array<Buffer> fileBuffers
-		String framesInfo
+	0	Array<Buffer> tsBuffers
+	1	String framesInfo
 		
 	Returns
 		Buffer
 */
-NAN_METHOD(ParseFramesInfo) {
+NAN_METHOD(ParseFramesInfo)
+{
 	NanScope();
 	
 	if (args.Length() < 2) 

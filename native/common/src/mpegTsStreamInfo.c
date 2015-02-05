@@ -2,7 +2,8 @@
 #include <linux/stddef.h>
 #include <stdlib.h>
 
-void streams_info_hash_init(streams_info_t* hash)
+void 
+streams_info_hash_init(streams_info_t* hash)
 {
 	int i;
 
@@ -14,7 +15,8 @@ void streams_info_hash_init(streams_info_t* hash)
 	}
 }
 
-stream_info_t* streams_info_hash_get(streams_info_t* hash, int pid)
+stream_info_t* 
+streams_info_hash_get(streams_info_t* hash, int pid)
 {
 	int initial_hash_key;
 	int hash_key;

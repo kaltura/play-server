@@ -133,7 +133,7 @@ def getMpegTSEncodingParams(referenceFileName, blackDuration = 10):
 	# video codec
 	if mediaInfo.hasVideo:
 		blackInput = '-t %s' % blackDuration
-		vcodec = "-vcodec libx264 -subq 7 -qcomp 0.6 -qmin 10 -qmax 50 -qdiff 4 -bf 0 -coder 1 -x264opts b-pyramid:weightb:mixed-refs:8x8dct:no-fast-pskip=0:force-cfr:sps-id=26 -pix_fmt yuv420p -threads 4"
+		vcodec = "-vcodec libx264 -subq 7 -qcomp 0.6 -qmin 10 -qmax 50 -qdiff 4 -bf 0 -coder 1 -x264opts b-pyramid:weightb:mixed-refs:8x8dct:no-fast-pskip=0:force-cfr:sps-id=26 -pix_fmt yuv420p -threads 4 -force_key_frames \"expr:gte(t,n_forced*2)\""
 		
 		videoProfile = ' -vprofile main -level 3.1'
 		if mediaInfo.videoProfile != None:

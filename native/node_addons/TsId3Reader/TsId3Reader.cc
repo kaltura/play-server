@@ -36,7 +36,8 @@ const char* id3FieldNames[] = {			// must match ID3_FieldID in order
 	"CONTENTTYPE",    /**< SYLT content type */
 };
 	
-void ParseID3Tag(void* context, const byte_t* buf, int size, int64_t pts)
+static void 
+ParseID3Tag(void* context, const byte_t* buf, int size, int64_t pts)
 {
 	Local<Array>& result = *(Local<Array>*)context;
 	Local<Object> tagResult = Object::New();
@@ -93,14 +94,27 @@ void ParseID3Tag(void* context, const byte_t* buf, int size, int64_t pts)
 	delete frameIter;
 }
 
-NAN_METHOD(ParseBuffer) {
+/*
+	Parameters
+	0	Buffer tsBuffer,
+		
+	Returns
+		Object
+			Number videoPts
+			Number audioPts
+			Array<Object> id3tags
+*/
+NAN_METHOD(ParseBuffer) 
+{
 	NanScope();
 
-	if (args.Length() < 1) {
+	if (args.Length() < 1) 
+	{
 		return NanThrowTypeError("Function requires 1 argument");
 	}
   
-	if (!args[0]->IsObject() || !Buffer::HasInstance(args[0])) {
+	if (!args[0]->IsObject() || !Buffer::HasInstance(args[0])) 
+	{
 		return NanThrowTypeError("Expected buffer argument");
 	}
 

@@ -10,12 +10,12 @@ void ts_packetizer_init(ts_packetizer_state_t* state, packetizer_callback_t call
 	state->callback_context = callback_context;
 }
 
-bool_t ts_packetizer_process_data(ts_packetizer_state_t* state, const byte_t* packet_offset, int size)
+bool_t ts_packetizer_process_data(ts_packetizer_state_t* state, const byte_t* packet_offset, size_t size)
 {
 	const byte_t* packet_end = packet_offset + size;
 	const pes_optional_header_t* pes_optional_header;
 	const pes_header_t* pes_header;
-	int copy_size;
+	size_t copy_size;
 
 	// check whether we have a PES packet
 	if (!state->in_packet &&
@@ -27,8 +27,19 @@ bool_t ts_packetizer_process_data(ts_packetizer_state_t* state, const byte_t* pa
 		packet_offset += sizeof_pes_header;
 		pes_optional_header = packet_offset;
 		packet_offset += sizeof_pes_optional_header;
-		state->pts = pes_optional_header_get_ptsFlag(pes_optional_header) ? get_pts(packet_offset) : NO_TIMESTAMP;
+		if (pes_optional_header_get_ptsFlag(pes_optional_header) && packet_offset + sizeof_pts <= packet_end)
+		{
+			state->pts = get_pts(packet_offset);
+		}
+		else
+		{
+			state->pts = NO_TIMESTAMP;
+		}
 		packet_offset += pes_optional_header_get_pesHeaderLength(pes_optional_header);
+		if (packet_offset > packet_end)
+		{
+			return FALSE;
+		}
 		
 		state->packet_size = pes_header_get_pesPacketLength(pes_header) - 
 			sizeof_pes_optional_header - 
@@ -80,7 +91,7 @@ void ts_packetizer_free(ts_packetizer_state_t* state)
 
 bool_t walk_ts_streams(
 	const byte_t* data, 
-	int size, 
+	size_t size, 
 	pmt_header_callback_t pmt_header_callback,
 	pmt_entry_callback_t pmt_entry_callback,
 	packet_data_callback_t packet_data_callback,
@@ -88,17 +99,13 @@ bool_t walk_ts_streams(
 {
 	const byte_t* end_data = data + size - TS_PACKET_LENGTH;
 	const byte_t* packet_offset;
+	const byte_t* packet_end;
 	const byte_t* cur_data;
 	int cur_pid;
 	int pmt_program_pid = 0;
 	const mpeg_ts_header_t* ts_header;
-	const mpeg_ts_adaptation_field_t* adapt_field;
-	const pat_t* pat_header;
-	const pat_entry_t* pat_entry;
 	const pmt_t* pmt_header;
 	const pmt_entry_t* pmt_entry;
-	int pat_entry_count;
-	int i;
 	const byte_t* end_offset;
 	
 	for (cur_data = data; cur_data <= end_data; cur_data += TS_PACKET_LENGTH)
@@ -106,47 +113,54 @@ bool_t walk_ts_streams(
 		// extract the current PID
 		ts_header = (const mpeg_ts_header_t*)cur_data;				
 		cur_pid = mpeg_ts_header_get_PID(ts_header);
-
-		// skip the adapation field if present
-		packet_offset = cur_data + sizeof_mpeg_ts_header;
-		if (mpeg_ts_header_get_adaptationFieldExist(ts_header))
+		packet_end = cur_data + TS_PACKET_LENGTH;
+		
+		// skip the adaptation field if present
+		packet_offset = skip_adaptation_field(ts_header);
+		if (packet_offset == NULL)
 		{
-			adapt_field = (const mpeg_ts_adaptation_field_t*)packet_offset;
-			packet_offset += 1 + mpeg_ts_adaptation_field_get_adaptationFieldLength(adapt_field);
+			return FALSE;
 		}
 		
 		if (cur_pid == PAT_PID)
-		{			
-			// extract the pat header
-			pat_header = (const pat_t*)packet_offset;
-			packet_offset += sizeof_pat;
-			pat_entry_count = (pat_get_sectionLength(pat_header) - sizeof_pat) / sizeof_pat_entry;
-			for (i = 0; i < pat_entry_count; i++)
+		{
+			if (!get_pmt_program_pid(packet_offset, packet_end, &pmt_program_pid))
 			{
-				// extract the pat entry
-				pat_entry = (const pat_entry_t*)packet_offset;
-				packet_offset += sizeof_pat_entry;
-				
-				// if the program number is 1, the PID is PID of the PMT
-				if (pat_entry_get_programNumber(pat_entry) == 1)
-					pmt_program_pid = pat_entry_get_programPID(pat_entry);
+				return FALSE;
 			}
 		}
 		else if (cur_pid == pmt_program_pid)
-		{
+		{			
 			// extract the pmt header
+			if (packet_offset + sizeof_pmt > packet_end)
+			{
+				return FALSE;
+			}
 			pmt_header = (const pmt_t*)packet_offset;
 			packet_offset += sizeof_pmt + pmt_get_programInfoLength(pmt_header);
+			if (packet_offset > packet_end)
+			{
+				return FALSE;
+			}
 		
 			// call the pmt header callback
 			pmt_header_callback(callback_context, pmt_header);
 			
 			end_offset = packet_offset + pmt_get_sectionLength(pmt_header) - sizeof_pmt;
+			
 			while (packet_offset < end_offset)
 			{
 				// extract the pmt entry
+				if (packet_offset + sizeof_pmt_entry > packet_end)
+				{
+					return FALSE;
+				}
 				pmt_entry = (const pmt_entry_t*)packet_offset;
 				packet_offset += sizeof_pmt_entry + pmt_entry_get_esInfoLength(pmt_entry);
+				if (packet_offset > packet_end)
+				{
+					return FALSE;
+				}
 
 				// call the pmt entry callback
 				pmt_entry_callback(callback_context, pmt_entry, packet_offset - pmt_entry);
