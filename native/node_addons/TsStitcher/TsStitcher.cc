@@ -60,7 +60,7 @@ FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
 {
 	// XXX save the symbols instead of allocating every time
 	
-	for (unsigned i = 0; i < sizeof(adSectionIntFields) / sizeof(adSectionIntFields[0]; i++)
+	for (unsigned i = 0; i < sizeof(adSectionIntFields) / sizeof(adSectionIntFields[0]); i++)
 	{
 		Local<Value> curValue = inputSection->Get(String::NewSymbol(adSectionIntFields[i].name));
 		if (!curValue->IsNumber())

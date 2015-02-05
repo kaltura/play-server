@@ -184,7 +184,6 @@ find_last_pat_pmt_packets(byte_t* data, size_t size, byte_t** last_pat_packet, b
 	int cur_pid;
 	int pmt_program_pid = 0;
 	const mpeg_ts_header_t* ts_header;
-	int i;
 	
 	*last_pat_packet = NULL;
 	*last_pmt_packet = NULL;
@@ -359,7 +358,7 @@ prepare_ts_data(
 		{
 			// get the ts header size
 			metadata_header.ts_header_size = parts_cur->frames[0].pos + parts_cur->frames_pos_shift;
-			if (metadata_header.ts_header_size < 0 || metadata_header.ts_header_size > buffers_cur->write_pos)
+			if (metadata_header.ts_header_size > buffers_cur->write_pos)
 			{
 				goto error;
 			}
@@ -390,7 +389,7 @@ prepare_ts_data(
 		{
 			// find the buffer containing the current frame
 			cur_frame_pos = cur_frame->pos + parts_cur->frames_pos_shift;
-			while (cur_frame_pos >= buffer_start_pos + buffers_cur->write_pos)
+			while (cur_frame_pos >= (int)(buffer_start_pos + buffers_cur->write_pos))
 			{
 				buffer_start_pos += buffers_cur->write_pos;
 				buffers_cur++;
@@ -415,7 +414,7 @@ prepare_ts_data(
 					goto error;
 				}
 				
-				if (next_frame_pos > buffer_start_pos + buffers_cur->write_pos)
+				if (next_frame_pos > (int)(buffer_start_pos + buffers_cur->write_pos))
 				{
 					// the next frame is in the next buffer
 					end_pos = buffers_cur->data + buffers_cur->write_pos;
@@ -600,7 +599,7 @@ prepare_ts_data(
 	}
 	
 	// update the metadata header
-	metadata_header.data_size = output_data.write_pos;
+	metadata_header.data_size = output_data->write_pos;
 	for (i = 0; i < ARRAY_ENTRIES(metadata_header.media_info); i++)
 	{
 		metadata_header.media_info[i].duration = durations[i];

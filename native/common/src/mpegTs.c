@@ -10,13 +10,6 @@ get_pcr(const pcr_t* pcr)
 	return (((int64_t)pcr_get_pcr90kHzHigh(pcr)) << 16) | pcr_get_pcr90kHzLow(pcr);
 }
 
-static void 
-update_pcr(pcr_t* pcr, int64_t pcr_val)
-{
-	pcr_set_pcr90kHzHigh(pcr, 	(pcr_val >> 16));
-	pcr_set_pcr90kHzLow	(pcr, 	 pcr_val 	   );
-}
-
 void 
 set_pcr(pcr_t* pcr, int64_t pcr_val)
 {
@@ -29,14 +22,6 @@ int64_t
 get_pts(const pts_t* pts)
 {
 	return (((int64_t)pts_get_high(pts)) << 30) | (((int64_t)pts_get_medium(pts)) << 15) | (int64_t)pts_get_low(pts);
-}
-
-static void 
-update_pts(pts_t* pts, int64_t pts_val)
-{
-	pts_set_high	(pts, 	(pts_val >> 30));
-	pts_set_medium	(pts,	(pts_val >> 15));
-	pts_set_low		(pts, 	 pts_val	   );
 }
 
 void 
@@ -227,7 +212,9 @@ skip_adaptation_field(const mpeg_ts_header_t* ts_header)
 bool_t
 get_pmt_program_pid(const byte_t* pat_start, const byte_t* packet_end, int* pmt_program_pid)
 {
-	byte_t* packet_offset = pat_start;
+	const byte_t* packet_offset = pat_start;
+	const pat_entry_t* pat_entry;
+	const pat_t* pat_header;
 	size_t pat_entry_count;
 	size_t i;
 

@@ -22,7 +22,7 @@ stream_walker_pmt_header_callback(void* context, const pmt_t* pmt_header)
 }
 
 void 
-stream_walker_pmt_entry_callback(void* context, const pmt_entry_t* pmt_entry, int size)
+stream_walker_pmt_entry_callback(void* context, const pmt_entry_t* pmt_entry, size_t size)
 {
 	stream_walker_state_t* state = (stream_walker_state_t*)context;
 	
@@ -45,7 +45,7 @@ stream_walker_pmt_entry_callback(void* context, const pmt_entry_t* pmt_entry, in
 }
 
 bool_t 
-stream_walker_packet_data_callback(void* context, int cur_pid, const byte_t* packet, int size)
+stream_walker_packet_data_callback(void* context, int cur_pid, const byte_t* packet, size_t size)
 {
 	stream_walker_state_t* state = (stream_walker_state_t*)context;
 	

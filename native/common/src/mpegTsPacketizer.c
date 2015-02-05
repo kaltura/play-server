@@ -62,7 +62,7 @@ bool_t ts_packetizer_process_data(ts_packetizer_state_t* state, const byte_t* pa
 	if (state->in_packet)
 	{
 		// copy to the packet buffer
-		copy_size = MIN(state->size_left, packet_end - packet_offset);
+		copy_size = MIN(state->size_left, (size_t)(packet_end - packet_offset));
 		memcpy(state->packet_pos, packet_offset, copy_size);
 		state->packet_pos += copy_size;
 		state->size_left -= copy_size;

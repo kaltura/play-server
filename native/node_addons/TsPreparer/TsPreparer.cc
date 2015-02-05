@@ -6,7 +6,7 @@ using namespace v8;
 using namespace node;
 
 static dynamic_buffer_t* 
-ParseArrayOfBuffers(Local<Value> value, size_t* resultCount)
+ParseArrayOfBuffers(Local<Value> value, int* resultCount)
 {
 	if (!value->IsArray())
 	{
@@ -105,7 +105,7 @@ NAN_METHOD(GetCutDetails)
 	}
 
 	// parse file buffers
-	size_t fileBuffersCount;
+	int fileBuffersCount;
 	dynamic_buffer_t* fileBuffers = ParseArrayOfBuffers(args[0], &fileBuffersCount);
 	if (fileBuffers == NULL)
 	{
@@ -351,7 +351,7 @@ NAN_METHOD(ParseFramesInfo)
 
 	v8::String::Utf8Value framesBuffer(args[1]);
 
-	size_t fileBuffersCount;
+	int fileBuffersCount;
 	dynamic_buffer_t* fileBuffers = ParseArrayOfBuffers(args[0], &fileBuffersCount);
 	if (fileBuffers == NULL)
 	{

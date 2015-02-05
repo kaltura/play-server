@@ -654,11 +654,11 @@ void
 process_chunk(
 	// input
 	byte_t* layout_buffer,
-	uint32_t layout_size,
+	size_t layout_size,
 	
 	// inout
 	byte_t* chunk_buffer,
-	uint32_t chunk_size,
+	size_t chunk_size,
 	output_state_t* output_state,
 	
 	// output

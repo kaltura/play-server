@@ -73,7 +73,7 @@ int64_t get_pts_from_packet(const byte_t* packet, size_t size);
 
 byte_t* skip_adaptation_field(const mpeg_ts_header_t* ts_header);
 
-bool_t get_pmt_program_pid(byte_t* pat_start, byte_t* packet_end, int* pmt_program_pid);
+bool_t get_pmt_program_pid(const byte_t* pat_start, const byte_t* packet_end, int* pmt_program_pid);
 
 bool_t get_frames(
 	dynamic_buffer_t* buffers_start,

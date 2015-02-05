@@ -37,7 +37,7 @@ const char* id3FieldNames[] = {			// must match ID3_FieldID in order
 };
 	
 static void 
-ParseID3Tag(void* context, const byte_t* buf, int size, int64_t pts)
+ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 {
 	Local<Array>& result = *(Local<Array>*)context;
 	Local<Object> tagResult = Object::New();
