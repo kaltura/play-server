@@ -140,11 +140,11 @@ NAN_METHOD(GetCutDetails)
 	free(original_frames);
 
 	Local<Object> result = Object::New();
-	result->Set(String::NewSymbol("leftPos"), 		Number::New(bounding_iframes.left_iframe_pos));
-	result->Set(String::NewSymbol("leftOffset"), 	Number::New(bounding_iframes.left_iframe_offset));
-	result->Set(String::NewSymbol("rightPos"), 		Number::New(bounding_iframes.right_iframe_pos));
-	result->Set(String::NewSymbol("rightOffset"), 	Number::New(bounding_iframes.right_iframe_offset));
-	result->Set(String::NewSymbol("originalFrames"), originalFramesBuffer);
+	result->Set(NanNew<String>("leftPos"), 			Number::New(bounding_iframes.left_iframe_pos));
+	result->Set(NanNew<String>("leftOffset"), 		Number::New(bounding_iframes.left_iframe_offset));
+	result->Set(NanNew<String>("rightPos"), 		Number::New(bounding_iframes.right_iframe_pos));
+	result->Set(NanNew<String>("rightOffset"), 		Number::New(bounding_iframes.right_iframe_offset));
+	result->Set(NanNew<String>("originalFrames"), 	originalFramesBuffer);
 	
 	NanReturnValue(result);
 }
@@ -189,8 +189,8 @@ NAN_METHOD(FindLastPatPmtPackets)
 	}
 	
 	Local<Object> result = Object::New();
-	result->Set(String::NewSymbol("pat"), Number::New(lastPatPacket - sourceBuffer));
-	result->Set(String::NewSymbol("pmt"), Number::New(lastPmtPacket - sourceBuffer));
+	result->Set(NanNew<String>("pat"), Number::New(lastPatPacket - sourceBuffer));
+	result->Set(NanNew<String>("pmt"), Number::New(lastPmtPacket - sourceBuffer));
 	
 	NanReturnValue(result);
 }
@@ -250,7 +250,7 @@ NAN_METHOD(PrepareTs)
 		Local<Object> curObject = partsArray->Get(i)->ToObject();
 
 		// buffers
-		Local<Value> buffers = curObject->Get(String::NewSymbol("buffers"));
+		Local<Value> buffers = curObject->Get(NanNew<String>("buffers"));
 		parts[i].buffers = ParseArrayOfBuffers(buffers, &parts[i].buffer_count);
 		if (parts[i].buffers == NULL)
 		{
@@ -259,7 +259,7 @@ NAN_METHOD(PrepareTs)
 		}
 		
 		// frames
-		Local<Value> frames = curObject->Get(String::NewSymbol("frames"));
+		Local<Value> frames = curObject->Get(NanNew<String>("frames"));
 		if (!frames->IsObject() || !Buffer::HasInstance(frames))
 		{
 			FreePartsArray(parts, partsCount);
@@ -272,7 +272,7 @@ NAN_METHOD(PrepareTs)
 		parts[i].frame_count = Buffer::Length(framesBuffer) / sizeof(frame_info_t);
 		
 		// framesPosShift
-		Local<Value> framesPosShift = curObject->Get(String::NewSymbol("framesPosShift"));
+		Local<Value> framesPosShift = curObject->Get(NanNew<String>("framesPosShift"));
 		if (!framesPosShift->IsNumber()) 
 		{
 			FreePartsArray(parts, partsCount);
@@ -282,7 +282,7 @@ NAN_METHOD(PrepareTs)
 		parts[i].frames_pos_shift = framesPosShift->Int32Value();
 		
 		// flags
-		Local<Value> flags = curObject->Get(String::NewSymbol("flags"));
+		Local<Value> flags = curObject->Get(NanNew<String>("flags"));
 		if (!flags->IsNumber()) 
 		{
 			FreePartsArray(parts, partsCount);
@@ -319,9 +319,9 @@ NAN_METHOD(PrepareTs)
 	free_buffer(&outputData);
 	
 	Local<Object> result = Object::New();	
-	result->Set(String::NewSymbol("metadata"), metadataBuffer);
-	result->Set(String::NewSymbol("header"), headerBuffer);
-	result->Set(String::NewSymbol("data"), dataBuffer);
+	result->Set(NanNew<String>("metadata"), metadataBuffer);
+	result->Set(NanNew<String>("header"), headerBuffer);
+	result->Set(NanNew<String>("data"), dataBuffer);
 	
 	NanReturnValue(result);
 }
@@ -384,10 +384,10 @@ NAN_METHOD(ParseFramesInfo)
 
 void init(Handle<Object> exports) 
 {
-	exports->Set(String::NewSymbol("getCutDetails"), FunctionTemplate::New(GetCutDetails)->GetFunction());
-	exports->Set(String::NewSymbol("findLastPatPmtPackets"), FunctionTemplate::New(FindLastPatPmtPackets)->GetFunction());
-	exports->Set(String::NewSymbol("prepareTs"), FunctionTemplate::New(PrepareTs)->GetFunction());
-	exports->Set(String::NewSymbol("parseFramesInfo"), FunctionTemplate::New(ParseFramesInfo)->GetFunction());
+	exports->Set(NanNew<String>("getCutDetails"), 			FunctionTemplate::New(GetCutDetails)->GetFunction());
+	exports->Set(NanNew<String>("findLastPatPmtPackets"), 	FunctionTemplate::New(FindLastPatPmtPackets)->GetFunction());
+	exports->Set(NanNew<String>("prepareTs"), 				FunctionTemplate::New(PrepareTs)->GetFunction());
+	exports->Set(NanNew<String>("parseFramesInfo"), 		FunctionTemplate::New(ParseFramesInfo)->GetFunction());
 }
 
 NODE_MODULE(TsPreparer, init)

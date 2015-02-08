@@ -43,7 +43,7 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 	Local<Object> tagResult = Object::New();
 	ID3_Tag id3Tag;
 
-	tagResult->Set(String::NewSymbol("PTS"), Number::New(pts));
+	tagResult->Set(NanNew<String>("PTS"), Number::New(pts));
 	
 	result->Set(result->Length(), tagResult);
 	
@@ -73,13 +73,13 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 			switch (id3Field->GetType())
 			{
 			case ID3FTY_INTEGER:
-				frameResult->Set(String::NewSymbol(fieldName), Number::New(id3Field->Get()));
+				frameResult->Set(NanNew<String>(fieldName), Number::New(id3Field->Get()));
 				break;
 
 			case ID3FTY_TEXTSTRING: 
 			{
 				char *value = ID3_GetString(id3Frame, id3Field->GetID());
-				frameResult->Set(String::NewSymbol(fieldName), String::New(value));
+				frameResult->Set(NanNew<String>(fieldName), String::New(value));
 				ID3_FreeString(value);
 				break;
 			}
@@ -89,7 +89,7 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 		}
 		delete fieldIter;
 		
-		tagResult->Set(String::NewSymbol(id3Frame->GetTextID()), frameResult);
+		tagResult->Set(NanNew<String>(id3Frame->GetTextID()), frameResult);
 	}
 	delete frameIter;
 }
@@ -135,15 +135,15 @@ NAN_METHOD(ParseBuffer)
 	stream_walker_free(&stream_walker_state);
 			
 	Local<Object> result = Object::New();
-	result->Set(String::NewSymbol("videoPts"), Number::New(stream_walker_state.initial_video_pts));
-	result->Set(String::NewSymbol("audioPts"), Number::New(stream_walker_state.initial_audio_pts));
-	result->Set(String::NewSymbol("id3tags"), id3TagArray);	
+	result->Set(NanNew<String>("videoPts"), Number::New(stream_walker_state.initial_video_pts));
+	result->Set(NanNew<String>("audioPts"), Number::New(stream_walker_state.initial_audio_pts));
+	result->Set(NanNew<String>("id3tags"), id3TagArray);	
 	NanReturnValue(result);
 }
 
 void init(Handle<Object> exports)
 {
-	exports->Set(String::NewSymbol("parseBuffer"), FunctionTemplate::New(ParseBuffer)->GetFunction());
+	exports->Set(NanNew<String>("parseBuffer"), FunctionTemplate::New(ParseBuffer)->GetFunction());
 }
 
 NODE_MODULE(TsId3Reader, init)
