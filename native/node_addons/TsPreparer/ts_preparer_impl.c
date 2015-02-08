@@ -272,6 +272,219 @@ get_pcr_pid(byte_t* buffer, int size)
 	return pmt_get_pcrPID(packet_offset);
 }
 
+// functions copied from nginx-vod-module - start
+
+static u_char *
+mpegts_write_packet_header(u_char *p, unsigned pid, unsigned cc, bool_t first)
+{	
+	*p++ = 0x47;
+	*p++ = (u_char) (pid >> 8);
+
+	if (first) 
+	{
+		p[-1] |= 0x40;
+	}
+
+	*p++ = (u_char) pid;
+	*p++ = 0x10 | (cc & 0x0f); /* payload */
+	
+	return p;
+}
+
+static u_char *
+mpegts_write_pes_header(u_char *p, bool_t write_pcr, u_char sid, u_char* cur_packet_start, unsigned* pes_header_size, u_char** pes_size_ptr)
+{
+	unsigned header_size = 2 * sizeof_pts;
+
+	if (write_pcr)
+	{
+		cur_packet_start[3] |= 0x20; /* adaptation */
+
+		*p++ = 1 + sizeof_pcr;	/* size */
+		*p++ = 0x10; /* PCR */
+
+		// skip the pcr value
+		p += sizeof_pcr;
+	}
+
+	/* PES header */
+
+	*p++ = 0x00;
+	*p++ = 0x00;
+	*p++ = 0x01;
+	*p++ = sid;
+
+	*pes_header_size = header_size;
+	*pes_size_ptr = p;
+	p += sizeof(uint16_t);		// skip pes_size, updated later
+	*p++ = 0x80; /* H222 */
+	*p++ = (u_char) 0xC0;		/* flags = PTS & DTS */
+	*p++ = (u_char) header_size;
+
+	// skip pts & dts
+	p += header_size;
+	
+	return p;
+}
+
+static u_char* 
+mpegts_add_stuffing(u_char* packet, u_char* p, unsigned stuff_size)
+{
+	u_char* packet_end = packet + TS_PACKET_LENGTH;
+	u_char  *base;
+
+	if (packet[3] & 0x20) 
+	{
+		/* has adaptation */
+		base = &packet[5] + packet[4];
+		memmove(base + stuff_size, base, p - base);
+		memset(base, 0xff, stuff_size);
+		packet[4] += (u_char) stuff_size;
+	}
+	else
+	{
+		/* no adaptation */
+		packet[3] |= 0x20;
+		memmove(&packet[4] + stuff_size, &packet[4], p - &packet[4]);
+
+		packet[4] = (u_char) (stuff_size - 1);
+		if (stuff_size >= 2) 
+		{
+			packet[5] = 0;
+			memset(&packet[6], 0xff, stuff_size - 2);
+		}
+	}
+	return packet_end;
+}
+
+// functions copied from nginx-vod-module - end
+
+static bool_t
+rebuild_frame(
+	const byte_t* start_pos,
+	const byte_t* end_pos,
+	int media_type,
+	timestamp_offsets_t* timestamp_offsets,
+	int src_pid,
+	dynamic_buffer_t* output_data)
+{
+	const byte_t* src_packet_end;
+	const byte_t* src_packet_pos;
+	const byte_t* src_packet;
+	byte_t* dest_packet_start;
+	byte_t* dest_packet_end;
+	byte_t* dest_packet_pos;
+	byte_t* pes_size_ptr;
+	unsigned first_packet_data_offset = timestamp_offsets->pts + sizeof_pts;
+	unsigned pes_bytes_written = 0;
+	unsigned pes_header_size;
+	unsigned pes_size;
+	unsigned stuff_size;
+	unsigned copy_size;
+	size_t initial_write_pos = output_data->write_pos;
+
+	// allocate enough space
+	if (!alloc_buffer_space(output_data, end_pos - start_pos + 3 * TS_PACKET_LENGTH))
+	{
+		return FALSE;
+	}
+	
+	// initialize the dest packet
+	dest_packet_start = output_data->data + output_data->write_pos;
+	dest_packet_end = dest_packet_start + TS_PACKET_LENGTH;
+	dest_packet_pos = dest_packet_start;
+	output_data->write_pos += TS_PACKET_LENGTH;
+
+	// ts header
+	dest_packet_pos = mpegts_write_packet_header(dest_packet_pos, src_pid, 0, TRUE);
+	
+	// pes header
+	dest_packet_pos = mpegts_write_pes_header(
+		dest_packet_pos, 
+		timestamp_offsets->pcr != NO_OFFSET, 
+		media_type == MEDIA_TYPE_VIDEO ? MIN_VIDEO_STREAM_ID : MIN_AUDIO_STREAM_ID, 
+		dest_packet_start, 
+		&pes_header_size, 
+		&pes_size_ptr);
+	if (timestamp_offsets->pcr != NO_OFFSET)
+	{
+		timestamp_offsets->pcr = sizeof_mpeg_ts_header + sizeof_mpeg_ts_adaptation_field;
+	}
+	timestamp_offsets->pts = dest_packet_pos - dest_packet_start - 2 * sizeof_pts;
+	timestamp_offsets->dts = timestamp_offsets->pts + sizeof_pts;
+
+	for (src_packet = start_pos; src_packet <= end_pos; src_packet += TS_PACKET_LENGTH)
+	{
+		// skip any packets with other ids
+		if (mpeg_ts_header_get_PID(src_packet) != src_pid)
+		{
+			continue;
+		}
+		
+		// get the source data start/end pointers
+		src_packet_pos = src_packet;
+		src_packet_end = src_packet + TS_PACKET_LENGTH;
+		if (src_packet_pos == start_pos)
+		{
+			src_packet_pos += first_packet_data_offset;
+		}
+		else
+		{
+			src_packet_pos = skip_adaptation_field((const mpeg_ts_header_t*)src_packet_pos);
+			if (src_packet_pos == NULL)
+			{
+				return FALSE;
+			}
+		}
+		
+		while (src_packet_pos < src_packet_end)
+		{
+			if (dest_packet_pos >= dest_packet_end)
+			{
+				// start a new packet
+				dest_packet_start = dest_packet_end;
+				dest_packet_end = dest_packet_start + TS_PACKET_LENGTH;
+				dest_packet_pos = dest_packet_start;
+				output_data->write_pos += TS_PACKET_LENGTH;
+
+				// ts header
+				dest_packet_pos = mpegts_write_packet_header(dest_packet_pos, src_pid, 0, FALSE);
+			}
+			
+			// copy as much as possible
+			copy_size = MIN(src_packet_end - src_packet_pos, dest_packet_end - dest_packet_pos);
+			memcpy(dest_packet_pos, src_packet_pos, copy_size);
+			src_packet_pos += copy_size;
+			dest_packet_pos += copy_size;
+			pes_bytes_written += copy_size;
+		}
+	}
+
+	// update packet size
+	pes_size = sizeof_pes_optional_header + pes_header_size + pes_bytes_written;
+	if (pes_size > 0xffff) 
+	{
+		pes_size = 0;
+	}
+	*pes_size_ptr++ = (u_char) (pes_size >> 8);
+	*pes_size_ptr++ = (u_char) pes_size;
+
+	// stuffing
+	stuff_size = dest_packet_end - dest_packet_pos;
+	if (stuff_size > 0)
+	{
+		dest_packet_pos = mpegts_add_stuffing(dest_packet_start, dest_packet_pos, stuff_size);
+
+		if (output_data->write_pos == initial_write_pos + TS_PACKET_LENGTH)
+		{
+			timestamp_offsets->pts += stuff_size;
+			timestamp_offsets->dts += stuff_size;
+		}
+	}
+	
+	return TRUE;
+}
+
 bool_t 
 prepare_ts_data(
 	ts_preparer_part_t* parts_start,
@@ -430,9 +643,9 @@ prepare_ts_data(
 				// it's the last frame, read until end of buffer
 				end_pos = buffers_cur->data + buffers_cur->write_pos;
 			}
-			end_pos -= TS_PACKET_LENGTH - 1;		// in case the input is somehow not a multiple of packets, avoid overflow
+			end_pos -= TS_PACKET_LENGTH;		// in case the input is somehow not a multiple of packets, avoid overflow
 			
-			if (start_pos >= end_pos)
+			if (start_pos > end_pos)
 			{
 				continue;
 			}
@@ -452,29 +665,50 @@ prepare_ts_data(
 			{
 				goto error;
 			}
+
+			cur_frame_info.timestamp_offsets = cur_frame->timestamp_offsets;
 			
-			// copy the packet, optionally filter only the relevant stream id (remove for example PAT/PMT)
-			for (cur_packet = start_pos; cur_packet < end_pos; cur_packet += TS_PACKET_LENGTH)
+			if (cur_frame->timestamp_offsets.dts == NO_OFFSET && 
+				(parts_cur->flags & BUFFER_FLAG_FILTER_MEDIA_STREAMS) != 0 &&
+				(parts_cur->flags & (BUFFER_FLAG_UPDATE_CCS | BUFFER_FLAG_FIXED_TIMESTAMPS)) == 0)
 			{
-				if (mpeg_ts_header_get_PID(cur_packet) != cur_pid)
-				{
-					if ((parts_cur->flags & BUFFER_FLAG_FILTER_MEDIA_STREAMS) != 0)
-					{
-						continue;
-					}
-				}
-				else if ((parts_cur->flags & BUFFER_FLAG_UPDATE_CCS) != 0)
-				{
-					cur_pid_info->end_cc = mpeg_ts_header_get_continuityCounter(cur_packet);
-					if (cur_pid_info->start_cc == INVALID_CONTINUITY_COUNTER)
-					{
-						cur_pid_info->start_cc = cur_pid_info->end_cc;
-					}
-				}
-					
-				if (!append_buffer(output_data, cur_packet, TS_PACKET_LENGTH))
+				// rebuild the frame in order to add a dts timestamp to it
+				if (!rebuild_frame(
+					start_pos,
+					end_pos,
+					cur_frame->media_type,
+					&cur_frame_info.timestamp_offsets,
+					cur_pid,
+					output_data))
 				{
 					goto error;
+				}
+			}
+			else
+			{
+				// copy the packet, optionally filter only the relevant stream id (remove for example PAT/PMT)
+				for (cur_packet = start_pos; cur_packet <= end_pos; cur_packet += TS_PACKET_LENGTH)
+				{
+					if (mpeg_ts_header_get_PID(cur_packet) != cur_pid)
+					{
+						if ((parts_cur->flags & BUFFER_FLAG_FILTER_MEDIA_STREAMS) != 0)
+						{
+							continue;
+						}
+					}
+					else if ((parts_cur->flags & BUFFER_FLAG_UPDATE_CCS) != 0)
+					{
+						cur_pid_info->end_cc = mpeg_ts_header_get_continuityCounter(cur_packet);
+						if (cur_pid_info->start_cc == INVALID_CONTINUITY_COUNTER)
+						{
+							cur_pid_info->start_cc = cur_pid_info->end_cc;
+						}
+					}
+						
+					if (!append_buffer(output_data, cur_packet, TS_PACKET_LENGTH))
+					{
+						goto error;
+					}
 				}
 			}
 
@@ -482,7 +716,6 @@ prepare_ts_data(
 			cur_frame_info.size = output_data->write_pos - cur_frame_info.pos;
 			cur_frame_info.duration = cur_frame->duration;
 			cur_frame_info.media_type = cur_frame->media_type;
-			cur_frame_info.timestamp_offsets = cur_frame->timestamp_offsets;
 			cur_frame_info.src_pid = cur_pid;
 			
 			// remove the timestamp offsets in case the fixed timestamps flag is on
