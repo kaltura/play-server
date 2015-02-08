@@ -14,7 +14,7 @@ ParseArrayOfBuffers(Local<Value> value, int* resultCount)
 	}
 
 	Local<Array> buffersArray = value.As<Array>();
-	size_t buffersCount = buffersArray->Length();
+	int buffersCount = buffersArray->Length();
 	if (buffersCount < 1)
 	{
 		return NULL;
@@ -26,7 +26,7 @@ ParseArrayOfBuffers(Local<Value> value, int* resultCount)
 		return NULL;
 	}
 	
-	for (size_t i = 0; i < buffersCount; i++) 
+	for (int i = 0; i < buffersCount; i++) 
 	{
 		if (!buffersArray->Get(i)->IsObject())
 		{
@@ -51,9 +51,9 @@ ParseArrayOfBuffers(Local<Value> value, int* resultCount)
 }
 
 static void 
-FreePartsArray(ts_preparer_part_t* parts, size_t partsCount)
+FreePartsArray(ts_preparer_part_t* parts, int partsCount)
 {
-	for (size_t i = 0; i < partsCount; i++)
+	for (int i = 0; i < partsCount; i++)
 	{
 		free(parts[i].buffers);
 	}
@@ -225,7 +225,7 @@ NAN_METHOD(PrepareTs)
 	}
 	
 	Local<Array> partsArray = args[0].As<Array>();
-	size_t partsCount = partsArray->Length();
+	int partsCount = partsArray->Length();
 	if (partsCount < 1)
 	{
 		return NanThrowTypeError("Parts array cannot be empty");
@@ -239,7 +239,7 @@ NAN_METHOD(PrepareTs)
 	
 	memset(parts, 0, sizeof(parts[0]) * partsCount);
 	
-	for (size_t i = 0; i < partsCount; i++)
+	for (int i = 0; i < partsCount; i++)
 	{
 		if (!partsArray->Get(i)->IsObject())
 		{

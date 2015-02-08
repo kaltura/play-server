@@ -273,7 +273,7 @@ set_frame_durations(frame_info_t* frames, int frame_count)
 	frame_pts_t* frame_ptss;
 	frame_pts_t* frame_ptss_end;
 	frame_pts_t* cur_pts;
-	size_t total_durations[MEDIA_TYPE_COUNT];
+	uint32_t total_durations[MEDIA_TYPE_COUNT];
 	int frame_counts[MEDIA_TYPE_COUNT];
 	int i;
 	
@@ -353,8 +353,8 @@ get_frames(
 	{
 		has_frame = FALSE;
 		
-		data_end = buffers->data + buffers->write_pos - TS_PACKET_LENGTH + 1;
-		for (data_cur = buffers->data; data_cur < data_end; data_cur += TS_PACKET_LENGTH, cur_pos += TS_PACKET_LENGTH)
+		data_end = buffers->data + buffers->write_pos - TS_PACKET_LENGTH;
+		for (data_cur = buffers->data; data_cur <= data_end; data_cur += TS_PACKET_LENGTH, cur_pos += TS_PACKET_LENGTH)
 		{
 			get_timestamp_offsets_and_stream_id(data_cur, &timestamp_offsets, &stream_id);
 			if (timestamp_offsets.pts != NO_OFFSET)
