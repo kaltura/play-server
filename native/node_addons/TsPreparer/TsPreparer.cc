@@ -362,14 +362,18 @@ NAN_METHOD(ParseFramesInfo)
 	frame_info_t* source_frames;
 	int source_frame_count;	
 	
-	if (!get_frames(
+	bool_t status = get_frames(
 		fileBuffers,
 		fileBuffersCount,
 		*framesBuffer, 
 		framesBuffer.length(), 
 		&source_frames,
 		&source_frame_count, 
-		TRUE))
+		TRUE);
+
+	free(fileBuffers);
+		
+	if (!status)
 	{
 		return NanThrowError("Failed to parse frames info");
 	}	
