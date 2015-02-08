@@ -292,19 +292,22 @@ mpegts_write_packet_header(u_char *p, unsigned pid, unsigned cc, bool_t first)
 }
 
 static u_char *
-mpegts_write_pes_header(u_char *p, bool_t write_pcr, u_char sid, u_char* cur_packet_start, unsigned* pes_header_size, u_char** pes_size_ptr)
+mpegts_write_pes_header(u_char *p, unsigned adapt_field_flags, u_char sid, u_char* cur_packet_start, unsigned* pes_header_size, u_char** pes_size_ptr)
 {
 	unsigned header_size = 2 * sizeof_pts;
+	unsigned packet_pcr_size;
 
-	if (write_pcr)
+	if (adapt_field_flags != 0)
 	{
+		packet_pcr_size = ((adapt_field_flags & 0x10) != 0) ? sizeof_pcr : 0;
+		
 		cur_packet_start[3] |= 0x20; /* adaptation */
 
-		*p++ = 1 + sizeof_pcr;	/* size */
-		*p++ = 0x10; /* PCR */
+		*p++ = 1 + packet_pcr_size;	/* size */
+		*p++ = adapt_field_flags;
 
 		// skip the pcr value
-		p += sizeof_pcr;
+		p += packet_pcr_size;
 	}
 
 	/* PES header */
@@ -375,6 +378,7 @@ rebuild_frame(
 	byte_t* dest_packet_end;
 	byte_t* dest_packet_pos;
 	byte_t* pes_size_ptr;
+	unsigned adapt_field_flags;
 	unsigned first_packet_data_offset = timestamp_offsets->pts + sizeof_pts;
 	unsigned pes_bytes_written = 0;
 	unsigned pes_header_size;
@@ -398,10 +402,17 @@ rebuild_frame(
 	// ts header
 	dest_packet_pos = mpegts_write_packet_header(dest_packet_pos, src_pid, 0, TRUE);
 	
+	// get the adaptation flags
+	adapt_field_flags = 0;
+	if (mpeg_ts_header_get_adaptationFieldExist(start_pos))
+	{
+		adapt_field_flags = start_pos[sizeof_mpeg_ts_header + 1];
+	}
+	
 	// pes header
 	dest_packet_pos = mpegts_write_pes_header(
 		dest_packet_pos, 
-		timestamp_offsets->pcr != NO_OFFSET, 
+		adapt_field_flags, 
 		media_type == MEDIA_TYPE_VIDEO ? MIN_VIDEO_STREAM_ID : MIN_AUDIO_STREAM_ID, 
 		dest_packet_start, 
 		&pes_header_size, 
