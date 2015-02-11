@@ -8,48 +8,23 @@
 #define CLIPPING_DURATION_THRESHOLD (6000)		// 2 frames in 30 fps
 #define DEFAULT_PCR_PTS_OFFSET (4500)
 
-static byte_t* 
-get_buffer_pos(
-	dynamic_buffer_t* source_bufs,
-	int source_buf_count,
-	int position)
-{
-	dynamic_buffer_t* source_bufs_end = source_bufs + source_buf_count;
-	dynamic_buffer_t* cur_buf;
-	int cur_pos = 0;
-	
-	for (cur_buf = source_bufs; cur_buf < source_bufs_end; cur_pos += cur_buf->write_pos, cur_buf++)
-	{
-		if (position >= cur_pos && position < cur_pos + cur_buf->write_pos)
-		{
-			return cur_buf->data + position - cur_pos;
-		}
-	}
-	return NULL;
-}
-
 static void 
-has_video_audio_frames(frame_info_t* frames, int frame_count, bool_t* has_video, bool_t* has_audio)
+has_video_audio_frames(frame_info_t* frames, int frame_count, bool_t* has_stream)
 {
 	frame_info_t* frames_end = frames + frame_count;
 	frame_info_t* cur_frame;
 	
-	*has_video = FALSE;
-	*has_audio = FALSE;
+	has_stream[MEDIA_TYPE_VIDEO] = FALSE;
+	has_stream[MEDIA_TYPE_AUDIO] = FALSE;
 	
 	for (cur_frame = frames; cur_frame < frames_end; cur_frame++)
 	{
-		if (cur_frame->media_type == MEDIA_TYPE_VIDEO)
-		{
-			*has_video = TRUE;
-		}
-		else
-		{
-			*has_audio = TRUE;
-		}
+		has_stream[cur_frame->media_type] = TRUE;
 		
-		if (*has_video && *has_audio)
+		if (has_stream[MEDIA_TYPE_VIDEO] && has_stream[MEDIA_TYPE_AUDIO])
+		{
 			break;
+		}
 	}
 }
 
@@ -65,7 +40,6 @@ get_bounding_iframes(
 {
 	frame_info_t* frames_end = frames + frame_count;
 	frame_info_t* cur_frame;
-	byte_t* cur_packet;
 	int frame_offset = 0;
 	int cur_frame_index = 0;
 
@@ -86,29 +60,8 @@ get_bounding_iframes(
 			frame_offset += cur_frame->duration;
 			continue;
 		}
-
-		// make sure the iframe has a PCR timestamp
-		cur_packet = get_buffer_pos(source_bufs, source_buf_count, cur_frame->pos);
-		if (cur_packet == NULL)
-		{
-			frame_offset += cur_frame->duration;
-			continue;
-		}
 			
-		if (frame_offset < cut_offset)
-		{
-			// iframe is before cut_offset, use as left frame (override any previously found frame)
-			result->left_iframe_index = cur_frame_index;
-			result->left_iframe_pos = cur_frame->pos;
-			result->left_iframe_offset = frame_offset;
-			
-			// if frame is close enough to the cut position use it also as right frame
-			if (cut_offset - frame_offset < CLIPPING_DURATION_THRESHOLD)
-			{
-				break;
-			}
-		}
-		else
+		if (frame_offset >= cut_offset)
 		{
 			// iframe is after cut_offset, use as right frame
 			result->right_iframe_index = cur_frame_index;
@@ -116,6 +69,18 @@ get_bounding_iframes(
 			result->right_iframe_offset = frame_offset;
 			break;
 		}
+
+		// iframe is before cut_offset, use as left frame (override any previously found frame)
+		result->left_iframe_index = cur_frame_index;
+		result->left_iframe_pos = cur_frame->pos;
+		result->left_iframe_offset = frame_offset;
+		
+		// if frame is close enough to the cut position use it also as right frame
+		if (cut_offset - frame_offset < CLIPPING_DURATION_THRESHOLD)
+		{
+			break;
+		}
+
 		frame_offset += cur_frame->duration;
 	}
 
@@ -149,7 +114,7 @@ get_cut_details(
 	dynamic_buffer_t* source_bufs,
 	int source_buf_count,
 	char* frames_text,
-	int frames_text_size,
+	size_t frames_text_size,
 	int cut_offset,
 	bool_t left_portion, 
 	bounding_iframes_t* bounding_iframes,
@@ -158,8 +123,7 @@ get_cut_details(
 {
 	frame_info_t* source_frames;
 	int source_frame_count;	
-	bool_t has_video;
-	bool_t has_audio;
+	bool_t has_stream[MEDIA_TYPE_COUNT];
 
 	// parse frames
 	if (!get_frames(
@@ -175,14 +139,14 @@ get_cut_details(
 	}
 
 	// check whether we have audio/video
-	has_video_audio_frames(source_frames, source_frame_count, &has_video, &has_audio);
+	has_video_audio_frames(source_frames, source_frame_count, has_stream);
 
 	if (!get_bounding_iframes(
 		source_bufs,
 		source_buf_count,
 		source_frames,
 		source_frame_count,
-		has_video,
+		has_stream[MEDIA_TYPE_VIDEO],
 		cut_offset,
 		bounding_iframes))
 	{
@@ -212,7 +176,7 @@ get_cut_details(
 }
 
 bool_t 
-find_last_pat_pmt_packets(byte_t* data, int size, byte_t** last_pat_packet, byte_t** last_pmt_packet)
+find_last_pat_pmt_packets(byte_t* data, size_t size, byte_t** last_pat_packet, byte_t** last_pmt_packet)
 {
 	byte_t* end_data = data + size - TS_PACKET_LENGTH;
 	byte_t* packet_offset;
@@ -220,11 +184,6 @@ find_last_pat_pmt_packets(byte_t* data, int size, byte_t** last_pat_packet, byte
 	int cur_pid;
 	int pmt_program_pid = 0;
 	const mpeg_ts_header_t* ts_header;
-	const mpeg_ts_adaptation_field_t* adapt_field;
-	const pat_t* pat_header;
-	const pat_entry_t* pat_entry;
-	int pat_entry_count;
-	int i;
 	
 	*last_pat_packet = NULL;
 	*last_pmt_packet = NULL;
@@ -239,27 +198,15 @@ find_last_pat_pmt_packets(byte_t* data, int size, byte_t** last_pat_packet, byte
 		{
 			*last_pat_packet = cur_data;
 
-			// skip the adapation field if present
-			packet_offset = cur_data + sizeof_mpeg_ts_header;
-			if (mpeg_ts_header_get_adaptationFieldExist(ts_header))
+			packet_offset = skip_adaptation_field(ts_header);
+			if (packet_offset == NULL)
 			{
-				adapt_field = (const mpeg_ts_adaptation_field_t*)packet_offset;
-				packet_offset += 1 + mpeg_ts_adaptation_field_get_adaptationFieldLength(adapt_field);
+				return FALSE;
 			}
 			
-			// extract the pat header
-			pat_header = (const pat_t*)packet_offset;
-			packet_offset += sizeof_pat;
-			pat_entry_count = (pat_get_sectionLength(pat_header) - 9) / sizeof_pat_entry;
-			for (i = 0; i < pat_entry_count; i++)
+			if (!get_pmt_program_pid(packet_offset, cur_data + TS_PACKET_LENGTH, &pmt_program_pid))
 			{
-				// extract the pat entry
-				pat_entry = (const pat_entry_t*)packet_offset;
-				packet_offset += sizeof_pat_entry;
-				
-				// if the program number is 1, the PID is PID of the PMT
-				if (pat_entry_get_programNumber(pat_entry) == 1)
-					pmt_program_pid = pat_entry_get_programPID(pat_entry);
+				return FALSE;
 			}
 		}
 		else if (cur_pid == pmt_program_pid)
@@ -278,12 +225,10 @@ update_streams_info(
 	size_t size)
 {
 	const byte_t* cur_pos;
-	const byte_t* end_pos = buffer + size;
+	const byte_t* end_pos = buffer + size - TS_PACKET_LENGTH;
 	stream_info_t* cur_info;
-	
-	end_pos -= TS_PACKET_LENGTH - 1;		// in case the input is somehow not a multiple of packets, avoid overflow
-	
-	for (cur_pos = buffer; cur_pos < end_pos; cur_pos += TS_PACKET_LENGTH)
+		
+	for (cur_pos = buffer; cur_pos <= end_pos; cur_pos += TS_PACKET_LENGTH)
 	{
 		cur_info = streams_info_hash_get(streams_info, mpeg_ts_header_get_PID(cur_pos));
 		if (cur_info == NULL)
@@ -293,7 +238,9 @@ update_streams_info(
 		
 		cur_info->end_cc = mpeg_ts_header_get_continuityCounter(cur_pos);
 		if (cur_info->start_cc == INVALID_CONTINUITY_COUNTER)
+		{
 			cur_info->start_cc = cur_info->end_cc;
+		}
 	}
 	
 	return TRUE;
@@ -305,37 +252,248 @@ get_pcr_pid(byte_t* buffer, int size)
 	byte_t* last_pat_packet;
 	byte_t* last_pmt_packet;
 	byte_t* packet_offset;
-	byte_t* packet_end;
-	mpeg_ts_header_t* ts_header;
-	mpeg_ts_adaptation_field_t* adapt_field;
-	int adapt_size;
 
 	if (!find_last_pat_pmt_packets(buffer, size, &last_pat_packet, &last_pmt_packet))
 	{
 		return 0;
 	}
 	
-	packet_offset = last_pmt_packet;
-	packet_end = last_pmt_packet + TS_PACKET_LENGTH;
-	
-	// skip the ts header
-	ts_header = packet_offset;
-	packet_offset += sizeof_mpeg_ts_header;
-	
-	// skip the adaptation field
-	if (mpeg_ts_header_get_adaptationFieldExist(ts_header))
+	packet_offset = skip_adaptation_field((const mpeg_ts_header_t*)last_pmt_packet);	
+	if (packet_offset == NULL)
 	{
-		adapt_field = (mpeg_ts_adaptation_field_t*)packet_offset;
-		adapt_size = 1 + mpeg_ts_adaptation_field_get_adaptationFieldLength(adapt_field);
-		packet_offset += adapt_size;
+		return 0;
 	}
 	
-	if (packet_offset + sizeof_pmt > packet_end)
+	if (packet_offset + sizeof_pmt > last_pmt_packet + TS_PACKET_LENGTH)
 	{
 		return 0;
 	}
 	
 	return pmt_get_pcrPID(packet_offset);
+}
+
+// functions copied from nginx-vod-module - start
+
+static u_char *
+mpegts_write_packet_header(u_char *p, unsigned pid, unsigned cc, bool_t first)
+{	
+	*p++ = 0x47;
+	*p++ = (u_char) (pid >> 8);
+
+	if (first) 
+	{
+		p[-1] |= 0x40;
+	}
+
+	*p++ = (u_char) pid;
+	*p++ = 0x10 | (cc & 0x0f); /* payload */
+	
+	return p;
+}
+
+static u_char *
+mpegts_write_pes_header(u_char *p, unsigned adapt_field_flags, u_char sid, u_char* cur_packet_start, unsigned* pes_header_size, u_char** pes_size_ptr)
+{
+	unsigned header_size = 2 * sizeof_pts;
+	unsigned packet_pcr_size;
+
+	if (adapt_field_flags != 0)
+	{
+		packet_pcr_size = ((adapt_field_flags & 0x10) != 0) ? sizeof_pcr : 0;
+		
+		cur_packet_start[3] |= 0x20; /* adaptation */
+
+		*p++ = 1 + packet_pcr_size;	/* size */
+		*p++ = adapt_field_flags;
+
+		// skip the pcr value
+		p += packet_pcr_size;
+	}
+
+	/* PES header */
+
+	*p++ = 0x00;
+	*p++ = 0x00;
+	*p++ = 0x01;
+	*p++ = sid;
+
+	*pes_header_size = header_size;
+	*pes_size_ptr = p;
+	p += sizeof(uint16_t);		// skip pes_size, updated later
+	*p++ = 0x80; /* H222 */
+	*p++ = (u_char) 0xC0;		/* flags = PTS & DTS */
+	*p++ = (u_char) header_size;
+
+	// skip pts & dts
+	p += header_size;
+	
+	return p;
+}
+
+static u_char* 
+mpegts_add_stuffing(u_char* packet, u_char* p, unsigned stuff_size)
+{
+	u_char* packet_end = packet + TS_PACKET_LENGTH;
+	u_char  *base;
+
+	if (packet[3] & 0x20) 
+	{
+		/* has adaptation */
+		base = &packet[5] + packet[4];
+		memmove(base + stuff_size, base, p - base);
+		memset(base, 0xff, stuff_size);
+		packet[4] += (u_char) stuff_size;
+	}
+	else
+	{
+		/* no adaptation */
+		packet[3] |= 0x20;
+		memmove(&packet[4] + stuff_size, &packet[4], p - &packet[4]);
+
+		packet[4] = (u_char) (stuff_size - 1);
+		if (stuff_size >= 2) 
+		{
+			packet[5] = 0;
+			memset(&packet[6], 0xff, stuff_size - 2);
+		}
+	}
+	return packet_end;
+}
+
+// functions copied from nginx-vod-module - end
+
+static bool_t
+rebuild_frame(
+	const byte_t* start_pos,
+	const byte_t* end_pos,
+	int media_type,
+	timestamp_offsets_t* timestamp_offsets,
+	int src_pid,
+	dynamic_buffer_t* output_data)
+{
+	const byte_t* src_packet_end;
+	const byte_t* src_packet_pos;
+	const byte_t* src_packet;
+	byte_t* dest_packet_start;
+	byte_t* dest_packet_end;
+	byte_t* dest_packet_pos;
+	byte_t* pes_size_ptr;
+	unsigned adapt_field_flags;
+	unsigned first_packet_data_offset = timestamp_offsets->pts + sizeof_pts;
+	unsigned pes_bytes_written = 0;
+	unsigned pes_header_size;
+	unsigned pes_size;
+	unsigned stuff_size;
+	unsigned copy_size;
+	size_t initial_write_pos = output_data->write_pos;
+
+	// allocate enough space
+	if (!alloc_buffer_space(output_data, end_pos - start_pos + 3 * TS_PACKET_LENGTH))
+	{
+		return FALSE;
+	}
+	
+	// initialize the dest packet
+	dest_packet_start = output_data->data + output_data->write_pos;
+	dest_packet_end = dest_packet_start + TS_PACKET_LENGTH;
+	dest_packet_pos = dest_packet_start;
+	output_data->write_pos += TS_PACKET_LENGTH;
+
+	// ts header
+	dest_packet_pos = mpegts_write_packet_header(dest_packet_pos, src_pid, 0, TRUE);
+	
+	// get the adaptation flags
+	adapt_field_flags = 0;
+	if (mpeg_ts_header_get_adaptationFieldExist(start_pos))
+	{
+		adapt_field_flags = start_pos[sizeof_mpeg_ts_header + 1];
+	}
+	
+	// pes header
+	dest_packet_pos = mpegts_write_pes_header(
+		dest_packet_pos, 
+		adapt_field_flags, 
+		media_type == MEDIA_TYPE_VIDEO ? MIN_VIDEO_STREAM_ID : MIN_AUDIO_STREAM_ID, 
+		dest_packet_start, 
+		&pes_header_size, 
+		&pes_size_ptr);
+	if (timestamp_offsets->pcr != NO_OFFSET)
+	{
+		timestamp_offsets->pcr = sizeof_mpeg_ts_header + sizeof_mpeg_ts_adaptation_field;
+	}
+	timestamp_offsets->pts = dest_packet_pos - dest_packet_start - 2 * sizeof_pts;
+	timestamp_offsets->dts = timestamp_offsets->pts + sizeof_pts;
+
+	for (src_packet = start_pos; src_packet <= end_pos; src_packet += TS_PACKET_LENGTH)
+	{
+		// skip any packets with other ids
+		if (mpeg_ts_header_get_PID(src_packet) != src_pid)
+		{
+			continue;
+		}
+		
+		// get the source data start/end pointers
+		src_packet_pos = src_packet;
+		src_packet_end = src_packet + TS_PACKET_LENGTH;
+		if (src_packet_pos == start_pos)
+		{
+			src_packet_pos += first_packet_data_offset;
+		}
+		else
+		{
+			src_packet_pos = skip_adaptation_field((const mpeg_ts_header_t*)src_packet_pos);
+			if (src_packet_pos == NULL)
+			{
+				return FALSE;
+			}
+		}
+		
+		while (src_packet_pos < src_packet_end)
+		{
+			if (dest_packet_pos >= dest_packet_end)
+			{
+				// start a new packet
+				dest_packet_start = dest_packet_end;
+				dest_packet_end = dest_packet_start + TS_PACKET_LENGTH;
+				dest_packet_pos = dest_packet_start;
+				output_data->write_pos += TS_PACKET_LENGTH;
+
+				// ts header
+				dest_packet_pos = mpegts_write_packet_header(dest_packet_pos, src_pid, 0, FALSE);
+			}
+			
+			// copy as much as possible
+			copy_size = MIN(src_packet_end - src_packet_pos, dest_packet_end - dest_packet_pos);
+			memcpy(dest_packet_pos, src_packet_pos, copy_size);
+			src_packet_pos += copy_size;
+			dest_packet_pos += copy_size;
+			pes_bytes_written += copy_size;
+		}
+	}
+
+	// update packet size
+	pes_size = sizeof_pes_optional_header + pes_header_size + pes_bytes_written;
+	if (pes_size > 0xffff) 
+	{
+		pes_size = 0;
+	}
+	*pes_size_ptr++ = (u_char) (pes_size >> 8);
+	*pes_size_ptr++ = (u_char) pes_size;
+
+	// stuffing
+	stuff_size = dest_packet_end - dest_packet_pos;
+	if (stuff_size > 0)
+	{
+		dest_packet_pos = mpegts_add_stuffing(dest_packet_start, dest_packet_pos, stuff_size);
+
+		if (output_data->write_pos == initial_write_pos + TS_PACKET_LENGTH)
+		{
+			timestamp_offsets->pts += stuff_size;
+			timestamp_offsets->dts += stuff_size;
+		}
+	}
+	
+	return TRUE;
 }
 
 bool_t 
@@ -364,7 +522,6 @@ prepare_ts_data(
 	const byte_t* start_pos;
 	const byte_t* end_pos;
 	const byte_t* cur_packet;
-	//byte_t stream_id;
 	int buffer_start_pos;
 	int next_frame_pos;
 	int cur_frame_pos;
@@ -406,16 +563,15 @@ prepare_ts_data(
 		goto error;
 	}
 
+	// allocate a larger buffer to compensate for the rebuilding of packets (in case we need to add DTS timestamps)
+	total_size += (DIV_CEIL(metadata_header.frame_count * sizeof_pts, TS_PACKET_LENGTH) + 10) * TS_PACKET_LENGTH;
 	if (!resize_buffer(output_data, total_size))
 	{
 		goto error;
 	}
 	
-	// append the metadata header
-	if (!append_buffer(output_metadata, PS(metadata_header)))
-	{
-		goto error;
-	}
+	// skip the metadata header (written at the end)
+	output_metadata->write_pos = sizeof(metadata_header);
 		
 	for (parts_cur = parts_start; parts_cur < parts_end; parts_cur++)
 	{
@@ -424,9 +580,14 @@ prepare_ts_data(
 		buffers_end = parts_cur->buffers + parts_cur->buffer_count;
 		buffer_start_pos = 0;
 
-		if ((parts_cur->flags & BUFFER_FLAG_TS_HEADER) != 0)
+		if ((parts_cur->flags & BUFFER_FLAG_TS_HEADER) != 0 && parts_cur->frame_count > 0)
 		{
-			metadata_header.ts_header_size = parts_cur->frames->pos + parts_cur->frames_pos_shift;
+			// get the ts header size
+			metadata_header.ts_header_size = parts_cur->frames[0].pos + parts_cur->frames_pos_shift;
+			if (metadata_header.ts_header_size > buffers_cur->write_pos)
+			{
+				goto error;
+			}
 		
 			// append the ts header
 			if (!append_buffer(output_header, buffers_cur->data, metadata_header.ts_header_size))
@@ -454,7 +615,7 @@ prepare_ts_data(
 		{
 			// find the buffer containing the current frame
 			cur_frame_pos = cur_frame->pos + parts_cur->frames_pos_shift;
-			while (cur_frame_pos >= buffer_start_pos + buffers_cur->write_pos)
+			while (cur_frame_pos >= (int)(buffer_start_pos + buffers_cur->write_pos))
 			{
 				buffer_start_pos += buffers_cur->write_pos;
 				buffers_cur++;
@@ -464,12 +625,22 @@ prepare_ts_data(
 				}
 			}
 			
+			if (cur_frame_pos < buffer_start_pos)
+			{
+				goto error;
+			}
+			
 			// initialize TS packet start / end pos
 			start_pos = buffers_cur->data + cur_frame_pos - buffer_start_pos;
 			if (cur_frame + 1 < frames_end)
 			{
 				next_frame_pos = cur_frame[1].pos + parts_cur->frames_pos_shift;
-				if (next_frame_pos > buffer_start_pos + buffers_cur->write_pos)
+				if (next_frame_pos < buffer_start_pos)
+				{
+					goto error;
+				}
+				
+				if (next_frame_pos > (int)(buffer_start_pos + buffers_cur->write_pos))
 				{
 					// the next frame is in the next buffer
 					end_pos = buffers_cur->data + buffers_cur->write_pos;
@@ -485,7 +656,12 @@ prepare_ts_data(
 				// it's the last frame, read until end of buffer
 				end_pos = buffers_cur->data + buffers_cur->write_pos;
 			}
-			end_pos -= TS_PACKET_LENGTH - 1;		// in case the input is somehow not a multiple of packets, avoid overflow
+			end_pos -= TS_PACKET_LENGTH;		// in case the input is somehow not a multiple of packets, avoid overflow
+			
+			if (start_pos > end_pos)
+			{
+				continue;
+			}
 				
 			// save the frame start position
 			cur_frame_info.pos = output_data->write_pos;
@@ -502,29 +678,50 @@ prepare_ts_data(
 			{
 				goto error;
 			}
+
+			cur_frame_info.timestamp_offsets = cur_frame->timestamp_offsets;
 			
-			// copy the packet while filtering only the relevant stream id (may contain a PAT/PMT)
-			for (cur_packet = start_pos; cur_packet < end_pos; cur_packet += TS_PACKET_LENGTH)
+			if (cur_frame->timestamp_offsets.dts == NO_OFFSET && 
+				(parts_cur->flags & BUFFER_FLAG_FILTER_MEDIA_STREAMS) != 0 &&
+				(parts_cur->flags & (BUFFER_FLAG_UPDATE_CCS | BUFFER_FLAG_FIXED_TIMESTAMPS)) == 0)
 			{
-				if (mpeg_ts_header_get_PID(cur_packet) != cur_pid)
-				{
-					if ((parts_cur->flags & BUFFER_FLAG_FILTER_MEDIA_STREAMS) != 0)
-					{
-						continue;
-					}
-				}
-				else if ((parts_cur->flags & BUFFER_FLAG_UPDATE_CCS) != 0)
-				{
-					cur_pid_info->end_cc = mpeg_ts_header_get_continuityCounter(cur_packet);
-					if (cur_pid_info->start_cc == INVALID_CONTINUITY_COUNTER)
-					{
-						cur_pid_info->start_cc = cur_pid_info->end_cc;
-					}
-				}
-					
-				if (!append_buffer(output_data, cur_packet, TS_PACKET_LENGTH))
+				// rebuild the frame in order to add a dts timestamp to it
+				if (!rebuild_frame(
+					start_pos,
+					end_pos,
+					cur_frame->media_type,
+					&cur_frame_info.timestamp_offsets,
+					cur_pid,
+					output_data))
 				{
 					goto error;
+				}
+			}
+			else
+			{
+				// copy the packet, optionally filter only the relevant stream id (remove for example PAT/PMT)
+				for (cur_packet = start_pos; cur_packet <= end_pos; cur_packet += TS_PACKET_LENGTH)
+				{
+					if (mpeg_ts_header_get_PID(cur_packet) != cur_pid)
+					{
+						if ((parts_cur->flags & BUFFER_FLAG_FILTER_MEDIA_STREAMS) != 0)
+						{
+							continue;
+						}
+					}
+					else if ((parts_cur->flags & BUFFER_FLAG_UPDATE_CCS) != 0)
+					{
+						cur_pid_info->end_cc = mpeg_ts_header_get_continuityCounter(cur_packet);
+						if (cur_pid_info->start_cc == INVALID_CONTINUITY_COUNTER)
+						{
+							cur_pid_info->start_cc = cur_pid_info->end_cc;
+						}
+					}
+						
+					if (!append_buffer(output_data, cur_packet, TS_PACKET_LENGTH))
+					{
+						goto error;
+					}
 				}
 			}
 
@@ -532,12 +729,9 @@ prepare_ts_data(
 			cur_frame_info.size = output_data->write_pos - cur_frame_info.pos;
 			cur_frame_info.duration = cur_frame->duration;
 			cur_frame_info.media_type = cur_frame->media_type;
-			cur_frame_info.timestamp_offsets = cur_frame->timestamp_offsets;
 			cur_frame_info.src_pid = cur_pid;
 			
-			cur_timestamps = &cur_frame->timestamps;
-			target_timestamps = &metadata_header.media_info[cur_frame->media_type].timestamps;
-			
+			// remove the timestamp offsets in case the fixed timestamps flag is on
 			if ((parts_cur->flags & BUFFER_FLAG_FIXED_TIMESTAMPS) != 0)
 			{			
 				cur_frame_info.timestamp_offsets.pcr = NO_OFFSET;
@@ -546,6 +740,9 @@ prepare_ts_data(
 			}
 			
 			// update timestamps
+			cur_timestamps = &cur_frame->timestamps;
+			target_timestamps = &metadata_header.media_info[cur_frame->media_type].timestamps;
+			
 			if ((parts_cur->flags & BUFFER_FLAG_TIMESTAMPS_REF_START) != 0 && 
 				cur_timestamps->pts != NO_TIMESTAMP)
 			{				
@@ -555,13 +752,13 @@ prepare_ts_data(
 					target_timestamps->pcr = cur_timestamps->pcr - cur_timestamps->pts;
 				}
 
-				// pts = min(pts, curpts)
+				// pts = min(pts, cur frame start pts)
 				if (target_timestamps->pts == NO_TIMESTAMP || cur_timestamps->pts < target_timestamps->pts)
 				{
 					target_timestamps->pts = cur_timestamps->pts;
 				}
 				
-				// dts = min(dts, curdts)
+				// dts = min(dts, cur frame start dts)
 				if (target_timestamps->dts == NO_TIMESTAMP || cur_timestamps->dts < target_timestamps->dts)
 				{
 					target_timestamps->dts = cur_timestamps->dts;
@@ -576,14 +773,14 @@ prepare_ts_data(
 					target_timestamps->pcr = cur_timestamps->pcr - cur_timestamps->pts;
 				}
 
-				// pts = max(pts, curpts)
+				// pts = max(pts, cur frame end pts)
 				if (target_timestamps->pts == NO_TIMESTAMP || 
 					cur_timestamps->pts + cur_frame->duration > target_timestamps->pts)
 				{
 					target_timestamps->pts = cur_timestamps->pts + cur_frame->duration;
 				}
 				
-				// dts = max(dts, curdts)
+				// dts = max(dts, cur frame end dts)
 				if (target_timestamps->dts == NO_TIMESTAMP || 
 					cur_timestamps->dts + cur_frame->duration > target_timestamps->dts)
 				{
@@ -648,6 +845,7 @@ prepare_ts_data(
 	}
 	
 	// update the metadata header
+	metadata_header.data_size = output_data->write_pos;
 	for (i = 0; i < ARRAY_ENTRIES(metadata_header.media_info); i++)
 	{
 		metadata_header.media_info[i].duration = durations[i];

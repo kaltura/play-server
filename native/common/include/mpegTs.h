@@ -1,10 +1,12 @@
 #ifndef __MPEGTS_H__
 #define __MPEGTS_H__
 
+// includes
 #include "mpegTsStructs.h"
 #include "dynamicBuffer.h"
 #include "common.h"
 
+// constants
 #define TS_PACKET_LENGTH (188)
 #define PAT_PID (0)
 #define PES_MARKER (1)
@@ -26,6 +28,7 @@
 #define MIN_VIDEO_STREAM_ID (0xE0)
 #define MAX_VIDEO_STREAM_ID (0xEF)
 
+// typedefs
 enum {
 	MEDIA_TYPE_NONE,
 	MEDIA_TYPE_AUDIO,
@@ -46,37 +49,37 @@ typedef struct {
 } timestamp_offsets_t;
 
 typedef struct {
-	int media_type;
-	int pos;					// file offset
-	timestamps_t timestamps;	// measured in 90KHz
-	int duration;				// measured in 90KHz
+	uint32_t media_type;
+	uint32_t pos;					// file offset
+	uint32_t duration;				// measured in 90KHz
+	timestamps_t timestamps;		// measured in 90KHz
 	timestamp_offsets_t timestamp_offsets;
 	bool_t is_iframe;
 } frame_info_t;
 
+// functions
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-int64_t get_pcr(const pcr_t* pcr);
-void update_pcr(pcr_t* pcr, int64_t pcr_val);
 void set_pcr(pcr_t* pcr, int64_t pcr_val);
 
 int64_t get_pts(const pts_t* pts);
-void update_pts(pts_t* pts, int64_t pts_val);
 void set_pts(pts_t* pts, int indicator, int64_t pts_val);
 
 void reset_timestamps(timestamps_t* timestamps);
-void get_timestamps(const byte_t* packet_start, const timestamp_offsets_t* timestamp_offsets, timestamps_t* timestamps);
-void update_timestamps(byte_t* packet_start, const timestamp_offsets_t* timestamp_offsets, const timestamps_t* timestamps, int timestamp_offset, int pts_delay);
 
-int64_t get_pts_from_packet(const byte_t* packet, int size);
+int64_t get_pts_from_packet(const byte_t* packet, size_t size);
+
+byte_t* skip_adaptation_field(const mpeg_ts_header_t* ts_header);
+
+bool_t get_pmt_program_pid(const byte_t* pat_start, const byte_t* packet_end, int* pmt_program_pid);
 
 bool_t get_frames(
 	dynamic_buffer_t* buffers_start,
 	int buffer_count,
 	char* frames_text,
-	int frames_text_size, 
+	size_t frames_text_size, 
 	frame_info_t** frames,
 	int* frame_count, 
 	bool_t use_first_pcr);

@@ -1,14 +1,16 @@
 #ifndef __MPEGTS_PACKETIZER_H__
 #define __MPEGTS_PACKETIZER_H__
 
+// includes
 #include "mpegTsStructs.h"
 #include "common.h"
 
-typedef void (*packetizer_callback_t)(void* context, const byte_t* packet, int size, int64_t pts);
+// typedefs
+typedef void (*packetizer_callback_t)(void* context, const byte_t* packet, size_t size, int64_t pts);
 
 typedef void (*pmt_header_callback_t)(void* context, const pmt_t* pmt_header);
-typedef void (*pmt_entry_callback_t)(void* context, const pmt_entry_t* pmt_entry, int size);
-typedef bool_t (*packet_data_callback_t)(void* context, int cur_pid, const byte_t* packet, int size);
+typedef void (*pmt_entry_callback_t)(void* context, const pmt_entry_t* pmt_entry, size_t size);
+typedef bool_t (*packet_data_callback_t)(void* context, int cur_pid, const byte_t* packet, size_t size);
 
 typedef struct
 {
@@ -18,21 +20,22 @@ typedef struct
 	byte_t* packet_buffer;
 	byte_t* packet_pos;
 	int64_t pts;
-	int packet_size;
-	int size_left;
+	size_t packet_size;
+	size_t size_left;
 } ts_packetizer_state_t;
 
+// functions
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 void ts_packetizer_init(ts_packetizer_state_t* state, packetizer_callback_t callback, void* callback_context);
-bool_t ts_packetizer_process_data(ts_packetizer_state_t* state, const byte_t* packet_offset, int size);
+bool_t ts_packetizer_process_data(ts_packetizer_state_t* state, const byte_t* packet_offset, size_t size);
 void ts_packetizer_free(ts_packetizer_state_t* state);
 
 bool_t walk_ts_streams(
 	const byte_t* data,
-	int size,
+	size_t size,
 	pmt_header_callback_t pmt_header_callback,
 	pmt_entry_callback_t pmt_entry_callback,
 	packet_data_callback_t packet_data_callback,

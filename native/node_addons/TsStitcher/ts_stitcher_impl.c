@@ -9,8 +9,8 @@
 
 typedef struct {
 	int32_t chunk_type;
-	const metadata_header_t* video_header;
-	const metadata_frame_info_t* video_frames;
+	const metadata_header_t* metadata_header;
+	const metadata_frame_info_t* frames;
 	int32_t start_pos[MEDIA_TYPE_COUNT];
 	int32_t end_pos[MEDIA_TYPE_COUNT];
 	bool_t cyclic;
@@ -34,12 +34,13 @@ typedef struct {
 	uint8_t last_packet;
 	uint8_t padding[2];
 	
-	/*uint8_t pcr[sizeof_pcr];
-	uint8_t pts[sizeof_pts];
-	uint8_t dts[sizeof_pts];*/
+	//uint8_t pcr[sizeof_pcr];			// if pcr_offset != NO_OFFSET
+	//uint8_t pts[sizeof_pts];			// if pts_offset != NO_OFFSET
+	//uint8_t dts[sizeof_pts];			// if dts_offset != NO_OFFSET
 } output_packet_t;
 
-internal_ad_section_t* convert_external_layout_to_internal(
+static internal_ad_section_t* 
+convert_external_layout_to_internal(
 	const metadata_header_t* pre_ad_header, 
 	const metadata_header_t* post_ad_header, 
 	ad_section_t* ad_sections_start,
@@ -78,8 +79,8 @@ internal_ad_section_t* convert_external_layout_to_internal(
 	// add the pre ad section
 	cur_output_section->chunk_type = CHUNK_TYPE_PRE_AD;
 	cur_output_section->cyclic = FALSE;
-	cur_output_section->video_header = pre_ad_header;
-	cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
+	cur_output_section->metadata_header = pre_ad_header;
+	cur_output_section->frames = (metadata_frame_info_t*)(cur_output_section->metadata_header + 1);
 	memset(cur_output_section->start_pos, 0, sizeof(cur_output_section->start_pos));
 	cur_pos[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].duration;	
 	cur_pos[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].duration;
@@ -140,8 +141,8 @@ internal_ad_section_t* convert_external_layout_to_internal(
 					// pre ad filler
 					cur_output_section->chunk_type = ad_section->filler_chunk_type;
 					cur_output_section->cyclic = TRUE;
-					cur_output_section->video_header = ad_section->filler_header;
-					cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
+					cur_output_section->metadata_header = ad_section->filler_header;
+					cur_output_section->frames = (metadata_frame_info_t*)(cur_output_section->metadata_header + 1);
 					cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
 					cur_output_section->start_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
 					cur_pos[MEDIA_TYPE_VIDEO] += cur_pad_size;
@@ -155,8 +156,8 @@ internal_ad_section_t* convert_external_layout_to_internal(
 			// ad
 			cur_output_section->chunk_type = ad_section->ad_chunk_type;
 			cur_output_section->cyclic = FALSE;
-			cur_output_section->video_header = ad_section->ad_header;
-			cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
+			cur_output_section->metadata_header = ad_section->ad_header;
+			cur_output_section->frames = (metadata_frame_info_t*)(cur_output_section->metadata_header + 1);
 			cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
 			cur_output_section->start_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
 			cur_pos[MEDIA_TYPE_VIDEO] = MIN(end_pos[MEDIA_TYPE_VIDEO], cur_pos[MEDIA_TYPE_VIDEO] + ad_section->ad_header->media_info[MEDIA_TYPE_VIDEO].duration);
@@ -178,8 +179,8 @@ internal_ad_section_t* convert_external_layout_to_internal(
 		{
 			cur_output_section->chunk_type = ad_section->filler_chunk_type;
 			cur_output_section->cyclic = TRUE;
-			cur_output_section->video_header = ad_section->filler_header;
-			cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
+			cur_output_section->metadata_header = ad_section->filler_header;
+			cur_output_section->frames = (metadata_frame_info_t*)(cur_output_section->metadata_header + 1);
 			cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
 			cur_output_section->start_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
 			cur_pos[MEDIA_TYPE_VIDEO] = end_pos[MEDIA_TYPE_VIDEO];
@@ -194,8 +195,8 @@ internal_ad_section_t* convert_external_layout_to_internal(
 	{
 		cur_output_section->chunk_type = CHUNK_TYPE_POST_AD;
 		cur_output_section->cyclic = FALSE;
-		cur_output_section->video_header = post_ad_header;
-		cur_output_section->video_frames = (metadata_frame_info_t*)(cur_output_section->video_header + 1);
+		cur_output_section->metadata_header = post_ad_header;
+		cur_output_section->frames = (metadata_frame_info_t*)(cur_output_section->metadata_header + 1);
 		cur_output_section->start_pos[MEDIA_TYPE_VIDEO] = cur_pos[MEDIA_TYPE_VIDEO];
 		cur_output_section->start_pos[MEDIA_TYPE_AUDIO] = cur_pos[MEDIA_TYPE_AUDIO];
 		cur_output_section->end_pos[MEDIA_TYPE_VIDEO] = cur_output_section->start_pos[MEDIA_TYPE_VIDEO] + post_ad_header->media_info[MEDIA_TYPE_VIDEO].duration;
@@ -207,7 +208,8 @@ internal_ad_section_t* convert_external_layout_to_internal(
 	return result;
 }
 
-static void increment_timestamps(timestamps_t* timestamps, const int32_t* increment)
+static void 
+increment_timestamps(timestamps_t* timestamps, const int32_t* increment)
 {
 	if (timestamps[MEDIA_TYPE_VIDEO].pcr != NO_TIMESTAMP)
 		timestamps[MEDIA_TYPE_VIDEO].pcr += increment[MEDIA_TYPE_VIDEO];
@@ -224,7 +226,8 @@ static void increment_timestamps(timestamps_t* timestamps, const int32_t* increm
 		timestamps[MEDIA_TYPE_AUDIO].dts += increment[MEDIA_TYPE_AUDIO];
 }
 
-static void init_output_header(
+static void 
+init_output_header(
 	output_header_t* output_header, 
 	const metadata_header_t* pre_ad_header, 
 	const metadata_header_t* post_ad_header, 
@@ -236,9 +239,11 @@ static void init_output_header(
 	stream_info_t* streams_data;
 	bool_t is_media_pid;
 
+	// save some pre ad details
 	output_header->pcr_pid = pre_ad_header->pcr_pid;
 	output_header->streams_info = pre_ad_header->streams_info;
 	
+	// calculate continuity counters values
 	for (streams_data = streams_data_start; streams_data < streams_data_end; streams_data++)
 	{
 		if (streams_data->pid == INVALID_PID)
@@ -269,7 +274,8 @@ static void init_output_header(
 	}
 }
 
-bool_t build_layout_impl(
+static bool_t 
+build_layout_impl(
 	dynamic_buffer_t* result,
 	const metadata_header_t* pre_ad_header, 
 	const metadata_header_t* post_ad_header, 
@@ -280,7 +286,6 @@ bool_t build_layout_impl(
 	int32_t output_end)
 {
 	internal_ad_section_t* ad_sections_end = ad_sections_start + ad_sections_count;
-	int main_media_type = ((pre_ad_header->media_info[MEDIA_TYPE_VIDEO].pid != 0) ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);
 	
 	// current state
 	bool_t output_frames = FALSE;
@@ -298,12 +303,13 @@ bool_t build_layout_impl(
 	uint32_t packet_start_pos;
 	output_header_t output_header;
 	internal_ad_section_t* ad_section;
+	int main_media_type;
 
 	// append the output header
 	init_output_header(&output_header, pre_ad_header, post_ad_header, segment_index, output_end);
 	if (!append_buffer(result, PS(output_header)))
 	{
-		return FALSE;
+		goto error;
 	}	
 	
 	// output the TS header
@@ -312,7 +318,7 @@ bool_t build_layout_impl(
 	output_packet.chunk_type = CHUNK_TYPE_TS_HEADER;
 	if (!append_buffer(result, &output_packet, sizeof(output_packet)))
 	{
-		return FALSE;
+		goto error;
 	}
 	
 	// no output_end means we should output until we are out of frames
@@ -324,12 +330,12 @@ bool_t build_layout_impl(
 	for (ad_section = ad_sections_start; ad_section < ad_sections_end; ad_section++)
 	{
 		// check which media types exist for the current section
-		has_media_type[MEDIA_TYPE_VIDEO] = ad_section->video_header->media_info[MEDIA_TYPE_VIDEO].pid != 0;
-		has_media_type[MEDIA_TYPE_AUDIO] = ad_section->video_header->media_info[MEDIA_TYPE_AUDIO].pid != 0;
+		has_media_type[MEDIA_TYPE_VIDEO] = ad_section->metadata_header->media_info[MEDIA_TYPE_VIDEO].pid != 0;
+		has_media_type[MEDIA_TYPE_AUDIO] = ad_section->metadata_header->media_info[MEDIA_TYPE_AUDIO].pid != 0;
+		main_media_type = (has_media_type[MEDIA_TYPE_VIDEO] ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);
 	
 		// if the current section ends before output starts we can just skip it
-		if ((!has_media_type[MEDIA_TYPE_VIDEO] || ad_section->end_pos[MEDIA_TYPE_VIDEO] < output_start) && 
-			(!has_media_type[MEDIA_TYPE_AUDIO] || ad_section->end_pos[MEDIA_TYPE_AUDIO] < output_start))
+		if (ad_section->end_pos[main_media_type] < output_start)
 		{
 			continue;
 		}
@@ -352,11 +358,11 @@ bool_t build_layout_impl(
 			try_media_type[MEDIA_TYPE_AUDIO] = has_media_type[MEDIA_TYPE_AUDIO];
 			for (;;)
 			{
-				if (frame_index >= ad_section->video_header->frame_count)
+				if (frame_index >= ad_section->metadata_header->frame_count)
 				{
 					if (ad_section->cyclic)
 					{
-						frame_index -= ad_section->video_header->frame_count;
+						frame_index -= ad_section->metadata_header->frame_count;
 					}
 					else
 					{
@@ -365,7 +371,7 @@ bool_t build_layout_impl(
 					}
 				}
 				
-				next_frame = &ad_section->video_frames[frame_index];
+				next_frame = &ad_section->frames[frame_index];
 				media_type = next_frame->media_type;
 				
 				if (try_media_type[media_type])
@@ -418,7 +424,7 @@ bool_t build_layout_impl(
 			packet_start_pos = result->write_pos;
 			if (!alloc_buffer_space(result, sizeof(output_packet) + sizeof_pcr + 2 * sizeof_pts))
 			{
-				return FALSE;
+				goto error;
 			}
 			result->write_pos += sizeof(output_packet);
 
@@ -486,9 +492,16 @@ bool_t build_layout_impl(
 	}
 	
 	return TRUE;
+	
+error:
+
+	free_buffer(result);
+	
+	return FALSE;
 }
 
-bool_t build_layout(
+bool_t 
+build_layout(
 	dynamic_buffer_t* result,
 	const metadata_header_t* pre_ad_header, 
 	const metadata_header_t* post_ad_header, 
@@ -557,8 +570,8 @@ create_pcr_packet(uint16_t pcr_pid, u_char* delayed_pcr, size_t* result_buffer_s
 	return result;
 }
 
-
-byte_t* create_null_packets(stream_info_t* stream_info, size_t* result_buffer_size, uint16_t pcr_pid, u_char* delayed_pcr)
+static byte_t* 
+create_null_packets(stream_info_t* stream_info, size_t* result_buffer_size, uint16_t pcr_pid, u_char* delayed_pcr)
 {
 	static const char null_packet_header[] = { 0x47, 0x00, 0x00, 0x30, 0xB7, 0x00 };
 	byte_t* cur_pos;
@@ -572,7 +585,7 @@ byte_t* create_null_packets(stream_info_t* stream_info, size_t* result_buffer_si
 	
 	stream_info->start_cc &= 0x0F;
 	packet_count = (stream_info->end_cc - stream_info->start_cc + 1) & 0x0F;
-	if (packet_count == 0)
+	if (packet_count == 0 && delayed_pcr == NULL)
 	{
 		return NULL;
 	}
@@ -616,7 +629,8 @@ byte_t* create_null_packets(stream_info_t* stream_info, size_t* result_buffer_si
 	return result;
 }
 
-void fix_continuity_counters(streams_info_t* streams_info, byte_t* buffer, uint32_t size)
+static void 
+fix_continuity_counters(streams_info_t* streams_info, byte_t* buffer, uint32_t size)
 {
 	stream_info_t* stream_info;
 	byte_t* end_pos = buffer + size;
@@ -636,14 +650,15 @@ void fix_continuity_counters(streams_info_t* streams_info, byte_t* buffer, uint3
 	}
 }
 
-void process_chunk(
+void 
+process_chunk(
 	// input
 	byte_t* layout_buffer,
-	uint32_t layout_size,
+	size_t layout_size,
 	
 	// inout
 	byte_t* chunk_buffer,
-	uint32_t chunk_size,
+	size_t chunk_size,
 	output_state_t* output_state,
 	
 	// output
@@ -680,8 +695,10 @@ void process_chunk(
 	{
 		// get current packet from layout buffer
 		cur_packet = (output_packet_t*)cur_pos;
-		if (cur_pos + cur_packet->layout_size > end_pos)
+		if (cur_packet->layout_size < sizeof(*cur_packet) || cur_pos + cur_packet->layout_size > end_pos)
+		{
 			break;		// unexpected - the layout buffer is invalid
+		}
 
 		cur_pos += sizeof(*cur_packet);
 		
@@ -731,6 +748,7 @@ void process_chunk(
 			{
 				if (output_header->pcr_pid != cur_packet->dst_pid)
 				{
+					// the pcr is using a separate pid, remove it from the current packet and insert a packet for it
 					mpeg_ts_adaptation_field_set_pcrFlag(packet_chunk_pos + sizeof_mpeg_ts_header, 0);
 					memset(packet_chunk_pos + cur_packet->pcr_offset, 0xff, sizeof_pcr);
 					delayed_pcr = cur_pos;
@@ -821,7 +839,8 @@ void process_chunk(
 	output_state->chunk_type = CHUNK_TYPE_INVALID;
 }
 
-bool_t is_metadata_buffer_valid(const void* buffer, size_t size)
+bool_t 
+is_metadata_buffer_valid(const void* buffer, size_t size)
 {
 	if (size < sizeof(metadata_header_t))
 	{
@@ -836,7 +855,8 @@ bool_t is_metadata_buffer_valid(const void* buffer, size_t size)
 	return TRUE;
 }
 
-uint32_t get_chunk_count(const void* metadata)
+uint32_t 
+get_data_size(const void* metadata)
 {
-	return ((metadata_header_t*)metadata)->chunk_count;
+	return ((metadata_header_t*)metadata)->data_size;
 }

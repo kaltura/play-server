@@ -5,6 +5,18 @@
 using namespace v8;
 using namespace node;
 
+typedef struct {
+	const char* name;
+	int offset;
+} AdSectionIntField;
+
+static const AdSectionIntField adSectionIntFields[] = {
+	{ "adChunkType", 		offsetof(ad_section_t, ad_chunk_type) },
+	{ "fillerChunkType", 	offsetof(ad_section_t, filler_chunk_type) },
+	{ "startPos", 			offsetof(ad_section_t, start_pos) },
+	{ "endPos", 			offsetof(ad_section_t, end_pos) },
+	{ "alignment", 			offsetof(ad_section_t, alignment) },
+};
 
 /*
 void MyFreeCallback(char* data, void* hint)
@@ -13,7 +25,8 @@ void MyFreeCallback(char* data, void* hint)
 }
 */
 
-bool GetMetadataHeader(Local<Value> input, const metadata_header_t** result)
+static bool 
+GetMetadataHeader(Local<Value> input, const metadata_header_t** result)
 {
 	*result = NULL;
 	
@@ -42,22 +55,25 @@ bool GetMetadataHeader(Local<Value> input, const metadata_header_t** result)
 	return true;
 }
 
-bool FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
+static bool 
+FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
 {
-	// XXX need more validations here
-	// XXX save the symbols instead of allocating every time
-	result->ad_chunk_type = 	inputSection->Get(String::NewSymbol("adChunkType"))->Int32Value();
-	result->filler_chunk_type = inputSection->Get(String::NewSymbol("fillerChunkType"))->Int32Value();
-	result->start_pos = 		inputSection->Get(String::NewSymbol("startPos"))->Int32Value();
-	result->end_pos = 			inputSection->Get(String::NewSymbol("endPos"))->Int32Value();
-	result->alignment = 		(ad_section_alignment)inputSection->Get(String::NewSymbol("alignment"))->Int32Value();
+	for (unsigned i = 0; i < sizeof(adSectionIntFields) / sizeof(adSectionIntFields[0]); i++)
+	{
+		Local<Value> curValue = inputSection->Get(NanNew<String>(adSectionIntFields[i].name));
+		if (!curValue->IsNumber())
+		{
+			return false;
+		}
+		*((int32_t*)((byte_t*)result + adSectionIntFields[i].offset)) = curValue->Int32Value();
+	}
 
-	if (!GetMetadataHeader(inputSection->Get(String::NewSymbol("ad")), &result->ad_header))
+	if (!GetMetadataHeader(inputSection->Get(NanNew<String>("ad")), &result->ad_header))
 	{
 		return false;
 	}
 	
-	if (!GetMetadataHeader(inputSection->Get(String::NewSymbol("filler")), &result->filler_header))
+	if (!GetMetadataHeader(inputSection->Get(NanNew<String>("filler")), &result->filler_header))
 	{
 		return false;
 	}
@@ -74,7 +90,7 @@ bool FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
 	Parameters
 	0	Buffer preAdMetadata
 	1	Buffer postAdMetadata
-	2	Array adSections of object:
+	2	Array<Object> adSections
 			Number adChunkType
 			Buffer ad
 			Number fillerChunkType
@@ -85,6 +101,9 @@ bool FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
 	3	Number segmentIndex
 	4	Number outputStart
 	5	Number outputEnd
+	
+	Returns
+		Buffer
 */
 NAN_METHOD(BuildLayout) {
 	NanScope();
@@ -108,7 +127,7 @@ NAN_METHOD(BuildLayout) {
 	
 	if (!args[2]->IsArray())
 	{
-		return NanThrowTypeError("Arguments 3 must be an array");
+		return NanThrowTypeError("Argument 3 must be an array");
 	}
 		
 	if (!args[3]->IsNumber() || !args[4]->IsNumber() || !args[5]->IsNumber()) 
@@ -179,7 +198,7 @@ NAN_METHOD(BuildLayout) {
 	
 	if (!status)
 	{
-		// XXXX
+		return NanThrowError("Failed to build layout");
 	}
 		
 	// return the result
@@ -192,6 +211,22 @@ NAN_METHOD(BuildLayout) {
 	NanReturnValue(result);
 }
 
+/*
+	Parameters
+	0	Buffer layout
+	1	Buffer chunk
+	2	Object state
+			Number layoutPos
+			Number chunkType
+			Number chunkStartOffset
+	
+	Returns
+		Object
+			Number chunkOutputStart
+			Number chunkOutputEnd
+			Number action
+			Buffer outputBuffer
+*/
 NAN_METHOD(ProcessChunk) {
 	NanScope();
 
@@ -223,44 +258,51 @@ NAN_METHOD(ProcessChunk) {
 	output_state_t outputState;
 	memset(&outputState, 0, sizeof(outputState));
 	Local<Object> inputState = args[2].As<Object>();
-	outputState.layout_pos = 		inputState->Get(String::NewSymbol("layoutPos"))->Uint32Value();
-	outputState.chunk_type = 		inputState->Get(String::NewSymbol("chunkType"))->Int32Value();
-	outputState.chunk_start_offset = 	inputState->Get(String::NewSymbol("chunkStartOffset"))->Uint32Value();
+	outputState.layout_pos = 			inputState->Get(NanNew<String>("layoutPos"))->Uint32Value();
+	outputState.chunk_type = 			inputState->Get(NanNew<String>("chunkType"))->Int32Value();
+	outputState.chunk_start_offset = 	inputState->Get(NanNew<String>("chunkStartOffset"))->Uint32Value();
 
 	// process the chunk
 	process_output_t processResult;
 
 	process_chunk(
-		(byte_t*)Buffer::Data(args[0]->ToObject()),
-		Buffer::Length(args[0]->ToObject()),
-		(byte_t*)Buffer::Data(args[1]->ToObject()),
-		Buffer::Length(args[1]->ToObject()),
+		(byte_t*)Buffer::Data(layoutBuffer),
+		Buffer::Length(layoutBuffer),
+		(byte_t*)Buffer::Data(chunkBuffer),
+		Buffer::Length(chunkBuffer),
 		&outputState,
 		&processResult);
 	
 	// update the state
-	inputState->Set(String::NewSymbol("layoutPos"), Number::New(outputState.layout_pos));
-	inputState->Set(String::NewSymbol("chunkType"), Number::New(outputState.chunk_type));
-	inputState->Set(String::NewSymbol("chunkStartOffset"), Number::New(outputState.chunk_start_offset));
+	inputState->Set(NanNew<String>("layoutPos"), 		Number::New(outputState.layout_pos));
+	inputState->Set(NanNew<String>("chunkType"), 		Number::New(outputState.chunk_type));
+	inputState->Set(NanNew<String>("chunkStartOffset"), Number::New(outputState.chunk_start_offset));
 	
 	// output the result
 	Local<Object> result = Object::New();
-	result->Set(String::NewSymbol("chunkOutputStart"), Number::New(processResult.chunk_output_start));
-	result->Set(String::NewSymbol("chunkOutputEnd"), Number::New(processResult.chunk_output_end));
-	result->Set(String::NewSymbol("action"), Number::New(processResult.action));
+	result->Set(NanNew<String>("chunkOutputStart"), Number::New(processResult.chunk_output_start));
+	result->Set(NanNew<String>("chunkOutputEnd"), Number::New(processResult.chunk_output_end));
+	result->Set(NanNew<String>("action"), Number::New(processResult.action));
 
 	if (processResult.output_buffer != NULL)
 	{
 		Local<Object> outputBuffer = NanNewBufferHandle((char*)processResult.output_buffer, processResult.output_buffer_size);
 		free(processResult.output_buffer);
 
-		result->Set(String::NewSymbol("outputBuffer"), outputBuffer);
+		result->Set(NanNew<String>("outputBuffer"), outputBuffer);
 	}
 	
 	NanReturnValue(result);
 }
 
-NAN_METHOD(GetChunkCount) {
+/*
+	Parameters
+	0	Buffer metadata
+	
+	Returns
+		Number
+*/
+NAN_METHOD(GetDataSize) {
 	NanScope();
 
 	// validate input
@@ -285,15 +327,15 @@ NAN_METHOD(GetChunkCount) {
 		return NanThrowTypeError("Invalid metadata buffer");
 	}
 	
-	Local<Number> result = Number::New(get_chunk_count(Buffer::Data(inputObject)));
+	Local<Number> result = Number::New(get_data_size(Buffer::Data(inputObject)));
 	NanReturnValue(result);
 }
 
 void init(Handle<Object> exports) 
 {
-	exports->Set(String::NewSymbol("buildLayout"), FunctionTemplate::New(BuildLayout)->GetFunction());
-	exports->Set(String::NewSymbol("processChunk"), FunctionTemplate::New(ProcessChunk)->GetFunction());
-	exports->Set(String::NewSymbol("getChunkCount"), FunctionTemplate::New(GetChunkCount)->GetFunction());
+	exports->Set(NanNew<String>("buildLayout"), 	FunctionTemplate::New(BuildLayout)->GetFunction());
+	exports->Set(NanNew<String>("processChunk"), 	FunctionTemplate::New(ProcessChunk)->GetFunction());
+	exports->Set(NanNew<String>("getDataSize"), 	FunctionTemplate::New(GetDataSize)->GetFunction());
 }
 
 NODE_MODULE(TsStitcher, init)

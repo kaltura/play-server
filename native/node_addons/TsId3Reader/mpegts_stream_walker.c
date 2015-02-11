@@ -2,7 +2,8 @@
 #include "mpegts_stream_walker.h"
 #include "mpegTs.h"
 
-void stream_walker_init(stream_walker_state_t* state, packetizer_callback_t callback, void* callback_context)
+void 
+stream_walker_init(stream_walker_state_t* state, packetizer_callback_t callback, void* callback_context)
 {
 	memset(state, 0, sizeof(*state));
 	state->initial_video_pts = NO_TIMESTAMP;
@@ -10,7 +11,8 @@ void stream_walker_init(stream_walker_state_t* state, packetizer_callback_t call
 	ts_packetizer_init(&state->packetizer_state, callback, callback_context);
 }
 
-void stream_walker_pmt_header_callback(void* context, const pmt_t* pmt_header)
+void 
+stream_walker_pmt_header_callback(void* context, const pmt_t* pmt_header)
 {
 	stream_walker_state_t* state = (stream_walker_state_t*)context;
 	
@@ -19,7 +21,8 @@ void stream_walker_pmt_header_callback(void* context, const pmt_t* pmt_header)
 	state->id3_pid = 0;
 }
 
-void stream_walker_pmt_entry_callback(void* context, const pmt_entry_t* pmt_entry, int size)
+void 
+stream_walker_pmt_entry_callback(void* context, const pmt_entry_t* pmt_entry, size_t size)
 {
 	stream_walker_state_t* state = (stream_walker_state_t*)context;
 	
@@ -41,7 +44,8 @@ void stream_walker_pmt_entry_callback(void* context, const pmt_entry_t* pmt_entr
 	}
 }
 
-bool_t stream_walker_packet_data_callback(void* context, int cur_pid, const byte_t* packet, int size)
+bool_t 
+stream_walker_packet_data_callback(void* context, int cur_pid, const byte_t* packet, size_t size)
 {
 	stream_walker_state_t* state = (stream_walker_state_t*)context;
 	
@@ -63,7 +67,8 @@ bool_t stream_walker_packet_data_callback(void* context, int cur_pid, const byte
 	return TRUE;
 }
 
-void stream_walker_free(stream_walker_state_t* state)
+void 
+stream_walker_free(stream_walker_state_t* state)
 {
 	ts_packetizer_free(&state->packetizer_state);
 }

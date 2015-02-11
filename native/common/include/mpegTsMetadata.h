@@ -1,11 +1,11 @@
 #ifndef __MPEGTSMETADATA_H__
 #define __MPEGTSMETADATA_H__
 
-#define FILE_CHUNK_SIZE (2500 * TS_PACKET_LENGTH)
-
+// includes
 #include "mpegTsStreamInfo.h"
 #include "mpegTs.h"
 
+// typedefs
 typedef struct {
 	int32_t duration;
 	int16_t pid;
@@ -14,7 +14,7 @@ typedef struct {
 } media_info_t;
 
 typedef struct {
-	uint32_t chunk_count;
+	uint32_t data_size;
 	uint32_t frame_count;
 	uint32_t ts_header_size;
 	int16_t pcr_pid;
