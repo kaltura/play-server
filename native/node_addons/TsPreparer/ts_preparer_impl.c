@@ -563,6 +563,8 @@ prepare_ts_data(
 		goto error;
 	}
 
+	// allocate a larger buffer to compensate for the rebuilding of packets (in case we need to add DTS timestamps)
+	total_size += (DIV_CEIL(metadata_header.frame_count * sizeof_pts, TS_PACKET_LENGTH) + 10) * TS_PACKET_LENGTH;
 	if (!resize_buffer(output_data, total_size))
 	{
 		goto error;

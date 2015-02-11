@@ -11,6 +11,7 @@
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
 #define ARRAY_ENTRIES(x) (sizeof(x) / sizeof(x[0]))
+#define DIV_CEIL(x, y) (((x) + (y) - 1) / (y))
 
 #ifndef TRUE
 #define TRUE (1)
