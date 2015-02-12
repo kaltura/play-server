@@ -146,7 +146,10 @@ bool_t walk_ts_streams(
 			// call the pmt header callback
 			pmt_header_callback(callback_context, pmt_header);
 			
-			end_offset = packet_offset + pmt_get_sectionLength(pmt_header) - sizeof_pmt;
+			// Note: sectionLength is the number of bytes following the sectionLength field inc. the CRC
+			//		since sectionLength ends at offset 4 and the CRC is 4 bytes, end_offset below will point
+			//		to the beginning of the CRC
+			end_offset = pmt_header + pmt_get_sectionLength(pmt_header);
 			
 			while (packet_offset < end_offset)
 			{
