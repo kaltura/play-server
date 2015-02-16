@@ -45,6 +45,7 @@ Configure:
 - mkdir @CLOUD_SHARED_BASE_PATH@
 - mkdir @CLOUD_SHARED_BASE_PATH@/ad_download
 - mkdir @CLOUD_SHARED_BASE_PATH@/ad_transcode
+- mkdir @CLOUD_SHARED_BASE_PATH@/ad_ts
 - mkdir @CLOUD_SHARED_BASE_PATH@/segments
 - mkdir @CLOUD_SHARED_BASE_PATH@/tmp
 - mkdir /opt/kaltura/log
