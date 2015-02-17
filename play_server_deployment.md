@@ -49,6 +49,7 @@ Configure:
 - mkdir @CLOUD_SHARED_BASE_PATH@/ad_transcode
 - mkdir @CLOUD_SHARED_BASE_PATH@/segments
 - mkdir @CLOUD_SHARED_BASE_PATH@/tmp
+- mkdir @CLOUD_SHARED_BASE_PATH@/ad_ts
 - mkdir /opt/kaltura/log
 
 Replace tokens in user_input.ini files:
