@@ -399,7 +399,7 @@ build_layout_impl(
 			}
 			
 			// update output state
-			if (cur_pos[main_media_type] > output_end)
+			if (cur_pos[main_media_type] >= output_end)
 			{
 				break;
 			}
