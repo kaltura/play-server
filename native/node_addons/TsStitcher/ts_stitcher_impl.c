@@ -7,6 +7,9 @@
 #include "dynamicBuffer.h"
 #include "mpegTs.h"
 
+// the maximum amount we can move output_start/output_end in order to make the segments start on key frame
+#define MAX_KEY_FRAME_SNAP_TIME_DIFF (90000)			// 1 second
+
 typedef struct {
 	int32_t chunk_type;
 	const metadata_header_t* metadata_header;
@@ -15,6 +18,21 @@ typedef struct {
 	int32_t end_pos[MEDIA_TYPE_COUNT];
 	bool_t cyclic;
 } internal_ad_section_t;
+
+typedef struct {
+	internal_ad_section_t* ad_section;
+	uint32_t frame_index;
+	int32_t pos[MEDIA_TYPE_COUNT];
+	uint32_t processed_frames;
+	
+	// ad_section fields (copied in order to reduce pointer dereferences)
+	uint32_t ad_section_frame_count;
+	const metadata_frame_info_t* ad_section_frames;
+	int32_t ad_section_end_pos[MEDIA_TYPE_COUNT];
+	bool_t ad_section_cyclic;
+	bool_t ad_section_has_media_type[MEDIA_TYPE_COUNT];
+	int ad_section_main_media_type;
+} build_layout_state_t;
 
 typedef struct {
 	streams_info_t streams_info;
@@ -208,6 +226,222 @@ convert_external_layout_to_internal(
 	return result;
 }
 
+static const metadata_frame_info_t* 
+get_next_frame(
+	build_layout_state_t* cur_state)
+{
+	const metadata_frame_info_t* next_frame;
+	bool_t try_media_type[MEDIA_TYPE_COUNT];
+	int media_type;
+
+	try_media_type[MEDIA_TYPE_VIDEO] = cur_state->ad_section_has_media_type[MEDIA_TYPE_VIDEO];
+	try_media_type[MEDIA_TYPE_AUDIO] = cur_state->ad_section_has_media_type[MEDIA_TYPE_AUDIO];
+	for (;;)
+	{
+		if (cur_state->frame_index >= cur_state->ad_section_frame_count)
+		{
+			if (cur_state->ad_section_cyclic)
+			{
+				cur_state->frame_index -= cur_state->ad_section_frame_count;
+			}
+			else
+			{
+				break;
+			}
+		}
+		
+		next_frame = &cur_state->ad_section_frames[cur_state->frame_index];
+		media_type = next_frame->media_type;
+		
+		if (try_media_type[media_type])
+		{
+			if (cur_state->pos[media_type] + (int32_t)next_frame->duration <= cur_state->ad_section_end_pos[media_type])
+			{
+				return next_frame;
+			}
+			try_media_type[media_type] = FALSE;
+		}
+		
+		if (!try_media_type[MEDIA_TYPE_VIDEO] && !try_media_type[MEDIA_TYPE_AUDIO])
+		{
+			break;
+		}
+		
+		cur_state->frame_index++;
+	}
+	
+	return NULL;
+}
+
+static void
+init_layout_state(
+	build_layout_state_t* state,
+	internal_ad_section_t* ad_section)
+{
+	state->ad_section = ad_section;
+	state->ad_section_has_media_type[MEDIA_TYPE_VIDEO] = ad_section->metadata_header->media_info[MEDIA_TYPE_VIDEO].pid != 0;
+	state->ad_section_has_media_type[MEDIA_TYPE_AUDIO] = ad_section->metadata_header->media_info[MEDIA_TYPE_AUDIO].pid != 0;
+	state->ad_section_main_media_type = (state->ad_section_has_media_type[MEDIA_TYPE_VIDEO] ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);		
+	state->frame_index = 0;
+	state->pos[MEDIA_TYPE_VIDEO] = ad_section->start_pos[MEDIA_TYPE_VIDEO];
+	state->pos[MEDIA_TYPE_AUDIO] = ad_section->start_pos[MEDIA_TYPE_AUDIO];
+	state->ad_section_frame_count = ad_section->metadata_header->frame_count;
+	state->ad_section_frames = ad_section->frames;
+	state->ad_section_end_pos[MEDIA_TYPE_VIDEO] = ad_section->end_pos[MEDIA_TYPE_VIDEO];
+	state->ad_section_end_pos[MEDIA_TYPE_AUDIO] = ad_section->end_pos[MEDIA_TYPE_AUDIO];
+	state->ad_section_cyclic = ad_section->cyclic;
+}
+
+static void
+get_start_end_frames(
+	internal_ad_section_t* ad_sections_start,
+	int ad_sections_count,
+	int32_t output_start,
+	int32_t output_end, 
+	build_layout_state_t* start_frame,
+	uint32_t* frame_count)
+{
+	internal_ad_section_t* ad_sections_end = ad_sections_start + ad_sections_count;
+	const metadata_frame_info_t* next_frame;
+	internal_ad_section_t* ad_section;
+	build_layout_state_t cur_state;
+	build_layout_state_t end_frame;
+	build_layout_state_t start_keyframe;
+	build_layout_state_t end_keyframe;
+	int32_t output_end_limit;
+	int32_t start_keyframe_diff;
+	int32_t end_keyframe_diff;
+	int32_t cur_diff;
+	int media_type;
+
+	if (!output_end)
+	{
+		output_end = INT_MAX;
+		output_end_limit = INT_MAX;
+	}
+	else
+	{
+		output_end_limit = output_end + MAX_KEY_FRAME_SNAP_TIME_DIFF;
+	}
+	
+	start_frame->ad_section = NULL;
+	end_frame.ad_section = NULL;
+	start_keyframe.ad_section = NULL;
+	end_keyframe.ad_section = NULL;
+	start_keyframe_diff = MAX_KEY_FRAME_SNAP_TIME_DIFF;
+	end_keyframe_diff = MAX_KEY_FRAME_SNAP_TIME_DIFF;
+
+	start_frame->processed_frames = 0;
+	end_frame.processed_frames = 0;
+	start_keyframe.processed_frames = 0;
+	end_keyframe.processed_frames = 0;
+	cur_state.processed_frames = 0;
+	
+	for (ad_section = ad_sections_start; ad_section < ad_sections_end; ad_section++)
+	{
+		init_layout_state(&cur_state, ad_section);
+		
+		// if the current section ends before output starts we can just skip it
+		if (ad_section->end_pos[cur_state.ad_section_main_media_type] + MAX_KEY_FRAME_SNAP_TIME_DIFF < output_start)
+		{
+			continue;
+		}
+	
+		for (;;)
+		{
+			// get a frame
+			next_frame = get_next_frame(&cur_state);
+			if (next_frame == NULL)
+			{
+				// failed to find a frame move to the next section
+				break;
+			}
+			
+			cur_state.processed_frames++;
+
+			// care only about the main media type
+			media_type = next_frame->media_type;
+			if (media_type != cur_state.ad_section_main_media_type)
+			{
+				cur_state.pos[media_type] += next_frame->duration;
+				cur_state.frame_index++;
+				continue;
+			}
+			
+			// update start / end frames
+			if (start_frame->ad_section == NULL && cur_state.pos[media_type] >= output_start)
+			{
+				*start_frame = cur_state;
+			}
+
+			if (end_frame.ad_section == NULL && cur_state.pos[media_type] >= output_end)
+			{
+				end_frame = cur_state;
+			}
+			
+			if (media_type == MEDIA_TYPE_VIDEO && next_frame->is_iframe)
+			{
+				// update start / end key frames
+				if (cur_state.pos[media_type] + MAX_KEY_FRAME_SNAP_TIME_DIFF >= output_start &&
+					cur_state.pos[media_type] <= output_start + MAX_KEY_FRAME_SNAP_TIME_DIFF)
+				{
+					cur_diff = abs(cur_state.pos[media_type] - output_start);
+					if (start_keyframe.ad_section == NULL || cur_diff < start_keyframe_diff)
+					{
+						start_keyframe = cur_state;
+						start_keyframe_diff = cur_diff;
+					}
+				}
+				
+				if (cur_state.pos[media_type] + MAX_KEY_FRAME_SNAP_TIME_DIFF >= output_end &&
+					cur_state.pos[media_type] <= output_end_limit)
+				{
+					cur_diff = abs(cur_state.pos[media_type] - output_end);
+					if (end_keyframe.ad_section == NULL || cur_diff < end_keyframe_diff)
+					{
+						end_keyframe = cur_state;
+						end_keyframe_diff = cur_diff;
+					}
+				}
+			}
+			
+			// if we passed the end 
+			if (cur_state.pos[media_type] > output_end_limit)
+			{
+				break;
+			}
+						
+			// update position and frame index
+			cur_state.pos[media_type] += next_frame->duration;
+			cur_state.frame_index++;
+		}
+	}
+	
+	if (start_keyframe.ad_section != NULL)
+	{
+		*start_frame = start_keyframe;
+	}
+	
+	if (start_frame->ad_section == NULL)
+	{
+		*frame_count = 0;
+		return;
+	}
+
+	if (end_keyframe.ad_section != NULL)
+	{
+		end_frame = end_keyframe;
+	}
+	
+	if (end_frame.ad_section == NULL)
+	{
+		end_frame = cur_state;
+	}
+	
+	// Note: processed_frames is needed since frame_index can be cyclic
+	*frame_count = end_frame.processed_frames - start_frame->processed_frames;
+}
+
 static void 
 increment_timestamps(timestamps_t* timestamps, const int32_t* increment)
 {
@@ -285,26 +519,19 @@ build_layout_impl(
 	int32_t output_start,
 	int32_t output_end)
 {
-	internal_ad_section_t* ad_sections_end = ad_sections_start + ad_sections_count;
-	
 	// current state
-	bool_t output_frames = FALSE;
 	uint32_t last_packet_pos[MEDIA_TYPE_COUNT] = { 0 };
-	int32_t cur_pos[MEDIA_TYPE_COUNT];
 	timestamps_t timestamps[MEDIA_TYPE_COUNT];
-	uint32_t frame_index;
+	build_layout_state_t cur_state;
 
 	// temporary vars
 	const metadata_frame_info_t* next_frame;
 	int media_type;
-	bool_t try_media_type[MEDIA_TYPE_COUNT];
-	bool_t has_media_type[MEDIA_TYPE_COUNT];
 	output_packet_t output_packet;
 	uint32_t packet_start_pos;
 	output_header_t output_header;
-	internal_ad_section_t* ad_section;
-	int main_media_type;
-
+	uint32_t frames_left;
+	
 	// append the output header
 	init_output_header(&output_header, pre_ad_header, post_ad_header, segment_index, output_end);
 	if (!append_buffer(result, PS(output_header)))
@@ -321,105 +548,37 @@ build_layout_impl(
 		goto error;
 	}
 	
-	// no output_end means we should output until we are out of frames
-	if (!output_end)
-	{
-		output_end = INT_MAX;
-	}
-	
-	for (ad_section = ad_sections_start; ad_section < ad_sections_end; ad_section++)
-	{
-		// check which media types exist for the current section
-		has_media_type[MEDIA_TYPE_VIDEO] = ad_section->metadata_header->media_info[MEDIA_TYPE_VIDEO].pid != 0;
-		has_media_type[MEDIA_TYPE_AUDIO] = ad_section->metadata_header->media_info[MEDIA_TYPE_AUDIO].pid != 0;
-		main_media_type = (has_media_type[MEDIA_TYPE_VIDEO] ? MEDIA_TYPE_VIDEO : MEDIA_TYPE_AUDIO);
-	
-		// if the current section ends before output starts we can just skip it
-		if (ad_section->end_pos[main_media_type] < output_start)
-		{
-			continue;
-		}
-	
-		// initialize the state for the current section
-		cur_pos[MEDIA_TYPE_VIDEO] = ad_section->start_pos[MEDIA_TYPE_VIDEO];
-		cur_pos[MEDIA_TYPE_AUDIO] = ad_section->start_pos[MEDIA_TYPE_AUDIO];
-		if (output_frames)
-		{
-			timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
-			timestamps[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps;
-			increment_timestamps(timestamps, cur_pos);
-		}
-		frame_index = 0;
+	// get the start / end frames
+	get_start_end_frames(
+		ad_sections_start,
+		ad_sections_count,
+		output_start,
+		output_end, 
+		&cur_state,
+		&frames_left);
 		
-		for (;;)
+	if (cur_state.ad_section == NULL)
+	{
+		// no frames
+		return TRUE;
+	}
+		
+	for (;;)
+	{
+		timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
+		timestamps[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps;
+		increment_timestamps(timestamps, cur_state.pos);
+	
+		while (frames_left)
 		{
 			// get a frame
-			try_media_type[MEDIA_TYPE_VIDEO] = has_media_type[MEDIA_TYPE_VIDEO];
-			try_media_type[MEDIA_TYPE_AUDIO] = has_media_type[MEDIA_TYPE_AUDIO];
-			for (;;)
-			{
-				if (frame_index >= ad_section->metadata_header->frame_count)
-				{
-					if (ad_section->cyclic)
-					{
-						frame_index -= ad_section->metadata_header->frame_count;
-					}
-					else
-					{
-						next_frame = NULL;
-						break;
-					}
-				}
-				
-				next_frame = &ad_section->frames[frame_index];
-				media_type = next_frame->media_type;
-				
-				if (try_media_type[media_type])
-				{
-					if (cur_pos[media_type] + (int32_t)next_frame->duration <= ad_section->end_pos[media_type])
-					{
-						break;
-					}
-					try_media_type[media_type] = FALSE;
-				}
-				
-				if (!try_media_type[MEDIA_TYPE_VIDEO] && !try_media_type[MEDIA_TYPE_AUDIO])
-				{
-					next_frame = NULL;
-					break;
-				}
-				
-				frame_index++;
-			}
-			
+			next_frame = get_next_frame(&cur_state);
 			if (next_frame == NULL)
 			{
 				// failed to find a frame move to the next section
 				break;
 			}
-			
-			// update output state
-			if (cur_pos[main_media_type] >= output_end)
-			{
-				break;
-			}
-			else if (cur_pos[main_media_type] >= output_start && !output_frames)
-			{
-				output_frames = TRUE;				
-				timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
-				timestamps[MEDIA_TYPE_AUDIO] = pre_ad_header->media_info[MEDIA_TYPE_AUDIO].timestamps;
-				increment_timestamps(timestamps, cur_pos);
-			}
-			
-			// update position and frame index
-			cur_pos[media_type] += next_frame->duration;
-			frame_index++;
-			
-			if (!output_frames)
-			{
-				continue;
-			}
-			
+
 			// leave room for the packet header
 			packet_start_pos = result->write_pos;
 			if (!alloc_buffer_space(result, sizeof(output_packet) + sizeof_pcr + 2 * sizeof_pts))
@@ -427,6 +586,8 @@ build_layout_impl(
 				goto error;
 			}
 			result->write_pos += sizeof(output_packet);
+
+			media_type = next_frame->media_type;
 
 			// output the timestamps
 			output_packet.pcr_offset = NO_OFFSET;
@@ -469,7 +630,7 @@ build_layout_impl(
 			output_packet.layout_size = result->write_pos - packet_start_pos;
 			output_packet.pos = next_frame->pos;
 			output_packet.size = next_frame->size;
-			output_packet.chunk_type = ad_section->chunk_type;
+			output_packet.chunk_type = cur_state.ad_section->chunk_type;
 
 			output_packet.src_pid = next_frame->src_pid;
 			output_packet.dst_pid = pre_ad_header->media_info[media_type].pid;
@@ -477,8 +638,22 @@ build_layout_impl(
 			
 			// update last packet per media type
 			last_packet_pos[media_type] = packet_start_pos;
+			
+			// update the frame index
+			cur_state.pos[media_type] += next_frame->duration;
+			cur_state.frame_index++;
+			frames_left--;
 		}
-	}
+		
+		if (!frames_left)
+		{
+			break;
+		}
+
+		// move to the next section
+		cur_state.ad_section++;
+		init_layout_state(&cur_state, cur_state.ad_section);
+	}	
 	
 	// mark the last packet of each media type
 	if (last_packet_pos[MEDIA_TYPE_VIDEO] != 0)
