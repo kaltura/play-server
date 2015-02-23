@@ -19,9 +19,10 @@ segmentsHistoryLimit = 12
 
 [logger]
 debugEnabled = 0
-accessLogPath = @LOG_DIR@/kaltura_play_access.log
-logPath = @LOG_DIR@/kaltura_play.log
-errorPath = @LOG_DIR@/kaltura_play_error.log
+logDir = @LOG_DIR@
+accessLogName = kaltura_play_access.log
+logName = kaltura_play.log
+errorLogName = kaltura_play_error.log
 
 [cache]
 hackWowzaUniqueSession = 0

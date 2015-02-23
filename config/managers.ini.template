@@ -34,3 +34,4 @@ durationCoefficient = 1
 ;domain = @AD_INTEGRATION_SERVICE_HOSTNAME@
 ; domainPort = 80
 
+[system]
