@@ -357,14 +357,13 @@ get_start_end_frames(
 				break;
 			}
 			
-			cur_state.processed_frames++;
-
 			// care only about the main media type
 			media_type = next_frame->media_type;
 			if (media_type != cur_state.ad_section_main_media_type)
 			{
 				cur_state.pos[media_type] += next_frame->duration;
 				cur_state.frame_index++;
+				cur_state.processed_frames++;
 				continue;
 			}
 			
@@ -414,6 +413,7 @@ get_start_end_frames(
 			// update position and frame index
 			cur_state.pos[media_type] += next_frame->duration;
 			cur_state.frame_index++;
+			cur_state.processed_frames++;
 		}
 	}
 	
