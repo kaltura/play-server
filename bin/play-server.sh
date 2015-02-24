@@ -76,6 +76,17 @@ status() {
         RETVAL=3
     fi
 }
+
+logRotated() {
+        if [ -f $PIDFILE ]; then
+                echo "Notify log rotate for $NAME."
+                kill -USR1 `cat $PIDFILE`
+                RETVAL=1
+        else
+                echo "$NAME is not running."
+                RETVAL=0
+        fi
+}
  
 case "$1" in
     start)
@@ -90,8 +101,12 @@ case "$1" in
     restart)
         restart
         ;;
+ 	logRotated)
+        logRotated
+        ;;
+
     *)
-        echo "Usage: {start|stop|status|restart}"
+        echo "Usage: {start|stop|status|restart|logRotated}"
         exit 1
         ;;
 esac
