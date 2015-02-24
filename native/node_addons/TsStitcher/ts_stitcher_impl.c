@@ -227,8 +227,7 @@ convert_external_layout_to_internal(
 }
 
 static const metadata_frame_info_t* 
-get_next_frame(
-	build_layout_state_t* cur_state)
+get_next_frame(build_layout_state_t* cur_state)
 {
 	const metadata_frame_info_t* next_frame;
 	bool_t try_media_type[MEDIA_TYPE_COUNT];
@@ -293,7 +292,7 @@ init_layout_state(
 }
 
 static void
-get_start_end_frames(
+get_output_range(
 	internal_ad_section_t* ad_sections_start,
 	int ad_sections_count,
 	int32_t output_start,
@@ -346,7 +345,13 @@ get_start_end_frames(
 		{
 			continue;
 		}
-	
+
+		// if the current section starts after output ends we're done
+		if (ad_section->start_pos[cur_state.ad_section_main_media_type] > output_end_limit)
+		{
+			break;
+		}
+		
 		for (;;)
 		{
 			// get a frame
@@ -439,7 +444,14 @@ get_start_end_frames(
 	}
 	
 	// Note: processed_frames is needed since frame_index can be cyclic
-	*frame_count = end_frame.processed_frames - start_frame->processed_frames;
+	if (end_frame.processed_frames > start_frame->processed_frames)
+	{
+		*frame_count = end_frame.processed_frames - start_frame->processed_frames;
+	}
+	else
+	{
+		*frame_count = 0;
+	}
 }
 
 static void 
@@ -519,10 +531,13 @@ build_layout_impl(
 	int32_t output_start,
 	int32_t output_end)
 {
+	internal_ad_section_t* ad_sections_end = ad_sections_start + ad_sections_count;
+
 	// current state
+	build_layout_state_t cur_state;
 	uint32_t last_packet_pos[MEDIA_TYPE_COUNT] = { 0 };
 	timestamps_t timestamps[MEDIA_TYPE_COUNT];
-	build_layout_state_t cur_state;
+	uint32_t frames_left;
 
 	// temporary vars
 	const metadata_frame_info_t* next_frame;
@@ -530,14 +545,30 @@ build_layout_impl(
 	output_packet_t output_packet;
 	uint32_t packet_start_pos;
 	output_header_t output_header;
-	uint32_t frames_left;
+	size_t alloc_size;
 	
+	// get the start / end frames
+	get_output_range(
+		ad_sections_start,
+		ad_sections_count,
+		output_start,
+		output_end, 
+		&cur_state,
+		&frames_left);
+	
+	// preallocate the buffer to avoid reallocations
+	alloc_size = sizeof(output_header) + sizeof(output_packet) + frames_left * (sizeof(output_packet) + sizeof_pcr + 2 * sizeof_pts);
+	if (!resize_buffer(result, alloc_size))
+	{
+		goto error;
+	}
+		
 	// append the output header
 	init_output_header(&output_header, pre_ad_header, post_ad_header, segment_index, output_end);
 	if (!append_buffer(result, PS(output_header)))
 	{
-		goto error;
-	}	
+		goto error;		// unexpected
+	}
 	
 	// output the TS header
 	memset(&output_packet, 0, sizeof(output_packet));
@@ -545,24 +576,9 @@ build_layout_impl(
 	output_packet.chunk_type = CHUNK_TYPE_TS_HEADER;
 	if (!append_buffer(result, &output_packet, sizeof(output_packet)))
 	{
-		goto error;
+		goto error;		// unexpected
 	}
 	
-	// get the start / end frames
-	get_start_end_frames(
-		ad_sections_start,
-		ad_sections_count,
-		output_start,
-		output_end, 
-		&cur_state,
-		&frames_left);
-		
-	if (cur_state.ad_section == NULL)
-	{
-		// no frames
-		return TRUE;
-	}
-		
 	for (;;)
 	{
 		timestamps[MEDIA_TYPE_VIDEO] = pre_ad_header->media_info[MEDIA_TYPE_VIDEO].timestamps;
@@ -583,7 +599,7 @@ build_layout_impl(
 			packet_start_pos = result->write_pos;
 			if (!alloc_buffer_space(result, sizeof(output_packet) + sizeof_pcr + 2 * sizeof_pts))
 			{
-				goto error;
+				goto error;		// unexpected
 			}
 			result->write_pos += sizeof(output_packet);
 
@@ -652,6 +668,10 @@ build_layout_impl(
 
 		// move to the next section
 		cur_state.ad_section++;
+		if (cur_state.ad_section >= ad_sections_end)
+		{
+			goto error;		// unexpected
+		}
 		init_layout_state(&cur_state, cur_state.ad_section);
 	}	
 	
