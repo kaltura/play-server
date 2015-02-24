@@ -31,7 +31,8 @@ typedef struct {
 	uint16_t src_pid;
 	uint8_t media_type;
 	timestamp_offsets_t timestamp_offsets;
-	uint16_t padding;
+	uint8_t is_iframe;
+	uint8_t padding;
 } metadata_frame_info_t;
 
 #endif // __MPEGTSMETADATA_H__

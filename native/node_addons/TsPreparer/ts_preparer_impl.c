@@ -729,6 +729,7 @@ prepare_ts_data(
 			cur_frame_info.size = output_data->write_pos - cur_frame_info.pos;
 			cur_frame_info.duration = cur_frame->duration;
 			cur_frame_info.media_type = cur_frame->media_type;
+			cur_frame_info.is_iframe = cur_frame->is_iframe;
 			cur_frame_info.src_pid = cur_pid;
 			
 			// remove the timestamp offsets in case the fixed timestamps flag is on
