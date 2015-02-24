@@ -229,7 +229,7 @@ convert_external_layout_to_internal(
 static const metadata_frame_info_t* 
 get_next_frame(build_layout_state_t* cur_state)
 {
-	const metadata_frame_info_t* next_frame;
+	const metadata_frame_info_t* cur_frame;
 	bool_t try_media_type[MEDIA_TYPE_COUNT];
 	int media_type;
 
@@ -249,14 +249,14 @@ get_next_frame(build_layout_state_t* cur_state)
 			}
 		}
 		
-		next_frame = &cur_state->ad_section_frames[cur_state->frame_index];
-		media_type = next_frame->media_type;
+		cur_frame = &cur_state->ad_section_frames[cur_state->frame_index];
+		media_type = cur_frame->media_type;
 		
 		if (try_media_type[media_type])
 		{
-			if (cur_state->pos[media_type] + (int32_t)next_frame->duration <= cur_state->ad_section_end_pos[media_type])
+			if (cur_state->pos[media_type] + (int32_t)cur_frame->duration <= cur_state->ad_section_end_pos[media_type])
 			{
-				return next_frame;
+				return cur_frame;
 			}
 			try_media_type[media_type] = FALSE;
 		}
@@ -301,7 +301,7 @@ get_output_range(
 	uint32_t* frame_count)
 {
 	internal_ad_section_t* ad_sections_end = ad_sections_start + ad_sections_count;
-	const metadata_frame_info_t* next_frame;
+	const metadata_frame_info_t* cur_frame;
 	internal_ad_section_t* ad_section;
 	build_layout_state_t cur_state;
 	build_layout_state_t end_frame;
@@ -355,18 +355,18 @@ get_output_range(
 		for (;;)
 		{
 			// get a frame
-			next_frame = get_next_frame(&cur_state);
-			if (next_frame == NULL)
+			cur_frame = get_next_frame(&cur_state);
+			if (cur_frame == NULL)
 			{
 				// failed to find a frame move to the next section
 				break;
 			}
 			
 			// care only about the main media type
-			media_type = next_frame->media_type;
+			media_type = cur_frame->media_type;
 			if (media_type != cur_state.ad_section_main_media_type)
 			{
-				cur_state.pos[media_type] += next_frame->duration;
+				cur_state.pos[media_type] += cur_frame->duration;
 				cur_state.frame_index++;
 				cur_state.processed_frames++;
 				continue;
@@ -383,7 +383,7 @@ get_output_range(
 				end_frame = cur_state;
 			}
 			
-			if (media_type == MEDIA_TYPE_VIDEO && next_frame->is_iframe)
+			if (media_type == MEDIA_TYPE_VIDEO && cur_frame->is_iframe)
 			{
 				// update start / end key frames
 				if (cur_state.pos[media_type] + MAX_KEY_FRAME_SNAP_TIME_DIFF >= output_start &&
@@ -416,7 +416,7 @@ get_output_range(
 			}
 						
 			// update position and frame index
-			cur_state.pos[media_type] += next_frame->duration;
+			cur_state.pos[media_type] += cur_frame->duration;
 			cur_state.frame_index++;
 			cur_state.processed_frames++;
 		}
@@ -540,7 +540,7 @@ build_layout_impl(
 	uint32_t frames_left;
 
 	// temporary vars
-	const metadata_frame_info_t* next_frame;
+	const metadata_frame_info_t* cur_frame;
 	int media_type;
 	output_packet_t output_packet;
 	uint32_t packet_start_pos;
@@ -588,8 +588,8 @@ build_layout_impl(
 		while (frames_left)
 		{
 			// get a frame
-			next_frame = get_next_frame(&cur_state);
-			if (next_frame == NULL)
+			cur_frame = get_next_frame(&cur_state);
+			if (cur_frame == NULL)
 			{
 				// failed to find a frame move to the next section
 				break;
@@ -603,52 +603,52 @@ build_layout_impl(
 			}
 			result->write_pos += sizeof(output_packet);
 
-			media_type = next_frame->media_type;
+			media_type = cur_frame->media_type;
 
 			// output the timestamps
 			output_packet.pcr_offset = NO_OFFSET;
 			if (timestamps[media_type].pcr != NO_TIMESTAMP)
 			{
-				if (next_frame->timestamp_offsets.pcr != NO_OFFSET)
+				if (cur_frame->timestamp_offsets.pcr != NO_OFFSET)
 				{
-					output_packet.pcr_offset = next_frame->timestamp_offsets.pcr;
+					output_packet.pcr_offset = cur_frame->timestamp_offsets.pcr;
 					set_pcr(result->data + result->write_pos, timestamps[media_type].pcr);
 					result->write_pos += sizeof_pcr;
 				}
-				timestamps[media_type].pcr += next_frame->duration;
+				timestamps[media_type].pcr += cur_frame->duration;
 			}
 			
 			output_packet.pts_offset = NO_OFFSET;
 			if (timestamps[media_type].pts != NO_TIMESTAMP)
 			{
-				if (next_frame->timestamp_offsets.pts != NO_OFFSET)
+				if (cur_frame->timestamp_offsets.pts != NO_OFFSET)
 				{
-					output_packet.pts_offset = next_frame->timestamp_offsets.pts;
-					set_pts(result->data + result->write_pos, next_frame->timestamp_offsets.dts != NO_OFFSET ? PTS_BOTH_PTS : PTS_ONLY_PTS, timestamps[media_type].pts);
+					output_packet.pts_offset = cur_frame->timestamp_offsets.pts;
+					set_pts(result->data + result->write_pos, cur_frame->timestamp_offsets.dts != NO_OFFSET ? PTS_BOTH_PTS : PTS_ONLY_PTS, timestamps[media_type].pts);
 					result->write_pos += sizeof_pts;
 				}
-				timestamps[media_type].pts += next_frame->duration;
+				timestamps[media_type].pts += cur_frame->duration;
 			}
 
 			output_packet.dts_offset = NO_OFFSET;
 			if (timestamps[media_type].dts != NO_TIMESTAMP)
 			{
-				if (next_frame->timestamp_offsets.dts != NO_OFFSET)
+				if (cur_frame->timestamp_offsets.dts != NO_OFFSET)
 				{
-					output_packet.dts_offset = next_frame->timestamp_offsets.dts;
+					output_packet.dts_offset = cur_frame->timestamp_offsets.dts;
 					set_pts(result->data + result->write_pos, PTS_BOTH_DTS, timestamps[media_type].dts);
 					result->write_pos += sizeof_pts;
 				}
-				timestamps[media_type].dts += next_frame->duration;
+				timestamps[media_type].dts += cur_frame->duration;
 			}
 
 			// write the packet header
 			output_packet.layout_size = result->write_pos - packet_start_pos;
-			output_packet.pos = next_frame->pos;
-			output_packet.size = next_frame->size;
+			output_packet.pos = cur_frame->pos;
+			output_packet.size = cur_frame->size;
 			output_packet.chunk_type = cur_state.ad_section->chunk_type;
 
-			output_packet.src_pid = next_frame->src_pid;
+			output_packet.src_pid = cur_frame->src_pid;
 			output_packet.dst_pid = pre_ad_header->media_info[media_type].pid;
 			memcpy(result->data + packet_start_pos, PS(output_packet));
 			
@@ -656,7 +656,7 @@ build_layout_impl(
 			last_packet_pos[media_type] = packet_start_pos;
 			
 			// update the frame index
-			cur_state.pos[media_type] += next_frame->duration;
+			cur_state.pos[media_type] += cur_frame->duration;
 			cur_state.frame_index++;
 			frames_left--;
 		}
