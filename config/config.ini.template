@@ -33,6 +33,7 @@ cuePoint = 600
 uiConfConfig = 600
 
 entryHandled = 20
+cuePointWatcherHandled = 20
 entryRequired = 300
 masterManifest = 600
 renditionManifest = 20
