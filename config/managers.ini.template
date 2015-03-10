@@ -35,3 +35,5 @@ durationCoefficient = 1
 ; domainPort = 80
 
 [system]
+
+[testAdServer]
