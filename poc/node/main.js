@@ -1102,7 +1102,7 @@ function processStartTracker(queryParams, res) {
 	res.end('tracker started');
 }
 
-function processInsertAdPage(protocol, res) {
+function processInsertAdPage(protocol, params, res) {
 	fs.readFile(__dirname + '/insertAd.html', 'utf8', function (err, data) {
 		if (err) {
 			errorFileNotFound(res);
@@ -1112,8 +1112,13 @@ function processInsertAdPage(protocol, res) {
 		crypto.randomBytes(4, function(ex, buf) {
 			var uid = buf.toString('hex');
 			
+			var entryId = uid;
+			if (params.entryId)
+				entryId = params.entryId;
+			
             res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
             res.end(data.replaceAll('@UID@', uid).
+							replaceAll('@ENTRY_ID@', entryId).
             				replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL).
         					replaceAll('@PROTOCOL@', protocol));
 		});
@@ -1446,7 +1451,7 @@ function handleHttpRequest(req, res) {
 			res.end();
 			break;
 		}
-		processInsertAdPage(protocol, res);
+		processInsertAdPage(protocol, queryParams, res);
 		break;
 						
 	default:
