@@ -79,7 +79,6 @@ const STITCH_SEGMENT_URI = '/stitchSegment.ts';
 const IS_WATCHED_URI = '/isWatched.js';
 const GET_NEXT_AD_TIME_URI = '/getNextAdTime.js';
 const SHORT_URL_URI = '/shortUrl.js';
-const REDIRECT_SHORT_URL_URI = '/redirectShortUrl.js';
 const NOTIFY_ERROR_URI = '/notifyError.js';
 const NOTIFY_STATUS_URI = '/notifyStatus.js';
 const NOTIFY_STATUS_ADMIN_URI = '/notifyStatusAdmin.js';
@@ -1306,6 +1305,22 @@ function processStitchSegment(queryParams, res) {
 	});
 }
 
+function replaceMarkers(data, markers, protocol, callback) {
+	crypto.randomBytes(4, function(ex, buf) {
+		var uid = buf.toString('hex');
+
+		data = data.replaceAll('@UID@', uid + '_' + markers.IP).
+		replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL);
+					
+		for (var key in markers) {
+			var value = markers[key];
+			data = data.replaceAll('@' + key + '@', value);
+		}
+		
+		callback(data);
+	});
+}
+
 var shortUrls = {};
 var shortUrlCounter = 1;
 
@@ -1383,17 +1398,6 @@ function handleHttpRequest(req, res) {
 		res.end(protocol + SERVER_EXTERNAL_URL + shortUri);		
 		break;
 		
-	case REDIRECT_SHORT_URL_URI:
-		var shortUri = '/' + shortUrlCounter;
-		shortUrls[shortUri] = queryParams;
-		var pageIdIp_key = 'pageId-ip-' + shortUrlCounter;
-		memcache.set(pageIdIp_key, queryParams.IP, 86400, function (err) {});
-		shortUrlCounter++;
-		var location = protocol + SERVER_EXTERNAL_URL + shortUri;
-		res.writeHead(302, {'Location' : location});
-		res.end();		
-		break;
-		
 	case NOTIFY_ERROR_URI:
 		
 		var cmdLine = "python " + __dirname + "/../utils/debug/debugStream.py '" + queryParams.url + "' " + PLAY_ERROR_LOG_PATH + "x.m3u8";
@@ -1447,31 +1451,26 @@ function handleHttpRequest(req, res) {
 						
 	default:
 		if (shortUrls[parsedUrl.pathname]) {
-			/*res.writeHead(302, {
-				'Location': shortUrls[parsedUrl.pathname]
-			});
-			res.end();*/
-			fs.readFile(__dirname + '/debugPlay.html', 'utf8', function (err, data) {
-				if (err) {
-					errorFileNotFound(res);
-					return;
-				}
-
-				crypto.randomBytes(4, function(ex, buf) {
-					var uid = buf.toString('hex');
-							
-					res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
-					
-					data = data.replaceAll('@UID@', uid + '_' + shortUrls[parsedUrl.pathname].IP).
-								replaceAll('@EXTERNAL_URL@', protocol + SERVER_EXTERNAL_URL);
-								
-					for (var key in shortUrls[parsedUrl.pathname]) {
-						var value = shortUrls[parsedUrl.pathname][key];
-						data = data.replaceAll('@' + key + '@', value);
-					}
-					res.end(data);
+			
+			if (queryParams.redirect) {
+				replaceMarkers("@URL@&uid=@UID@", shortUrls[parsedUrl.pathname], protocol, function (data) {
+					res.writeHead(302, {'Location': data});
+					res.end();
 				});
-			});
+			}
+			else {
+				fs.readFile(__dirname + '/debugPlay.html', 'utf8', function (err, template) {
+					if (err) {
+						errorFileNotFound(res);
+						return;
+					}
+
+					replaceMarkers(template, shortUrls[parsedUrl.pathname], protocol, function (data) {
+						res.writeHead(200, {'Content-Type': CONTENT_TYPE_HTML});
+						res.end(data);
+					});
+				});
+			}
 			
 			break;
 		}
