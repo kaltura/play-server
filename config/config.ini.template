@@ -23,6 +23,7 @@ logDir = @LOG_DIR@
 accessLogName = kaltura_play_access.log
 logName = kaltura_play.log
 errorLogName = kaltura_play_error.log
+largeDataDebugEnabled = 0
 
 [cache]
 hackWowzaUniqueSession = 0
