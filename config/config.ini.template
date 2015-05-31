@@ -50,7 +50,7 @@ fileDownloadTimeout = 60
 [memcache]
 hostname = 127.0.0.1
 port = 11211
-touchEnabled = 0
+touchEnabled = 1
 ; See all option in https://www.npmjs.org/package/memcached
 ;maxKeySize = 250
 ;maxExpiration = 2592000, the max expiration of keys by the Memcached server in milliseconds.
