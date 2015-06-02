@@ -74,15 +74,8 @@
 	<target name="install-TsId3Reader-plugin" depends="install-id3lib, build-TsId3Reader-plugin">
 	</target>
 
-	<target name="install-forever">
-		<exec executable="npm" failonerror="true">
-			<arg value="install" />
-			<arg value="-g" />
-			<arg value="forever" />
-		</exec>
-	</target>
 	
-	<target name="play-server-service" depends="install-forever">
+	<target name="play-server-service" depends="copy-template-files">
 		<symlink link="/etc/init.d/kaltura_play" resource="${bin.dir}/play-server.sh" failonerror="true" overwrite="true"/>
 		<chmod file="${bin.dir}/play-server.sh" perm="700"/>
 	</target>
@@ -90,6 +83,7 @@
 	<target name="copy-template-files">
 		<copy file="${basedir}/config/config.ini.template" tofile="${basedir}/config/config.ini" failonerror="true" />
 		<copy file="${basedir}/config/managers.ini.template" tofile="${basedir}/config/managers.ini" failonerror="true" />
+		<copy file="${basedir}/bin/play-server.template.sh" tofile="${basedir}/bin/play-server.sh" failonerror="true" />
 	</target>
 
 	<target name="replace-Config-file-tokens" depends="copy-template-files">
@@ -102,6 +96,10 @@
 			<replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
 			<replacefilter token="@PLAY_SERVER_BASE_DIR@" property="user_input.PLAY_SERVER_BASE_DIR"/>
 			<replacefilter token="@BIN_DIR@" value="${bin.dir}"/>
+		</replace>
+		<replace file="${basedir}/bin/play-server.sh" value="@TOKEN_VALU_NOT_FOUND@" propertyFile="${configFilePath}">
+			<replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
+			<replacefilter token="@PLAY_SERVER_BASE_DIR@" property="user_input.PLAY_SERVER_BASE_DIR"/>
 		</replace>
 	</target>
 

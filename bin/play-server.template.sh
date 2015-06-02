@@ -30,7 +30,7 @@ PIDFILE="@LOG_DIR@/play_server.pid"
 LOGFILE="@LOG_DIR@/play-server.log"
 MIN_UPTIME="5000"
 SPIN_SLEEP_TIME="2000"
-export NODE_PATH
+export PATH=$PATH:$NODE_PATH/forever/bin
  
 start() {
     echo "Starting $NAME"
