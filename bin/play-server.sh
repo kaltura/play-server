@@ -4,7 +4,6 @@
 # the process monitor. For more configuration options associated with Forever,
 # see: https://github.com/nodejitsu/forever
 
-echo `date`
 
 #
 # play-server              This shell script takes care of starting and stopping a Kaltura play-server Service
@@ -13,7 +12,7 @@ echo `date`
 # description: Kaltura play-server
 
 ### BEGIN INIT INFO
-# Provides:          kaltura-batch
+# Provides:          kaltura-play-server
 # Required-Start:    $local_fs $remote_fs $network
 # Required-Stop:     $local_fs $remote_fs $network
 # Default-Start:     2 3 4 5
@@ -24,15 +23,15 @@ echo `date`
 ### END INIT INFO
  
 NAME="play_server"
-NODE_BIN_DIR="/usr/bin"
-NODE_PATH="/opt/kaltura/play-server/node_modules"
-APPLICATION_PATH="/opt/kaltura/play-server/main.js"
-PIDFILE="/opt/kaltura/play-server/config/play-server.pid"
-LOGFILE="/var/log/play-server.log"
+PLAY_SERVER_PREFIX="@PLAY_SERVER_PREFIX@"
+NODE_PATH="$PLAY_SERVER_PREFIX/node_modules"
+APPLICATION_PATH="$PLAY_SERVER_PREFIX/main.js"
+FOREVER_EXE="@FOREVER_EXE@"
+PIDFILE="@PID_FILE@"
+LOGFILE="@LOG_DIR@/play-server.log"
 MIN_UPTIME="5000"
 SPIN_SLEEP_TIME="2000"
- 
-PATH=$NODE_BIN_DIR:$PATH
+export PATH=$PATH:$FOREVER_EXE
 export NODE_PATH=$NODE_PATH
  
 start() {
