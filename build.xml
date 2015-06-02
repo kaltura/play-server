@@ -101,7 +101,6 @@
 			<replacefilter token="@CLOUD_SHARED_BASE_PATH@" property="user_input.CLOUD_SHARED_BASE_PATH"/>
 			<replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
 			<replacefilter token="@PLAY_SERVER_BASE_DIR@" property="user_input.PLAY_SERVER_BASE_DIR"/>
-			<replacefilter token="@FOREVER_EXE@" property="user_input.FOREVER_EXE"/>
 			<replacefilter token="@BIN_DIR@" value="${bin.dir}"/>
 		</replace>
 	</target>
