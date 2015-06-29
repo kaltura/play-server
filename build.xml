@@ -87,19 +87,19 @@
 	</target>
 
 	<target name="replace-Config-file-tokens" depends="copy-template-files">
-		<replace file="${basedir}/config/config.ini" value="@TOKEN_VALU_NOT_FOUND@" propertyFile="${configFilePath}">
+		<replace file="${basedir}/config/config.ini" value="@TOKEN_VALUE_NOT_FOUND@" propertyFile="${configFilePath}">
                         <replacefilter token="@SERVICE_URL@" property="user_input.SERVICE_URL"/>
                         <replacefilter token="@PLAY_PARTNER_ADMIN_SECRET@" property="user_input.PLAY_PARTNER_ADMIN_SECRET"/>
                         <replacefilter token="@CLOUD_HOSTNAME@" property="user_input.CLOUD_HOSTNAME"/>
                         <replacefilter token="@CLOUD_SECRET@" property="user_input.CLOUD_SECRET"/>
                         <replacefilter token="@CLOUD_SHARED_BASE_PATH@" property="user_input.CLOUD_SHARED_BASE_PATH"/>
                         <replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
-                        <replacefilter token="@PLAY_SERVER_BASE_DIR@" value="${basedir}"/>
-                        <replacefilter token="@BIN_DIR@" value="${bin.dir}"/>
+                        <replacefilter token="@MEMCACHE_HOST@" property="user_input.MEMCACHE_HOST"/>
+                        <replacefilter token="@PLAY_SERVER_BASE_DIR@" property="user_input.PLAY_SERVER_BASE_DIR"/>
                 </replace>
-                <replace file="${basedir}/bin/play-server.sh" value="@TOKEN_VALU_NOT_FOUND@" propertyFile="${configFilePath}">
+                <replace file="${basedir}/bin/play-server.sh" value="@TOKEN_VALUE_NOT_FOUND@" propertyFile="${configFilePath}">
                         <replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
-                        <replacefilter token="@PLAY_SERVER_BASE_DIR@" value="${basedir}"/>
+                        <replacefilter token="@PLAY_SERVER_BASE_DIR@" property="user_input.PLAY_SERVER_BASE_DIR"/>
                 </replace>
 	</target>
 

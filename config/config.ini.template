@@ -48,7 +48,7 @@ serverProcess = 60
 fileDownloadTimeout = 60
 
 [memcache]
-hostname = 127.0.0.1
+hostname = @MEMCACHE_HOST@
 port = 11211
 touchEnabled = 1
 ; See all option in https://www.npmjs.org/package/memcached
@@ -68,4 +68,4 @@ retry = 30000
 ;idle = 5000, the idle timeout for the connections.
 
 [bin]
-binDir = @BIN_DIR@
+binDir = @PLAY_SERVER_BASE_DIR@/bin
