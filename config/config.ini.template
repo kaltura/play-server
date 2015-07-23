@@ -18,7 +18,7 @@ segmentsHistoryLimit = 12
 ;certFilePath = @CERT_FILE_PATH@
 
 [logger]
-debugEnabled = 0
+debugEnabled = 1
 logDir = @LOG_DIR@
 accessLogName = kaltura_play_access.log
 logName = kaltura_play.log
