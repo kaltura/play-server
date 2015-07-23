@@ -341,7 +341,8 @@ get_output_range(
 		init_layout_state(&cur_state, ad_section);
 		
 		// if the current section ends before output starts we can just skip it
-		if (ad_section->end_pos[cur_state.ad_section_main_media_type] + MAX_KEY_FRAME_SNAP_TIME_DIFF < output_start)
+		if (ad_section->end_pos[cur_state.ad_section_main_media_type] != INT_MAX && 
+			ad_section->end_pos[cur_state.ad_section_main_media_type] + MAX_KEY_FRAME_SNAP_TIME_DIFF < output_start)
 		{
 			continue;
 		}
