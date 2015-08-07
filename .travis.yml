@@ -5,7 +5,7 @@ language: c
 compiler:
     - clang
     - gcc
-script: npm install node-gyp && ./build.sh
+script: npm install -g node-gyp && ./build.sh
 notifications:
   email:
     recipients:
