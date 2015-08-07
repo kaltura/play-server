@@ -1,0 +1,14 @@
+before_install:
+    - sudo apt-get update -qq
+    - sudo apt-get install -y npm nodejs libid3-dev node-gyp
+language: c
+compiler:
+    - clang
+    - gcc
+script: ./build.sh
+notifications:
+  email:
+    recipients:
+      - jess.portnoy@kaltura.com
+    on_success: change
+    on_failure: always
