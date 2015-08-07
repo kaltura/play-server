@@ -14,6 +14,7 @@
 #===============================================================================
 
 #set -o nounset# Treat unset variables as an error
+PATH=/usr/local/bin:$PATH
 BASEDIR=`pwd`
 cd native/vendor/id3lib-3.8.3
 ./configure 
