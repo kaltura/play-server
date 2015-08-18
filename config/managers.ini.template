@@ -13,6 +13,7 @@ latency = 60
 [media]
 cdnCacheScope = public
 cdnMaxAge = 864000
+maxOutputStitchSegmentCalls = 1000
 ;domain = @MEDIA_SERVICE_HOSTNAME@
 ; domainPort = 80
 
