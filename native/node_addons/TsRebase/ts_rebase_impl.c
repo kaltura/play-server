@@ -104,7 +104,7 @@ ts_rebase_find_main_pid(const u_char* buffer, size_t size)
 
 static void
 ts_rebase_get_stream_frames_info(
-	u_char* buffer,
+	const u_char* buffer,
 	size_t size,
 	int pid, 
 	uint32_t* frame_count,

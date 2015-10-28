@@ -1,4 +1,3 @@
-//XXX #include <stdlib.h>
 #include "nan.h"
 #include "ts_rebase_impl.h"
 
@@ -41,7 +40,7 @@ NAN_METHOD(RebaseTs)
 
 	if (!args[1]->IsObject() || !Buffer::HasInstance(args[1]))
 	{
-		return NanThrowTypeError("Argument 2 must be an object");
+		return NanThrowTypeError("Argument 2 must be a buffer");
 	}
 
 	// parse the context
