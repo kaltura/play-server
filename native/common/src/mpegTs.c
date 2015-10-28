@@ -4,7 +4,7 @@
 
 #define MIN_PAT_SECTION_LENGTH (5 + 4)			// 5 bytes after the section length + 4 bytes crc at the end
 
-static int64_t 
+int64_t 
 get_pcr(const pcr_t* pcr)
 {
 	return (((int64_t)pcr_get_pcr90kHzHigh(pcr)) << 16) | pcr_get_pcr90kHzLow(pcr);
@@ -34,7 +34,7 @@ set_pts(pts_t* pts, int indicator, int64_t pts_val)
 	pts_set_low		(pts, 	 pts_val	   );
 }
 
-static void 
+void 
 get_timestamp_offsets_and_stream_id(const byte_t* packet_start, timestamp_offsets_t* timestamp_offsets, byte_t* stream_id)
 {
 	const byte_t* packet_offset = packet_start;
