@@ -207,13 +207,16 @@ void
 ts_rebase_impl(
 	ts_rebase_context_t* context,
 	u_char* buffer, 
-	size_t size)
+	size_t size, 
+	uint64_t* duration)
 {
 	uint32_t frame_count;
 	int64_t first_frame_dts;
 	int64_t last_frame_dts;
 	int main_pid;
 	
+	*duration = 0;
+
 	main_pid = ts_rebase_find_main_pid(buffer, size);
 	if (main_pid == 0)
 	{
@@ -249,4 +252,6 @@ ts_rebase_impl(
 	{
 		context->expected_dts += context->total_frame_durations / context->total_frame_count;
 	}
+
+	*duration = context->expected_dts - first_frame_dts;
 }

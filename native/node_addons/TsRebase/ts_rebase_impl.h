@@ -6,6 +6,10 @@
 #include "mpegTs.h"
 
 // typedefs
+#ifdef WIN32
+typedef unsigned char   u_char;
+#endif // WIN32
+
 typedef struct
 {
 	int64_t expected_dts;
@@ -21,7 +25,8 @@ extern "C" {
 void ts_rebase_impl(
 	ts_rebase_context_t* context,
 	u_char* buffer,
-	size_t size);
+	size_t size,
+	uint64_t* duration);
 
 #ifdef __cplusplus
 }

@@ -11,6 +11,7 @@ var rebaseContext = {};
 for (var i = 2; i < process.argv.length; i++) {
 	var curFileName = process.argv[i];
 	var curBuffer = fs.readFileSync(curFileName);
-	rebaseContext = tsRebase.rebaseTs(rebaseContext, curBuffer);
+	var tsDuration = tsRebase.rebaseTs(rebaseContext, curBuffer);
+	console.log('Ts duration is ' + tsDuration);
 	fs.writeFileSync(curFileName, curBuffer);
 }

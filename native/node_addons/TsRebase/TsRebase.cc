@@ -18,10 +18,7 @@ using namespace node;
 	1	Buffer tsData
 		
 	Returns
-		Object context
-			Number expectedDts
-			Number totalFrameDurations
-			Number totalFrameCount
+		Number tsDuration
 */
 NAN_METHOD(RebaseTs)
 {
@@ -58,23 +55,27 @@ NAN_METHOD(RebaseTs)
 	context.total_frame_count = curValue->IsNumber() ? curValue->IntegerValue() : 0;
 
 	// perform the rebase
+	uint64_t duration;
+
 	ts_rebase_impl(
 		&context,
 		(u_char*)Buffer::Data(args[1]->ToObject()),
-		Buffer::Length(args[1]->ToObject()));
+		Buffer::Length(args[1]->ToObject()), 
+		&duration);
 
-	// return the updated context
-	Local<Object> result = Object::New();
-	result->Set(NanNew<String>("expectedDts"), 			Number::New(context.expected_dts));
-	result->Set(NanNew<String>("totalFrameDurations"),	Number::New(context.total_frame_durations));
-	result->Set(NanNew<String>("totalFrameCount"),		Number::New(context.total_frame_count));
+	// update the context object
+	inputContext->Set(NanNew<String>("expectedDts"), NanNew<Number>(context.expected_dts));
+	inputContext->Set(NanNew<String>("totalFrameDurations"), NanNew<Number>(context.total_frame_durations));
+	inputContext->Set(NanNew<String>("totalFrameCount"), NanNew<Number>(context.total_frame_count));
 	
+	Local<Value> result = NanNew<Number>(duration);
+
 	NanReturnValue(result);
 }
 
 void init(Handle<Object> exports) 
 {
-	exports->Set(NanNew<String>("rebaseTs"), 				FunctionTemplate::New(RebaseTs)->GetFunction());
+	exports->Set(NanNew<String>("rebaseTs"), NanNew<FunctionTemplate>(RebaseTs)->GetFunction());
 }
 
 NODE_MODULE(TsRebase, init)
