@@ -35,7 +35,7 @@ vastRequestTimeOut = 5
 durationCoefficient = 1
 calcMd5OnRedirect = 0
 adFileIdCalcMethod = BYTES
-adFileIdLimitBytes = 40000
+adFileIdLimitBytes = 100000
 ;domain = @AD_INTEGRATION_SERVICE_HOSTNAME@
 ; domainPort = 80
 
