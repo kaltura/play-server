@@ -33,6 +33,10 @@ SPIN_SLEEP_TIME="2000"
 export PATH=$PATH:$NODE_PATH/forever/bin
  
 start() {
+    if [ -f $PIDFILE ] ; then
+       echo "Server Already Running..."
+       RETVAL=1
+    fi
     echo "Starting $NAME"
     forever \
       --pidFile $PIDFILE \
@@ -59,8 +63,16 @@ stop() {
 }
  
 restart() {
-    stop
-    start
+    if [ -f $PIDFILE ]; then
+        echo "Restarting  $NAME"
+        # Tell Forever to restart the process.
+        forever restart $APPLICATION_PATH 2>&1 > /dev/null
+        RETVAL=$?
+    else
+	# if PID does not exsists start the server
+	start
+        RETVAL=0
+    fi
 }
  
 status() {
