@@ -211,12 +211,17 @@ ts_rebase_impl(
 	uint64_t* duration)
 {
 	uint32_t frame_count;
-	int64_t first_frame_dts;
-	int64_t last_frame_dts;
+	int64_t first_frame_dts = 0;
+	int64_t last_frame_dts = 0;
 	int main_pid;
 	
 	*duration = 0;
 
+	if (size < TS_PACKET_LENGTH)
+	{
+		return;
+	}
+	
 	main_pid = ts_rebase_find_main_pid(buffer, size);
 	if (main_pid == 0)
 	{
