@@ -250,7 +250,7 @@ ts_rebase_impl(
 			context->expected_dts - first_frame_dts);
 	}
 
-	context->total_frame_durations += last_frame_dts - first_frame_dts;
+	context->total_frame_durations += (last_frame_dts - first_frame_dts) & TIMESTAMP_MASK;
 	context->total_frame_count += frame_count - 1;
 	context->expected_dts = last_frame_dts;
 	if (context->total_frame_count > 0)
@@ -258,5 +258,5 @@ ts_rebase_impl(
 		context->expected_dts += context->total_frame_durations / context->total_frame_count;
 	}
 
-	*duration = context->expected_dts - first_frame_dts;
+	*duration = (context->expected_dts - first_frame_dts) & TIMESTAMP_MASK;
 }
