@@ -248,6 +248,9 @@ ts_rebase_impl(
 			buffer,
 			size,
 			context->expected_dts - first_frame_dts);
+			
+		last_frame_dts += context->expected_dts - first_frame_dts;
+		first_frame_dts = context->expected_dts;
 	}
 
 	context->total_frame_durations += (last_frame_dts - first_frame_dts) & TIMESTAMP_MASK;
