@@ -28,23 +28,17 @@ largeDataDebugEnabled = 0
 [cache]
 hackWowzaUniqueSession = 0
 adMedia = 1800
-adMediaExtension = 1800
-adHandled = 600
+sessionCuePoint = 1200
 cuePoint = 600
-uiConfConfig = 600
-
-entryHandled = 20
-cuePointWatcherHandled = 20
+watcherHandled = 20
 entryRequired = 300
 masterManifest = 600
 renditionManifest = 20
 encodingParams = 600
 elapsedTime = 600
-blackHandled = 600
 blackMedia = 600
 restoreableAction = 600
 serverProcess = 60
-
 fileDownloadTimeout = 60
 
 [memcache]
