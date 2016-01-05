@@ -15,6 +15,7 @@ typedef struct
 	int64_t expected_dts;
 	uint64_t total_frame_durations;
 	uint64_t total_frame_count;
+	int64_t correction;
 } ts_rebase_context_t;
 
 // functions

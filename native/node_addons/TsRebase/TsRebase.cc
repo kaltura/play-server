@@ -3,6 +3,7 @@
 
 // object keys
 #define CONTEXT_EXPECTED_DTS			"expectedDts"
+#define CONTEXT_CORRECTION				"correction"
 #define CONTEXT_TOTAL_FRAME_DURATIONS	"totalFrameDurations"
 #define CONTEXT_TOTAL_FRAME_COUNT		"totalFrameCount"
 
@@ -13,6 +14,7 @@ using namespace node;
 	Parameters
 	0	Object context
 			Number expectedDts
+			Number correction
 			Number totalFrameDurations
 			Number totalFrameCount
 	1	Buffer tsData
@@ -47,6 +49,9 @@ NAN_METHOD(RebaseTs)
 	
 	curValue = inputContext->Get(NanNew<String>(CONTEXT_EXPECTED_DTS));
 	context.expected_dts = curValue->IsNumber() ? curValue->IntegerValue() : NO_TIMESTAMP;
+	
+	curValue = inputContext->Get(NanNew<String>(CONTEXT_CORRECTION));
+	context.correction = curValue->IsNumber() ? curValue->IntegerValue() : 0;
 
 	curValue = inputContext->Get(NanNew<String>(CONTEXT_TOTAL_FRAME_DURATIONS));
 	context.total_frame_durations = curValue->IsNumber() ? curValue->IntegerValue() : 0;
@@ -64,9 +69,10 @@ NAN_METHOD(RebaseTs)
 		&duration);
 
 	// update the context object
-	inputContext->Set(NanNew<String>("expectedDts"), NanNew<Number>(context.expected_dts));
-	inputContext->Set(NanNew<String>("totalFrameDurations"), NanNew<Number>(context.total_frame_durations));
-	inputContext->Set(NanNew<String>("totalFrameCount"), NanNew<Number>(context.total_frame_count));
+	inputContext->Set(NanNew<String>(CONTEXT_EXPECTED_DTS), 		 NanNew<Number>(context.expected_dts));
+	inputContext->Set(NanNew<String>(CONTEXT_CORRECTION),            NanNew<Number>(context.correction));
+	inputContext->Set(NanNew<String>(CONTEXT_TOTAL_FRAME_DURATIONS), NanNew<Number>(context.total_frame_durations));
+	inputContext->Set(NanNew<String>(CONTEXT_TOTAL_FRAME_COUNT),     NanNew<Number>(context.total_frame_count));
 	
 	Local<Value> result = NanNew<Number>(duration);
 

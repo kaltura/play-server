@@ -211,6 +211,7 @@ ts_rebase_impl(
 	uint64_t* duration)
 {
 	uint32_t frame_count;
+	int64_t corrected_dts;
 	int64_t first_frame_dts = 0;
 	int64_t last_frame_dts = 0;
 	int main_pid;
@@ -240,17 +241,26 @@ ts_rebase_impl(
 		return;
 	}
 
-	if (context->expected_dts != NO_TIMESTAMP && 
-		((context->expected_dts - first_frame_dts) & TIMESTAMP_MASK) > REBASE_THRESHOLD && 
-		((first_frame_dts - context->expected_dts) & TIMESTAMP_MASK) > REBASE_THRESHOLD)
+	if (context->expected_dts != NO_TIMESTAMP)
+	{
+		corrected_dts = first_frame_dts + context->correction;
+
+		if (((context->expected_dts - corrected_dts) & TIMESTAMP_MASK) > REBASE_THRESHOLD && 
+			((corrected_dts - context->expected_dts) & TIMESTAMP_MASK) > REBASE_THRESHOLD)
+		{
+			context->correction = context->expected_dts - first_frame_dts;
+		}
+	}
+		
+	if (context->correction != 0)
 	{
 		ts_rebase_shift_timestamps(
 			buffer,
 			size,
-			context->expected_dts - first_frame_dts);
+			context->correction);
 			
-		last_frame_dts += context->expected_dts - first_frame_dts;
-		first_frame_dts = context->expected_dts;
+		first_frame_dts += context->correction;
+		last_frame_dts += context->correction;
 	}
 
 	context->total_frame_durations += (last_frame_dts - first_frame_dts) & TIMESTAMP_MASK;
