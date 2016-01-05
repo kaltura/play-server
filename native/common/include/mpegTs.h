@@ -62,12 +62,15 @@ typedef struct {
 extern "C" {
 #endif /* __cplusplus */
 
+int64_t get_pcr(const pcr_t* pcr);
 void set_pcr(pcr_t* pcr, int64_t pcr_val);
 
 int64_t get_pts(const pts_t* pts);
 void set_pts(pts_t* pts, int indicator, int64_t pts_val);
 
 void reset_timestamps(timestamps_t* timestamps);
+
+void get_timestamp_offsets_and_stream_id(const byte_t* packet_start, timestamp_offsets_t* timestamp_offsets, byte_t* stream_id);
 
 int64_t get_pts_from_packet(const byte_t* packet, size_t size);
 
