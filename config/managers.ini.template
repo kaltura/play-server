@@ -2,6 +2,8 @@
 [manifest]
 ;domain = @MANIFEST_SERVICE_HOSTNAME@
 ;domainPort = 80
+[manifest][rendition]
+maxRetries = 6
 
 [stream]
 ;useCdn = 1
