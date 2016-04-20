@@ -64,3 +64,8 @@ dataVersion = 0
 
 [bin]
 binDir = @PLAY_SERVER_BASE_DIR@/bin
+
+[udpsender]
+PORT = @UDP_SERVER_PORT@
+HOST = @UDP_SERVER_HOST@
+
