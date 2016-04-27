@@ -33,7 +33,7 @@ ffmpeg_max_processes=10
 ; domainPort = 80
 
 [adIntegration]
-preFetchWindow = 12000
+preFetchWindow = 120000
 vastRequestTimeOut = 5
 durationCoefficient = 1
 calcMd5OnRedirect = 0
