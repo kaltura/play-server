@@ -62,5 +62,15 @@ retry = 30000
 ;idle = 5000, the idle timeout for the connections.
 dataVersion = 0
 
+[udpsender]
+PORT = @UDP_SERVER_PORT@
+HOST = @UDP_SERVER_HOST@
+
 [bin]
 binDir = @PLAY_SERVER_BASE_DIR@/bin
+[bin][debug]
+enabled = false
+port = 6000
+
+
+
