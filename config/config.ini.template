@@ -40,6 +40,7 @@ fillerMedia = 600
 restoreableAction = 600
 serverProcess = 60
 fileDownloadTimeout = 60
+lock = 50
 
 [memcache]
 hostname = @MEMCACHE_HOST@
