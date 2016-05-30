@@ -27,3 +27,25 @@ This file includes features per version in descending order (started on v2.0.0)
 
 #### Configuration ####
 - managers.ini/[adIntegration]/preFetchWindow
+
+## UDP Sender ##
+- Issue Type: New Feature
+- Issue Short Description: Send UDP message when a beacon is triggered to the configured machine.
+
+#### Configuration ####
+- config.ini/[udpsender]/PORT
+- config.ini/[udpsender]/HOST
+
+## Enable Debug Play-Server ##
+- Issue Type: New Feature
+- Issue Short Description: Allow debugging of a single node isntance of play server 
+
+#### Configuration ####
+- config.ini/[bin][debug]/enabled
+- config.ini/[bin][debug]/port
+
+## Additional Configuration Changes From Last Version (v1.2.7) ##
+remove config.ini/[cache]/blackMedia 
+add config.ini/[cache]/fillerMedia = 600
+add config.ini/[cache]/lock = 100
+add managers.ini/[manifest][rendition]/maxRetries = 6
