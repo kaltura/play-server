@@ -10,7 +10,7 @@ This file includes features per version in descending order (started on v2.0.0)
 #### Configuration ####
 - on UICONF configure on the "vast" section:
    + "slateType": "filler",
-   + "slateContent": <flavor_id>
+   + "slateContent": @flavor_id@
 
 ## Pass-through ##
 - Issue Type: New Feature
@@ -45,7 +45,7 @@ This file includes features per version in descending order (started on v2.0.0)
 - config.ini/[bin][debug]/port
 
 ## Additional Configuration Changes From Last Version (v1.2.7) ##
-remove config.ini/[cache]/blackMedia 
-add config.ini/[cache]/fillerMedia = 600
-add config.ini/[cache]/lock = 100
-add managers.ini/[manifest][rendition]/maxRetries = 6
+- remove config.ini/[cache]/blackMedia 
+- add config.ini/[cache]/fillerMedia = 600
+- add config.ini/[cache]/lock = 100
+- add managers.ini/[manifest][rendition]/maxRetries = 6
