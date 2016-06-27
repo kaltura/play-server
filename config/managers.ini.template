@@ -43,6 +43,6 @@ adFileIdLimitBytes = 100000
 ; domainPort = 80
 
 [system]
-
+[tracking]
 [testAdServer]
 ;vastUrls
