@@ -1,10 +1,10 @@
 /**
  * This is a unit test to validate proper functionality of the tracking manager for the different types of layouts
  */
-var chai = require('chai');
-var expect = chai.expect; // we are using the "expect" style of Chai
+const chai = require('chai');
+const expect = chai.expect; // we are using the "expect" style of Chai
 
-var kalturaTrackingManager = require('./../lib/managers/KalturaTrackingManager');
+const kalturaTracking = require('./../lib/managers/KalturaTrackingManager');
 
 function removeWhiteSpaces(text){
 	return text.replace(/ /g,'');
@@ -13,21 +13,21 @@ function removeWhiteSpaces(text){
 describe('testTrackingManager', function() {
 	it('check kalturaTrackingManager', function () {
 
-		var beaconParams = {
+		let beaconParams = {
 			url: 'beaconUrl',
 			cuePointId: 'cp1',
 			type: 'TrackType1',
 			entryId: 'e1',
 		};
 
-		var generatedBeaconRequest = kalturaTrackingManager.KalturaTrackingManager.generateBeaconRequest('erezHost','p1', beaconParams);
+		let generatedBeaconRequest = kalturaTracking.KalturaTrackingManager.generateBeaconRequest('erezHost','p1', beaconParams);
 		expect(removeWhiteSpaces(generatedBeaconRequest)).to.equal('http://erezHost:80/p/p1/entryId/e1/tracking/sendBeacon?url=beaconUrl&cuePointId=cp1&type=TrackType1&entryId=e1');
 
 	});
 
 	it('check buildTrackingBeaconCacheKey', function () {
 
-		var beaconParams = {
+		let beaconParams = {
 			url: 'testUrl',
 			cuePointId: 'cpId1',
 			type: 'TrackType1',
@@ -36,8 +36,8 @@ describe('testTrackingManager', function() {
 			headers: 'headers1',
 		};
 
-		var text1 = kalturaTrackingManager.KalturaTrackingManager.buildTrackingBeaconCacheKey(beaconParams);
-		expect(removeWhiteSpaces(text1)).to.equal('f5cabf39d0f241b5fd729b1c2d3411da35b1a122');
+		let beaconUrlCacheKey = kalturaTracking.KalturaTrackingManager.buildTrackingBeaconCacheKey(beaconParams);
+		expect(removeWhiteSpaces(beaconUrlCacheKey)).to.equal('add28d9b3afc617ff6ca7a570fd416a2');
 	});
 
 });

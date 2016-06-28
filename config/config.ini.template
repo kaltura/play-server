@@ -39,6 +39,7 @@ elapsedTime = 600
 fillerMedia = 600
 restoreableAction = 600
 serverProcess = 60
+trackingBeaconUrl = 600
 fileDownloadTimeout = 60
 lock = 50
 
