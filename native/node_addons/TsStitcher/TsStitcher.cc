@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include "nan.h"
 #include "ts_stitcher_impl.h"
+#include "../nan_Adaptor.h"
 
 using namespace v8;
 using namespace node;
@@ -18,12 +19,6 @@ static const AdSectionIntField adSectionIntFields[] = {
 	{ "alignment", 			offsetof(ad_section_t, alignment) },
 };
 
-/*
-void MyFreeCallback(char* data, void* hint)
-{
-	free(data);
-}
-*/
 
 static bool 
 GetMetadataHeader(Local<Value> input, const metadata_header_t** result)
@@ -67,12 +62,10 @@ FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
 		}
 		*((int32_t*)((byte_t*)result + adSectionIntFields[i].offset)) = curValue->Int32Value();
 	}
-
 	if (!GetMetadataHeader(inputSection->Get(NanNew<String>("ad")), &result->ad_header))
 	{
 		return false;
 	}
-	
 	if (!GetMetadataHeader(inputSection->Get(NanNew<String>("filler")), &result->filler_header))
 	{
 		return false;
@@ -105,7 +98,8 @@ FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
 	Returns
 		Buffer
 */
-NAN_METHOD(BuildLayout) {
+NAN_METHOD(BuildLayout)
+{
 	NanScope();
 
 	// validate input
@@ -207,7 +201,6 @@ NAN_METHOD(BuildLayout) {
 	Local<Object> result = NanNewBufferHandle((char*)dynBuffer.data, dynBuffer.write_pos);
 
 	free_buffer(&dynBuffer);
-	
 	NanReturnValue(result);
 }
 
@@ -227,7 +220,8 @@ NAN_METHOD(BuildLayout) {
 			Number action
 			Buffer outputBuffer
 */
-NAN_METHOD(ProcessChunk) {
+NAN_METHOD(ProcessChunk)
+{
 	NanScope();
 
 	// validate input
@@ -258,6 +252,7 @@ NAN_METHOD(ProcessChunk) {
 	output_state_t outputState;
 	memset(&outputState, 0, sizeof(outputState));
 	Local<Object> inputState = args[2].As<Object>();
+
 	outputState.layout_pos = 			inputState->Get(NanNew<String>("layoutPos"))->Uint32Value();
 	outputState.chunk_type = 			inputState->Get(NanNew<String>("chunkType"))->Int32Value();
 	outputState.chunk_start_offset = 	inputState->Get(NanNew<String>("chunkStartOffset"))->Uint32Value();
@@ -274,24 +269,22 @@ NAN_METHOD(ProcessChunk) {
 		&processResult);
 	
 	// update the state
-	inputState->Set(NanNew<String>("layoutPos"), 		Number::New(outputState.layout_pos));
-	inputState->Set(NanNew<String>("chunkType"), 		Number::New(outputState.chunk_type));
-	inputState->Set(NanNew<String>("chunkStartOffset"), Number::New(outputState.chunk_start_offset));
+    inputState->Set(NanNew<String>("layoutPos"), 		Number::New(isolate,outputState.layout_pos));
+    inputState->Set(NanNew<String>("chunkType"), 		Number::New(isolate,outputState.chunk_type));
+    inputState->Set(NanNew<String>("chunkStartOffset"), Number::New(isolate,outputState.chunk_start_offset));
 	
 	// output the result
-	Local<Object> result = Object::New();
-	result->Set(NanNew<String>("chunkOutputStart"), Number::New(processResult.chunk_output_start));
-	result->Set(NanNew<String>("chunkOutputEnd"), Number::New(processResult.chunk_output_end));
-	result->Set(NanNew<String>("action"), Number::New(processResult.action));
+	Local<Object> result = Object::New(isolate);
+    result->Set(NanNew<String>("chunkOutputStart"), Number::New(isolate,processResult.chunk_output_start));
+    result->Set(NanNew<String>("chunkOutputEnd"), Number::New(isolate,processResult.chunk_output_end));
+    result->Set(NanNew<String>("action"), Number::New(isolate,processResult.action));
 
 	if (processResult.output_buffer != NULL)
 	{
 		Local<Object> outputBuffer = NanNewBufferHandle((char*)processResult.output_buffer, processResult.output_buffer_size);
 		free(processResult.output_buffer);
-
 		result->Set(NanNew<String>("outputBuffer"), outputBuffer);
 	}
-	
 	NanReturnValue(result);
 }
 
@@ -302,7 +295,8 @@ NAN_METHOD(ProcessChunk) {
 	Returns
 		Number
 */
-NAN_METHOD(GetDataSize) {
+NAN_METHOD(GetDataSize)
+{
 	NanScope();
 
 	// validate input
@@ -327,15 +321,17 @@ NAN_METHOD(GetDataSize) {
 		return NanThrowTypeError("Invalid metadata buffer");
 	}
 	
-	Local<Number> result = Number::New(get_data_size(Buffer::Data(inputObject)));
+	Local<Number> result = Number::New(isolate, get_data_size(Buffer::Data(inputObject)));
+
 	NanReturnValue(result);
 }
 
 void init(Handle<Object> exports) 
 {
-	exports->Set(NanNew<String>("buildLayout"), 	FunctionTemplate::New(BuildLayout)->GetFunction());
-	exports->Set(NanNew<String>("processChunk"), 	FunctionTemplate::New(ProcessChunk)->GetFunction());
-	exports->Set(NanNew<String>("getDataSize"), 	FunctionTemplate::New(GetDataSize)->GetFunction());
+    NODE_SET_METHOD(exports, "buildLayout", BuildLayout);
+    NODE_SET_METHOD(exports, "processChunk", ProcessChunk);
+    NODE_SET_METHOD(exports, "getDataSize", GetDataSize);
+
 }
 
 NODE_MODULE(TsStitcher, init)

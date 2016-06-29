@@ -496,7 +496,7 @@ rebuild_frame(
 	return TRUE;
 }
 
-bool_t 
+bool_t
 prepare_ts_data(
 	ts_preparer_part_t* parts_start,
 	size_t parts_count,
@@ -526,7 +526,7 @@ prepare_ts_data(
 	int next_frame_pos;
 	int cur_frame_pos;
 	int cur_pid;
-		
+
 	// initialize output params
 	memset(output_metadata, 0, sizeof(*output_metadata));
 	memset(output_header, 0, sizeof(*output_header));
@@ -592,6 +592,7 @@ prepare_ts_data(
 			// append the ts header
 			if (!append_buffer(output_header, buffers_cur->data, metadata_header.ts_header_size))
 			{
+                printf("\nfail in TS_buffer\n");
 				goto error;
 			}
 			
@@ -604,7 +605,7 @@ prepare_ts_data(
 			// update continuity counters info
 			if (!update_streams_info(&metadata_header.streams_info, output_header->data, output_header->write_pos))
 			{
-				goto error;
+                goto error;
 			}
 		}
 		
@@ -621,15 +622,15 @@ prepare_ts_data(
 				buffers_cur++;
 				if (buffers_cur >= buffers_end)
 				{
+                    printf("\nFail on find the buffer\n");
+                    //printf("_M_ !!! cur_frame_pos%d buffer_start_pos%d buffers_cur->write_pos %d buffers_cur%d buffers_end%d \n",cur_frame_pos,buffer_start_pos,buffers_cur->write_pos,buffers_cur,buffers_end );
 					goto error;
 				}
 			}
-			
 			if (cur_frame_pos < buffer_start_pos)
 			{
 				goto error;
 			}
-			
 			// initialize TS packet start / end pos
 			start_pos = buffers_cur->data + cur_frame_pos - buffer_start_pos;
 			if (cur_frame + 1 < frames_end)
@@ -660,9 +661,11 @@ prepare_ts_data(
 			
 			if (start_pos > end_pos)
 			{
+				//free_buffer(output_metadata);
+            	//free_buffer(output_header);
+            	//free_buffer(output_data);
 				continue;
 			}
-				
 			// save the frame start position
 			cur_frame_info.pos = output_data->write_pos;
 
@@ -672,13 +675,11 @@ prepare_ts_data(
 			{
 				metadata_header.media_info[cur_frame->media_type].pid = cur_pid;
 			}
-
 			cur_pid_info = streams_info_hash_get(&metadata_header.streams_info, cur_pid);
 			if (cur_pid_info == NULL)
 			{
 				goto error;
 			}
-
 			cur_frame_info.timestamp_offsets = cur_frame->timestamp_offsets;
 			
 			if (cur_frame->timestamp_offsets.dts == NO_OFFSET && 
@@ -724,7 +725,6 @@ prepare_ts_data(
 					}
 				}
 			}
-
 			// initialize frame info
 			cur_frame_info.size = output_data->write_pos - cur_frame_info.pos;
 			cur_frame_info.duration = cur_frame->duration;
@@ -739,7 +739,6 @@ prepare_ts_data(
 				cur_frame_info.timestamp_offsets.pts = NO_OFFSET;
 				cur_frame_info.timestamp_offsets.dts = NO_OFFSET;
 			}
-			
 			// update timestamps
 			cur_timestamps = &cur_frame->timestamps;
 			target_timestamps = &metadata_header.media_info[cur_frame->media_type].timestamps;
@@ -788,7 +787,6 @@ prepare_ts_data(
 					target_timestamps->dts = cur_timestamps->dts + cur_frame->duration;
 				}
 			}
-			
 			// append frame info
 			if (!append_buffer(output_metadata, PS(cur_frame_info)))
 			{
@@ -844,7 +842,6 @@ prepare_ts_data(
 			}
 		}
 	}
-	
 	// update the metadata header
 	metadata_header.data_size = output_data->write_pos;
 	for (i = 0; i < ARRAY_ENTRIES(metadata_header.media_info); i++)
@@ -852,14 +849,12 @@ prepare_ts_data(
 		metadata_header.media_info[i].duration = durations[i];
 	}
 	memcpy(output_metadata->data, PS(metadata_header));
-		
-	return TRUE;
-	
-error:
 
+	return TRUE;
+
+error:
 	free_buffer(output_metadata);
 	free_buffer(output_header);
 	free_buffer(output_data);
-
 	return FALSE;
 }
