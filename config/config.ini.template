@@ -1,10 +1,10 @@
-
 [client]
 serviceUrl = @SERVICE_URL@
 partnerId = -6
 secret = @PLAY_PARTNER_ADMIN_SECRET@
 timeout = 90
 verifySSL = false
+cacheType = @CACHE_TYPE@
 
 [cloud]
 domain = @CLOUD_HOSTNAME@
@@ -63,6 +63,16 @@ retry = 30000
 ;keyCompression = true, compress keys using md5 if they exceed the maxKeySize option.
 ;idle = 5000, the idle timeout for the connections.
 dataVersion = 0
+
+[couchbase]
+clusterName = @CLUSTER_NAME@
+bucketName = @BUCKET_NAME@
+port = 8091
+dataVersion = 0
+touchEnabled = 1
+;for encryption of values edit the KEY and IV parameters
+;KEY =
+;IV =
 
 [udpsender]
 PORT = @UDP_SERVER_PORT@
