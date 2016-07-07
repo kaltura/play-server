@@ -42,6 +42,12 @@ adFileIdLimitBytes = 100000
 ;domain = @AD_INTEGRATION_SERVICE_HOSTNAME@
 ; domainPort = 80
 
+[layout]
+;domain = @LAYOUT_SERVICE_HOSTNAME@
+
+[fetch]
+;domain = @LAYOUT_SERVICE_HOSTNAME@
+
 [system]
 
 [testAdServer]
