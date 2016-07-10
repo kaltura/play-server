@@ -51,7 +51,7 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 
 	ID3_Tag id3Tag;
 
-	tagResult->Set(NanNew<String>("PTS"), Number::New(isolate, pts));
+	tagResult->Set(NanNew<String>("PTS"), NanNewNumber(pts));
 	
 	result->Set(result->Length(), tagResult);
 	
@@ -81,7 +81,7 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 			switch (id3Field->GetType())
 			{
 			case ID3FTY_INTEGER:
-				frameResult->Set(NanNew<String>(fieldName), Number::New(isolate, id3Field->Get()));
+				frameResult->Set(NanNew<String>(fieldName), NanNewNumber(id3Field->Get()));
 				break;
 
 			case ID3FTY_TEXTSTRING: 
@@ -143,8 +143,8 @@ NAN_METHOD(ParseBuffer)
 	stream_walker_free(&stream_walker_state);
 			
 	Local<Object> result = Object::New(isolate);
-	result->Set(NanNew<String>("videoPts"), Number::New(isolate,stream_walker_state.initial_video_pts));
-	result->Set(NanNew<String>("audioPts"), Number::New(isolate,stream_walker_state.initial_audio_pts));
+	result->Set(NanNew<String>("videoPts"), NanNewNumber(stream_walker_state.initial_video_pts));
+	result->Set(NanNew<String>("audioPts"), NanNewNumber(stream_walker_state.initial_audio_pts));
 	result->Set(NanNew<String>("id3tags"), id3TagArray);
 
 	NanReturnValue(result);

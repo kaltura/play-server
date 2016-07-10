@@ -144,10 +144,10 @@ NAN_METHOD(GetCutDetails)
 
 
 	Local<Object> result = Object::New(isolate);
-	result->Set(NanNew<String>("leftPos"), 			Number::New(isolate,bounding_iframes.left_iframe_pos));
-	result->Set(NanNew<String>("leftOffset"), 		Number::New(isolate,bounding_iframes.left_iframe_offset));
-	result->Set(NanNew<String>("rightPos"), 		Number::New(isolate,bounding_iframes.right_iframe_pos));
-	result->Set(NanNew<String>("rightOffset"), 		Number::New(isolate,bounding_iframes.right_iframe_offset));
+	result->Set(NanNew<String>("leftPos"), 			NanNewNumber(bounding_iframes.left_iframe_pos));
+	result->Set(NanNew<String>("leftOffset"), 		NanNewNumber(bounding_iframes.left_iframe_offset));
+	result->Set(NanNew<String>("rightPos"), 		NanNewNumber(bounding_iframes.right_iframe_pos));
+	result->Set(NanNew<String>("rightOffset"), 		NanNewNumber(bounding_iframes.right_iframe_offset));
 	result->Set(NanNew<String>("originalFrames"), 	originalFramesBuffer);
 
 	NanReturnValue(result);
@@ -193,8 +193,8 @@ NAN_METHOD(FindLastPatPmtPackets)
 	}
 
 	Local<Object> result = Object::New(isolate);
-	result->Set(NanNew<String>("pat"), Number::New(isolate,lastPatPacket - sourceBuffer));
-	result->Set(NanNew<String>("pmt"), Number::New(isolate,lastPmtPacket - sourceBuffer));
+	result->Set(NanNew<String>("pat"), NanNewNumber(lastPatPacket - sourceBuffer));
+	result->Set(NanNew<String>("pmt"), NanNewNumber(lastPmtPacket - sourceBuffer));
 
 	NanReturnValue(result);
 }

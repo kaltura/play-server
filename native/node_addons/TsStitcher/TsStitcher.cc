@@ -269,15 +269,15 @@ NAN_METHOD(ProcessChunk) {
 		&processResult);
 	
 	// update the state
-	inputState->Set(NanNew<String>("layoutPos"), 		Number::New(isolate,outputState.layout_pos));
-	inputState->Set(NanNew<String>("chunkType"), 		Number::New(isolate,outputState.chunk_type));
-	inputState->Set(NanNew<String>("chunkStartOffset"), Number::New(isolate,outputState.chunk_start_offset));
+	inputState->Set(NanNew<String>("layoutPos"), 		NanNewNumber(outputState.layout_pos));
+	inputState->Set(NanNew<String>("chunkType"), 		NanNewNumber(outputState.chunk_type));
+	inputState->Set(NanNew<String>("chunkStartOffset"), NanNewNumber(outputState.chunk_start_offset));
 	
 	// output the result
 	Local<Object> result = Object::New(isolate);
-    result->Set(NanNew<String>("chunkOutputStart"), Number::New(isolate,processResult.chunk_output_start));
-    result->Set(NanNew<String>("chunkOutputEnd"), Number::New(isolate,processResult.chunk_output_end));
-    result->Set(NanNew<String>("action"), Number::New(isolate,processResult.action));
+    result->Set(NanNew<String>("chunkOutputStart"), NanNewNumber(processResult.chunk_output_start));
+    result->Set(NanNew<String>("chunkOutputEnd"), NanNewNumber(processResult.chunk_output_end));
+    result->Set(NanNew<String>("action"), NanNewNumber(processResult.action));
 
 	if (processResult.output_buffer != NULL)
 	{
@@ -322,7 +322,7 @@ NAN_METHOD(GetDataSize) {
 		return NanThrowTypeError("Invalid metadata buffer");
 	}
 	
-	Local<Number> result = Number::New(isolate, get_data_size(Buffer::Data(inputObject)));
+	Local<Number> result = NanNewNumber(get_data_size(Buffer::Data(inputObject)));
 
 	NanReturnValue(result);
 }
