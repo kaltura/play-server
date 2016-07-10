@@ -62,10 +62,12 @@ FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
 		}
 		*((int32_t*)((byte_t*)result + adSectionIntFields[i].offset)) = curValue->Int32Value();
 	}
+
 	if (!GetMetadataHeader(inputSection->Get(NanNew<String>("ad")), &result->ad_header))
 	{
 		return false;
 	}
+
 	if (!GetMetadataHeader(inputSection->Get(NanNew<String>("filler")), &result->filler_header))
 	{
 		return false;
@@ -98,8 +100,7 @@ FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
 	Returns
 		Buffer
 */
-NAN_METHOD(BuildLayout)
-{
+NAN_METHOD(BuildLayout) {
 	NanScope();
 
 	// validate input
@@ -201,6 +202,7 @@ NAN_METHOD(BuildLayout)
 	Local<Object> result = NanNewBufferHandle((char*)dynBuffer.data, dynBuffer.write_pos);
 
 	free_buffer(&dynBuffer);
+
 	NanReturnValue(result);
 }
 
@@ -220,8 +222,7 @@ NAN_METHOD(BuildLayout)
 			Number action
 			Buffer outputBuffer
 */
-NAN_METHOD(ProcessChunk)
-{
+NAN_METHOD(ProcessChunk) {
 	NanScope();
 
 	// validate input
@@ -252,7 +253,6 @@ NAN_METHOD(ProcessChunk)
 	output_state_t outputState;
 	memset(&outputState, 0, sizeof(outputState));
 	Local<Object> inputState = args[2].As<Object>();
-
 	outputState.layout_pos = 			inputState->Get(NanNew<String>("layoutPos"))->Uint32Value();
 	outputState.chunk_type = 			inputState->Get(NanNew<String>("chunkType"))->Int32Value();
 	outputState.chunk_start_offset = 	inputState->Get(NanNew<String>("chunkStartOffset"))->Uint32Value();
@@ -269,9 +269,9 @@ NAN_METHOD(ProcessChunk)
 		&processResult);
 	
 	// update the state
-    inputState->Set(NanNew<String>("layoutPos"), 		Number::New(isolate,outputState.layout_pos));
-    inputState->Set(NanNew<String>("chunkType"), 		Number::New(isolate,outputState.chunk_type));
-    inputState->Set(NanNew<String>("chunkStartOffset"), Number::New(isolate,outputState.chunk_start_offset));
+	inputState->Set(NanNew<String>("layoutPos"), 		Number::New(isolate,outputState.layout_pos));
+	inputState->Set(NanNew<String>("chunkType"), 		Number::New(isolate,outputState.chunk_type));
+	inputState->Set(NanNew<String>("chunkStartOffset"), Number::New(isolate,outputState.chunk_start_offset));
 	
 	// output the result
 	Local<Object> result = Object::New(isolate);
@@ -283,8 +283,10 @@ NAN_METHOD(ProcessChunk)
 	{
 		Local<Object> outputBuffer = NanNewBufferHandle((char*)processResult.output_buffer, processResult.output_buffer_size);
 		free(processResult.output_buffer);
+		
 		result->Set(NanNew<String>("outputBuffer"), outputBuffer);
 	}
+
 	NanReturnValue(result);
 }
 
@@ -295,8 +297,7 @@ NAN_METHOD(ProcessChunk)
 	Returns
 		Number
 */
-NAN_METHOD(GetDataSize)
-{
+NAN_METHOD(GetDataSize) {
 	NanScope();
 
 	// validate input

@@ -42,7 +42,10 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 	Local<Array>& result = *(Local<Array>*)context;
 
     Isolate* isolate = Isolate::GetCurrent();
-
+    if (isolate == NULL)
+    {
+        return;
+    }
 	Local<Object> tagResult = Object::New(isolate);
 
 	ID3_Tag id3Tag;
@@ -108,7 +111,7 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 			Number audioPts
 			Array<Object> id3tags
 */
-NAN_METHOD(parseBuffer)
+NAN_METHOD(ParseBuffer)
 {
 	NanScope();
 
@@ -119,7 +122,7 @@ NAN_METHOD(parseBuffer)
 
 	if (!args[0]->IsObject() || !Buffer::HasInstance(args[0]))
 	{
-   		return NanThrowTypeError("Expected buffer argument");
+    	return NanThrowTypeError("Expected buffer argument");
 	}
 
 	Local<Array> id3TagArray = Array::New(isolate);
@@ -148,7 +151,7 @@ NAN_METHOD(parseBuffer)
 
 void init(Handle<Object> exports)
 {
-    NODE_SET_METHOD(exports, "parseBuffer", parseBuffer);
+    NODE_SET_METHOD(exports, "parseBuffer", ParseBuffer);
 }
 
 NODE_MODULE(TsId3Reader, init)

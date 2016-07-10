@@ -90,7 +90,7 @@ NAN_METHOD(GetCutDetails)
 	// validate frames info
 	if (!args[1]->IsString())
 	{
-	    return NanThrowError("Argument 2 must be a string");
+		return NanThrowError("Argument 2 must be a string");
 	}
 
 	v8::String::Utf8Value framesBuffer(args[1]);
@@ -98,13 +98,13 @@ NAN_METHOD(GetCutDetails)
 	// validate cut position
 	if (!args[2]->IsNumber()) 
 	{
-	    return NanThrowError("Argument 3 must be a number");
+		return NanThrowError("Argument 3 must be a number");
 	}
 	
 	// validate left portion
 	if (!args[3]->IsBoolean()) 
 	{
-	    return NanThrowError("Argument 4 must be a boolean");
+		return NanThrowError("Argument 4 must be a boolean");
 	}
 
 	// parse file buffers
@@ -112,7 +112,7 @@ NAN_METHOD(GetCutDetails)
 	dynamic_buffer_t* fileBuffers = ParseArrayOfBuffers(args[0], &fileBuffersCount);
 	if (fileBuffers == NULL)
 	{
-	    return NanThrowError("Argument 1 must be a non-empty array of buffers");
+		return NanThrowError("Argument 1 must be a non-empty array of buffers");
 	}
 	
 	// calculate the result	
@@ -132,7 +132,7 @@ NAN_METHOD(GetCutDetails)
 		&original_frames_count))
 	{
 		free(fileBuffers);
-   		return NanThrowError("Failed to get the cut details");
+		return NanThrowError("Failed to get the cut details");
 	}
 
 	free(fileBuffers);
@@ -169,13 +169,13 @@ NAN_METHOD(FindLastPatPmtPackets)
 
 	if (args.Length() < 1) 
 	{
-	    return NanThrowError("Function requires 1 argument");
+		return NanThrowError("Function requires 1 argument");
 	}
 	
 	// validate source buffer
 	if (!args[0]->IsObject() || !Buffer::HasInstance(args[0]))
 	{
-        return NanThrowError("Argument 1 must be a buffer");
+		return NanThrowError("Argument 1 must be a buffer");
 	}
 	
 	Local<Object> bufferObject = args[0]->ToObject();
@@ -193,9 +193,9 @@ NAN_METHOD(FindLastPatPmtPackets)
 		NanReturnNull();
 	}
 
-	Local<Object> result = Object::New(Isolate::GetCurrent());
-    result->Set(NanNew<String>("pat"), Number::New(Isolate::GetCurrent(),lastPatPacket - sourceBuffer));
-    result->Set(NanNew<String>("pmt"), Number::New(Isolate::GetCurrent(),lastPmtPacket - sourceBuffer));
+	Local<Object> result = Object::New(isolate);
+	result->Set(NanNew<String>("pat"), Number::New(isolate,lastPatPacket - sourceBuffer));
+	result->Set(NanNew<String>("pmt"), Number::New(isolate,lastPmtPacket - sourceBuffer));
 
 	NanReturnValue(result);
 }
@@ -308,7 +308,7 @@ NAN_METHOD(PrepareTs)
 		&outputHeader,
 		&outputData);
 
-    FreePartsArray(parts, partsCount);
+	FreePartsArray(parts, partsCount);
 
 	if (!prepareResult) {
 	    return NanThrowError("Failed to prepare TS data");
@@ -317,7 +317,6 @@ NAN_METHOD(PrepareTs)
 	Local<Object> metadataBuffer = NanNewBufferHandle((char*)outputMetadata.data, outputMetadata.write_pos);
 	Local<Object> headerBuffer = NanNewBufferHandle((char*)outputHeader.data, outputHeader.write_pos);
 	Local<Object> dataBuffer = NanNewBufferHandle((char*)outputData.data, outputData.write_pos);
-
 
 	free_buffer(&outputMetadata);
 	free_buffer(&outputHeader);
@@ -345,16 +344,14 @@ NAN_METHOD(ParseFramesInfo)
 	
 	if (args.Length() < 2) 
 	{
-	    return Nan::ThrowError("Function requires 2 arguments");
+		return Nan::ThrowError("Function requires 2 arguments");
 	}
 	
 	// parse arguments
 	if (!args[1]->IsString())
 	{
-	    return Nan::ThrowError("Argument 2 must be a string");
+		return Nan::ThrowError("Argument 2 must be a string");
 	}
-
-
 
 	v8::String::Utf8Value framesBuffer(args[1]);
 
@@ -362,7 +359,7 @@ NAN_METHOD(ParseFramesInfo)
 	dynamic_buffer_t* fileBuffers = ParseArrayOfBuffers(args[0], &fileBuffersCount);
 	if (fileBuffers == NULL)
 	{
-	    return NanThrowError("Argument 1 must be a non-empty array of buffers");
+		return NanThrowError("Argument 1 must be a non-empty array of buffers");
 	}
 	
 	// parse frames text buffer
@@ -378,8 +375,6 @@ NAN_METHOD(ParseFramesInfo)
 		&source_frame_count, 
 		TRUE);
 
-
-
 	free(fileBuffers);
 		
 	if (!status)
@@ -387,13 +382,10 @@ NAN_METHOD(ParseFramesInfo)
 	    return NanThrowError("Failed to parse frames info");
 	}
 
-
-	
 	// return the result
 	Local<Object> result = NanNewBufferHandle((char*)source_frames, sizeof(frame_info_t) * source_frame_count);
 
 	free(source_frames);
-
 
 	NanReturnValue(result);
 }
