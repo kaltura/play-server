@@ -123,7 +123,7 @@ NAN_METHOD(ParseBuffer)
 
 	if (!args[0]->IsObject() || !Buffer::HasInstance(args[0]))
 	{
-    	return NanThrowTypeError("Expected buffer argument");
+		return NanThrowTypeError("Expected buffer argument");
 	}
 
 	Local<Array> id3TagArray = Array::New(isolate);

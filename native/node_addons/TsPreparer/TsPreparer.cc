@@ -7,7 +7,6 @@
 using namespace v8;
 using namespace node;
 
-
 static dynamic_buffer_t* 
 ParseArrayOfBuffers(Local<Value> value, int* resultCount)
 {
@@ -313,7 +312,7 @@ NAN_METHOD(PrepareTs)
 	if (!prepareResult) {
 	    return NanThrowError("Failed to prepare TS data");
 	}
-
+	
 	Local<Object> metadataBuffer = NanNewBufferHandle((char*)outputMetadata.data, outputMetadata.write_pos);
 	Local<Object> headerBuffer = NanNewBufferHandle((char*)outputHeader.data, outputHeader.write_pos);
 	Local<Object> dataBuffer = NanNewBufferHandle((char*)outputData.data, outputData.write_pos);
@@ -379,7 +378,7 @@ NAN_METHOD(ParseFramesInfo)
 		
 	if (!status)
 	{
-	    return NanThrowError("Failed to parse frames info");
+		return NanThrowError("Failed to parse frames info");
 	}
 
 	// return the result

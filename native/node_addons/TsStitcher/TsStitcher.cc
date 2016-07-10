@@ -72,7 +72,7 @@ FillAdSectionData(Local<Object> inputSection, ad_section_t* result)
 	{
 		return false;
 	}
-	
+
 	if (result->filler_header == NULL)
 	{
 		return false;
@@ -283,10 +283,10 @@ NAN_METHOD(ProcessChunk) {
 	{
 		Local<Object> outputBuffer = NanNewBufferHandle((char*)processResult.output_buffer, processResult.output_buffer_size);
 		free(processResult.output_buffer);
-		
+
 		result->Set(NanNew<String>("outputBuffer"), outputBuffer);
 	}
-
+	
 	NanReturnValue(result);
 }
 

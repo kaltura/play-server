@@ -604,7 +604,7 @@ prepare_ts_data(
 			// update continuity counters info
 			if (!update_streams_info(&metadata_header.streams_info, output_header->data, output_header->write_pos))
 			{
-                goto error;
+				goto error;
 			}
 		}
 		
@@ -624,7 +624,7 @@ prepare_ts_data(
 					goto error;
 				}
 			}
-
+			
 			if (cur_frame_pos < buffer_start_pos)
 			{
 				goto error;
@@ -724,6 +724,7 @@ prepare_ts_data(
 					}
 				}
 			}
+			
 			// initialize frame info
 			cur_frame_info.size = output_data->write_pos - cur_frame_info.pos;
 			cur_frame_info.duration = cur_frame->duration;
@@ -843,7 +844,7 @@ prepare_ts_data(
 			}
 		}
 	}
-
+	
 	// update the metadata header
 	metadata_header.data_size = output_data->write_pos;
 	for (i = 0; i < ARRAY_ENTRIES(metadata_header.media_info); i++)
