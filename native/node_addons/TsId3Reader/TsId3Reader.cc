@@ -5,7 +5,7 @@
 
 #include "mpegts_stream_walker.h"
 #include "common.h"
-
+#include "../nan_Adaptor.h"
 using namespace v8;
 using namespace node;
 
@@ -40,10 +40,18 @@ static void
 ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 {
 	Local<Array>& result = *(Local<Array>*)context;
-	Local<Object> tagResult = Object::New();
+
+    Isolate* isolate = Isolate::GetCurrent();
+    if (isolate == NULL)
+    {
+        return;
+    }
+
+	Local<Object> tagResult = Object::New(isolate);
+
 	ID3_Tag id3Tag;
 
-	tagResult->Set(NanNew<String>("PTS"), Number::New(pts));
+	tagResult->Set(NanNew<String>("PTS"), NanNewNumber(pts));
 	
 	result->Set(result->Length(), tagResult);
 	
@@ -57,7 +65,7 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 	ID3_Frame* id3Frame = NULL;
 	while (NULL != (id3Frame = frameIter->GetNext()))
 	{
-		Local<Object> frameResult = Object::New();
+		Local<Object> frameResult = Object::New(isolate);
 		
 		ID3_Frame::Iterator* fieldIter = id3Frame->CreateIterator();
 		ID3_Field* id3Field = NULL;
@@ -73,13 +81,13 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 			switch (id3Field->GetType())
 			{
 			case ID3FTY_INTEGER:
-				frameResult->Set(NanNew<String>(fieldName), Number::New(id3Field->Get()));
+				frameResult->Set(NanNew<String>(fieldName), NanNewNumber(id3Field->Get()));
 				break;
 
 			case ID3FTY_TEXTSTRING: 
 			{
 				char *value = ID3_GetString(id3Frame, id3Field->GetID());
-				frameResult->Set(NanNew<String>(fieldName), String::New(value));
+				frameResult->Set(NanNew<String>(fieldName), NanNew<String>(value));
 				ID3_FreeString(value);
 				break;
 			}
@@ -88,7 +96,7 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 			}
 		}
 		delete fieldIter;
-		
+
 		tagResult->Set(NanNew<String>(id3Frame->GetTextID()), frameResult);
 	}
 	delete frameIter;
@@ -104,28 +112,28 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 			Number audioPts
 			Array<Object> id3tags
 */
-NAN_METHOD(ParseBuffer) 
+NAN_METHOD(ParseBuffer)
 {
 	NanScope();
 
-	if (args.Length() < 1) 
+	if (args.Length() < 1)
 	{
 		return NanThrowTypeError("Function requires 1 argument");
 	}
-  
-	if (!args[0]->IsObject() || !Buffer::HasInstance(args[0])) 
+
+	if (!args[0]->IsObject() || !Buffer::HasInstance(args[0]))
 	{
 		return NanThrowTypeError("Expected buffer argument");
 	}
 
-	Local<Array> id3TagArray = Array::New();
+	Local<Array> id3TagArray = Array::New(isolate);
 	
 	stream_walker_state_t stream_walker_state;
 
 	stream_walker_init(&stream_walker_state, ParseID3Tag, &id3TagArray);
 
 	walk_ts_streams(
-		(const byte_t*)Buffer::Data(args[0]->ToObject()), 
+		(const byte_t*)Buffer::Data(args[0]->ToObject()),
 		Buffer::Length(args[0]->ToObject()),
 		stream_walker_pmt_header_callback,
 		stream_walker_pmt_entry_callback,
@@ -134,16 +142,17 @@ NAN_METHOD(ParseBuffer)
 	
 	stream_walker_free(&stream_walker_state);
 			
-	Local<Object> result = Object::New();
-	result->Set(NanNew<String>("videoPts"), Number::New(stream_walker_state.initial_video_pts));
-	result->Set(NanNew<String>("audioPts"), Number::New(stream_walker_state.initial_audio_pts));
-	result->Set(NanNew<String>("id3tags"), id3TagArray);	
+	Local<Object> result = Object::New(isolate);
+	result->Set(NanNew<String>("videoPts"), NanNewNumber(stream_walker_state.initial_video_pts));
+	result->Set(NanNew<String>("audioPts"), NanNewNumber(stream_walker_state.initial_audio_pts));
+	result->Set(NanNew<String>("id3tags"), id3TagArray);
+
 	NanReturnValue(result);
 }
 
 void init(Handle<Object> exports)
 {
-	exports->Set(NanNew<String>("parseBuffer"), FunctionTemplate::New(ParseBuffer)->GetFunction());
+    NODE_SET_METHOD(exports, "parseBuffer", ParseBuffer);
 }
 
 NODE_MODULE(TsId3Reader, init)
