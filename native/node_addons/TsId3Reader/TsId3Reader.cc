@@ -41,13 +41,13 @@ ParseID3Tag(void* context, const byte_t* buf, size_t size, int64_t pts)
 {
 	Local<Array>& result = *(Local<Array>*)context;
 
-    Isolate* isolate = Isolate::GetCurrent();
+	Isolate* isolate = Isolate::GetCurrent();
 
 	Local<Object> tagResult = Object::New(isolate);
 
 	ID3_Tag id3Tag;
 
-    tagResult->Set(NanNew<String>("PTS"), Number::New(isolate, pts));
+	tagResult->Set(NanNew<String>("PTS"), Number::New(isolate, pts));
 	
 	result->Set(result->Length(), tagResult);
 	
