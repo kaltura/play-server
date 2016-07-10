@@ -275,9 +275,9 @@ NAN_METHOD(ProcessChunk) {
 	
 	// output the result
 	Local<Object> result = Object::New(isolate);
-    result->Set(NanNew<String>("chunkOutputStart"), NanNewNumber(processResult.chunk_output_start));
-    result->Set(NanNew<String>("chunkOutputEnd"), NanNewNumber(processResult.chunk_output_end));
-    result->Set(NanNew<String>("action"), NanNewNumber(processResult.action));
+	result->Set(NanNew<String>("chunkOutputStart"), NanNewNumber(processResult.chunk_output_start));
+	result->Set(NanNew<String>("chunkOutputEnd"), NanNewNumber(processResult.chunk_output_end));
+	result->Set(NanNew<String>("action"), NanNewNumber(processResult.action));
 
 	if (processResult.output_buffer != NULL)
 	{
