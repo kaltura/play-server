@@ -4,7 +4,7 @@ partnerId = -6
 secret = @PLAY_PARTNER_ADMIN_SECRET@
 timeout = 90
 verifySSL = false
-cacheType = @CACHE_TYPE@
+
 
 [cloud]
 domain = @CLOUD_HOSTNAME@
@@ -26,6 +26,7 @@ errorLogName = kaltura_play_error.log
 largeDataDebugEnabled = 0
 
 [cache]
+type = @CACHE_TYPE@
 hackWowzaUniqueSession = 0
 adMedia = 1800
 sessionCuePoint = 1200
