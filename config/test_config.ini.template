@@ -1,0 +1,6 @@
+[testClient]
+serviceUrl = @SERVICE_URL@
+partnerId = -6
+secret = @PLAY_PARTNER_ADMIN_SECRET@
+timeout = 90
+verifySSL = false
