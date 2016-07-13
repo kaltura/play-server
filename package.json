@@ -1,6 +1,6 @@
 {
 	"name": "kaltura-play-server",
-	"version": "0.0.1",
+	"version": "v3.0.0",
 	"dependencies": {
 		"node-ini": ">=1.0.0",
 		"memcached": ">=0.2.8",
@@ -16,7 +16,8 @@
 		"memjs": ">=0.8.5",
 		"forever": ">=0.10.10",
 		"binstring": ">=0.2.1",
-		"mkdirp": "=0.5.1"
+		"mkdirp": "=0.5.1",
+		"bluebird": "~3.4.1"
  	},
 	"devDependencies": {
 		"chai": ">=3.5.0",
