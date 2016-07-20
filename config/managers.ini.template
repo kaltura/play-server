@@ -49,6 +49,6 @@ adFileIdLimitBytes = 100000
 ;domain = @LAYOUT_SERVICE_HOSTNAME@
 
 [system]
-
+[tracking]
 [testAdServer]
 ;vastUrls
