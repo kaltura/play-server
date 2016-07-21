@@ -9,11 +9,11 @@ const ApiClientConnector = require('../lib/infra/ApiServerClientConnector');
 const KalturaMediaInfo = require('../lib/utils/KalturaMediaInfo');
 const KalturaMediaInfoResponse = require('../lib/utils/KalturaMediaInfoResponse');
 
-const serviceUrl = KalturaConfig.config.testClient.serviceUrl;
-const secret = KalturaConfig.config.testClient.secret;
-const partnerId = KalturaConfig.config.testClient.partnerId;
+const serviceUrl = KalturaConfig.config.testing.serviceUrl;
+const secret = KalturaConfig.config.testing.secret;
+const partnerId = KalturaConfig.config.testing.partnerId;
 const testsDirName = __dirname;
-const flavorId = KalturaConfig.config.testClient.flavorId;
+const flavorId = KalturaConfig.config.testing.flavorId;
 const info = new KalturaMediaInfo('ffprobe');
 const connector = new ApiClientConnector(partnerId, secret, kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);
 let response = null;
@@ -30,7 +30,7 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 	});
 
 	it('test - start client session', function() {
-		return connector.startSession().then(function (data) {
+		return connector._startSession().then(function (data) {
 			expect(data).to.not.be.null;
 			expect(connector.client.getKs()).to.not.be.null;
 		}, function (err) {
@@ -41,7 +41,7 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 	it('test - get command line via Api call', function() {
 		const filePath = `${testsDirName}/resources/adSample`;
 		const outputPath = `${testsDirName}/resources/adSample_output.mpg`;
-		return KalturaFFMpegCmdGenerator.generateCommandLineFormat(flavorId, response.jsonInfo, connector).then(function (data) {
+		return KalturaFFMpegCmdGenerator.generateCommandLineFormat(flavorId, response.jsonInfo, connector, KalturaConfig.config.testing.partnerImp).then(function (data) {
 			const cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(data, filePath, outputPath);
 			expect(data).to.not.be.null;
 			expect(cmdLine).to.not.be.null;

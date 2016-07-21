@@ -7,16 +7,17 @@ const kalturaTypes = require('../lib/client/KalturaTypes');
 const ApiClientConnector = require('../lib/infra/ApiServerClientConnector');
 const Promise = require('bluebird');
 
-const serviceUrl = KalturaConfig.config.testClient.serviceUrl;
-const secret = KalturaConfig.config.testClient.secret;
-const partnerId = KalturaConfig.config.testClient.partnerId;
+const serviceUrl = KalturaConfig.config.testing.serviceUrl;
+const secret = KalturaConfig.config.testing.secret;
+const partnerId = KalturaConfig.config.testing.partnerId;
 const connector = new ApiClientConnector(partnerId, secret, kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);
+const uiConfId = KalturaConfig.config.testing.uiConfId;
+const impersonatePartnerId = KalturaConfig.config.testing.impersonatePartnerId;
 
 describe('testApiClientConnector', function () {
 	it('test session start', function () {
-		return connector.startSession().then(function (data) {
+		return connector._startSession().then(function (data) {
 			expect(data).to.not.be.null;
-			expect(connector.client.getKs()).to.not.be.null;
 		}, function (err) {
 			expect(err).to.be.null;
 		});
@@ -24,7 +25,7 @@ describe('testApiClientConnector', function () {
 
 	it('test api exception', function () {
 		const falseConnector = new ApiClientConnector(partnerId, '12345678910111213abcdefghijklmno', kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);
-		return falseConnector.startSession().then(function(data) {
+		return falseConnector._startSession().then(function(data) {
 			expect(data).to.be.null;
 		}, function (err) {
 			expect(err).to.equal('KalturaAPIException Error while starting session for partner [-6]');
@@ -32,7 +33,7 @@ describe('testApiClientConnector', function () {
 	});
 
 	it('test handleRequset with uiConf get action ', function () {
-		return connector.handleRequset('uiConf', 'get', [199]).then(function (data) {
+		return connector.handleRequset('uiConf', 'get', [uiConfId], impersonatePartnerId).then(function (data) {
 			expect(data).to.have.property('objectType').and.equal('KalturaUiConf');
 		}, function (err) {
 			console.log(err);
@@ -41,7 +42,7 @@ describe('testApiClientConnector', function () {
 	});
 
 	it('test handleRequset with uiConf get action with timeout', function () {
-		return connector.handleRequset('uiConf', 'get', [199]).timeout(1).then(function (data) {
+		return connector.handleRequset('uiConf', 'get', [uiConfId], impersonatePartnerId).timeout(1).then(function (data) {
 			expect(data).to.be.null;
 		}, function (err) { //TimeoutError
 			expect(err).to.be.an.instanceof(Promise.TimeoutError);

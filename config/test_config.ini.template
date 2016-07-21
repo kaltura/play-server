@@ -1,7 +1,9 @@
-[testClient]
+[testing]
 serviceUrl = @SERVICE_URL@
 partnerId = -6
 secret = @PLAY_PARTNER_ADMIN_SECRET@
 timeout = 90
 verifySSL = false
 flavorId = @FLAVOR_ID@
+impersonatePartnerId = @PARTNER_ID@
+uiConfId = @UI_CONF_ID@

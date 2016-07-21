@@ -14,6 +14,7 @@ const engine = new TrancodinfEngine('ffmpeg');
 const commandLine = ` -i ${fileName} -y ${outputPath}`;
 
 describe('test TranscodeingEngine class', function () {
+	this.timeout(0);
 	it('test TranscodeingEngine - validate files path exists', function () {
 		return TrancodinfEngine.validateFilePaths(fileName, outputPath).then(function (data) {
 			expect(data).to.be.true;
