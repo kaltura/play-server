@@ -24,7 +24,10 @@ def getTSTimestamps(inputFilenames, filterStreamId):
 	inputData = ''
 	inputSizes = []
 	for inputFilename in inputFilenames:
-		curBuffer = file(inputFilename, 'rb').read()
+		if inputFilename == '-':
+			curBuffer = sys.stdin.read()
+		else:
+			curBuffer = file(inputFilename, 'rb').read()
 		inputData += curBuffer
 		inputSizes.append(len(curBuffer))
 	
@@ -85,7 +88,7 @@ def getTSTimestamps(inputFilenames, filterStreamId):
 			# get the pts / dts
 			ptsValue = None
 			dtsValue = None
-			if packetHeader.PID in elementaryStreamIds:
+			if packetHeader.PID in elementaryStreamIds and packetHeader.payloadUnitStartIndicator:
 				if curPacket[curPos:].startswith(PES_MARKER) and \
 					len(curPacket) >= curPos + 6 + pesOptionalHeader.sizeof():
 					thePesHeader = pesHeader.parse(curPacket[curPos:])
