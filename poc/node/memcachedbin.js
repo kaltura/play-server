@@ -44,7 +44,8 @@ var Memcache = exports = module.exports = function(port, host) {
   this.callbacks = [];
   this.handles = [];
 };
-util.inherits(Memcache, process.EventEmitter);
+const EventEmitter = require('events');
+util.inherits(Memcache, EventEmitter);
 
 exports.Memcache = Memcache; // for backwards compatibility
 

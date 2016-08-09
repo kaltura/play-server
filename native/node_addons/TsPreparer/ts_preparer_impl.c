@@ -496,7 +496,7 @@ rebuild_frame(
 	return TRUE;
 }
 
-bool_t 
+bool_t
 prepare_ts_data(
 	ts_preparer_part_t* parts_start,
 	size_t parts_count,
@@ -526,7 +526,7 @@ prepare_ts_data(
 	int next_frame_pos;
 	int cur_frame_pos;
 	int cur_pid;
-		
+
 	// initialize output params
 	memset(output_metadata, 0, sizeof(*output_metadata));
 	memset(output_header, 0, sizeof(*output_header));
@@ -629,7 +629,7 @@ prepare_ts_data(
 			{
 				goto error;
 			}
-			
+
 			// initialize TS packet start / end pos
 			start_pos = buffers_cur->data + cur_frame_pos - buffer_start_pos;
 			if (cur_frame + 1 < frames_end)
@@ -662,7 +662,7 @@ prepare_ts_data(
 			{
 				continue;
 			}
-				
+
 			// save the frame start position
 			cur_frame_info.pos = output_data->write_pos;
 
@@ -724,7 +724,7 @@ prepare_ts_data(
 					}
 				}
 			}
-
+			
 			// initialize frame info
 			cur_frame_info.size = output_data->write_pos - cur_frame_info.pos;
 			cur_frame_info.duration = cur_frame->duration;
@@ -739,7 +739,7 @@ prepare_ts_data(
 				cur_frame_info.timestamp_offsets.pts = NO_OFFSET;
 				cur_frame_info.timestamp_offsets.dts = NO_OFFSET;
 			}
-			
+
 			// update timestamps
 			cur_timestamps = &cur_frame->timestamps;
 			target_timestamps = &metadata_header.media_info[cur_frame->media_type].timestamps;
@@ -852,11 +852,9 @@ prepare_ts_data(
 		metadata_header.media_info[i].duration = durations[i];
 	}
 	memcpy(output_metadata->data, PS(metadata_header));
-		
-	return TRUE;
-	
-error:
 
+	return TRUE;
+error:
 	free_buffer(output_metadata);
 	free_buffer(output_header);
 	free_buffer(output_data);
