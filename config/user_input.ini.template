@@ -6,3 +6,6 @@ user_input.CLOUD_SHARED_BASE_PATH = @CLOUD_SHARED_BASE_PATH@
 user_input.LOG_DIR = @LOG_DIR@
 user_input.MEMCACHE_HOST = @MEMCACHE_HOST@
 user_input.PLAY_SERVER_BASE_DIR = @PLAY_SERVER_BASE_DIR@
+user_input.CACHE_TYPE = @CACHE_TYPE@
+user_input.clusterName = @CLUSTER_NAME@
+user_input.bucketName = @BUCKET_NAME@

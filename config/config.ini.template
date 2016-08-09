@@ -85,5 +85,9 @@ binDir = @PLAY_SERVER_BASE_DIR@/bin
 enabled = false
 port = 6000
 
+[tests]
+resourcesPath = @PLAY_SERVER_BASE_DIR@/tests/resources
+outputPath = @PLAY_SERVER_BASE_DIR@/tests/output
+
 
 

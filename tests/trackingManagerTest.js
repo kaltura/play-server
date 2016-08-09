@@ -40,6 +40,16 @@ describe('testTrackingManager', function() {
 		expect(removeWhiteSpaces(beaconUrlCacheKey)).to.equal('add28d9b3afc617ff6ca7a570fd416a2');
 	});
 
+	const kalturaTesting = require('./../lib/managers/KalturaTestingManager');
+	it('check trackingBeacons', function () {
+
+		let tester = new kalturaTesting.KalturaTestingManager();
+		tester.writeBeaconToFile('erez1');
+
+		expect(true.to.equal(true));
+	});
+
+
 });
 
 
