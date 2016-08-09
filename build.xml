@@ -96,6 +96,9 @@
                         <replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
                         <replacefilter token="@MEMCACHE_HOST@" property="user_input.MEMCACHE_HOST"/>
                         <replacefilter token="@PLAY_SERVER_BASE_DIR@" property="user_input.PLAY_SERVER_BASE_DIR"/>
+						<replacefilter token="@CACHE_TYPE@" property="user_input.CACHE_TYPE"/>
+						<replacefilter token="@CLUSTER_NAME@" property="user_input.CLUSTER_NAME"/>
+						<replacefilter token="@BUCKET_NAME@" property="user_input.BUCKET_NAME"/>
                 </replace>
                 <replace file="${basedir}/bin/play-server.sh" value="@TOKEN_VALUE_NOT_FOUND@" propertyFile="${configFilePath}">
                         <replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
