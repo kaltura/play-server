@@ -43,6 +43,7 @@ serverProcess = 60
 trackingBeaconUrl = 600
 fileDownloadTimeout = 60
 lock = 50
+vodApiTimeout = 3600
 
 [memcache]
 hostname = @MEMCACHE_HOST@
