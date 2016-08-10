@@ -16,9 +16,11 @@ Machine prerequisites:
 - Apache Ant 1.8.2 or above: apt-get -u install ant
 - Run apt-get install libmemcached-dev
 - Run apt-get install libfontconfig1
+- Install ffmpeg + ffprobe with the same version as your API server
 
 Kaltura platform required changes:
 =======================
+- to play VOD content with play server configure an NGINX server and confiure it to use the play server
 - Please note for play-server needs version IX-9.19.1 at least for it to run. So if you are behind please update you Kaltura installation before continuing to any of the next steps.
 - Minimum html5 player lib version is v2.15.
 - Create play-server partner by running: mysql /opt/kaltura/app/deployment/updates/sql/2014_08_04_create_play_partner.sql?
