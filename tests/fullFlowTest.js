@@ -3,7 +3,7 @@ const util = require('util');
 const fs = require('fs');
 const child_process = require('child_process');
 const kalturaClient = require('../lib/client/KalturaClient');
-const testingHelper = require('./testingHelper');
+const testingHelper = require('./infra/testingHelper');
 const config = require('../lib/utils/KalturaConfig')
 
 let Promise = require("bluebird");
@@ -93,13 +93,15 @@ class AdTester {
 }
 
 
+describe()
 playServerTestingHelper.parseCommandLineOptionsAndRunTest(main);
 
-function main(test){
+function main(){
 	playServerTestingHelper.printInfo("Starting Test for: ");
 	playServerTestingHelper.printInfo('serverHost: [' + playServerTestingHelper.serverHost + '] partnerId: [' +  playServerTestingHelper.partnerId + '] adminSecret: [' + playServerTestingHelper.adminSecret + ']');
 	playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 }
+
 
 function testInit(client) {
 	sessionClient = client;
