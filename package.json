@@ -18,9 +18,11 @@
 		"binstring": ">=0.2.1",
 		"jsqrcode": ">=0.0.6",
 		"zbarimg": "1.1.1",
-		"couchbase": "~2.2.1"
+		"couchbase": "~2.2.1",
 		"mkdirp": "=0.5.1",
-		"bluebird": "~3.4.1"
+		"bluebird": "~3.4.1",
+		"colors": "1.1.2",
+		"rmdir": "1.2.0"
  	},
 	"devDependencies": {
 		"chai": ">=3.5.0",

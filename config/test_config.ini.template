@@ -5,3 +5,5 @@ secret = @PLAY_PARTNER_ADMIN_SECRET@
 timeout = 90
 verifySSL = false
 flavorId = @FLAVOR_ID@
+resourcesPath = @PLAY_SERVER_BASE_DIR@/tests/resources
+outputPath = @PLAY_SERVER_BASE_DIR@/tests/output
