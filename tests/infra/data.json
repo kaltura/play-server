@@ -1,0 +1,16 @@
+{
+  "name": "contentVideo",
+  "length": 30,
+  "Ads": [
+    {
+      "name": "firstAd",
+      "startTime": 8,
+      "duration": 5
+    },
+    {
+      "name": "secondAd",
+      "startTime": 19,
+      "duration": 4
+    }
+  ]
+}
