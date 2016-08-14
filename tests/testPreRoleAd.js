@@ -16,14 +16,14 @@ let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
 
-class AdTester {
+class PreRoleAdTester {
 
 	static ValidateAll(qrCodesResults) {
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Ads and Videos according to CuePoints...');
 			let errorsArray = [];
 			for (let i = 0; i < qrCodesResults.length; i++) {
-				if (!AdTester.validateQrResult(qrCodesResults[i])) {
+				if (!PreRoleAdTester.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
 						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
 					else
@@ -43,12 +43,12 @@ class AdTester {
 
 	static validateQrResult(qrCodeItem) {
 		if (qrCodeItem.ad)
-			return AdTester.isValidAd(qrCodeItem);
+			return PreRoleAdTester.isValidAd(qrCodeItem);
 		else // case of thumb not of a ad - should not be in time of a cuePoint
-			return !AdTester.isValidAd(qrCodeItem);
+			return !PreRoleAdTester.isValidAd(qrCodeItem);
 	}
 
-	static isValidAd(qrCodeItem){
+	static isValidAd(qrCodeItem) {
 		let timeInMillis = qrCodeItem.thumbTime * 1000;
 		for (let i = 0; i < cuePointList.length; i++) {
 			if (timeInMillis >= cuePointList[i].startTime && timeInMillis < (cuePointList[i].startTime + cuePointList[i].duration)) {
@@ -64,32 +64,31 @@ class AdTester {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							AdTester.ValidateAll(results).then(function () {
-									resolve(true);
-								}
-								, reject);
-						}, reject);
-					}).catch(function () {
-					reject(false);
-				});
-			})
-			.catch(function () {
-				reject(false);
-			});
+								playServerTestingHelper.printStatus('1st Attempt - Validating Ads and Videos according to CuePoints. Expected To fail and not play Ad at starting of video');
+								PreRoleAdTester.ValidateAll(results).then(function () {
+										playServerTestingHelper.printError('Pre-role Ad was played on first attempt.');
+										reject(fail);
+									}
+									, function (results) {
+										playServerTestingHelper.printOk('1st Attempt failed as expected');
+										playServerTestingHelper.printStatus('2st Attempt - Validating Ads and Videos according to CuePoints. Expected To Succeed and play Ad at starting of video');
+										PreRoleAdTester.ValidateAll(results).then(function () {
+											resolve(true);
+										}, reject);
+									})
+									.catch(function () {
+										reject(false);
+									});
+							})
+							.catch(function () {
+								reject(false);
+							});
+					});
+
+			}).catch(function () {
+			reject(false);
+		});
 	}
-
-	//function validateTrackedBeaconsFile() {
-//	playServerTestingHelper.printInfo("Start validateTrackedBeaconsFile");
-//
-//	if (fs.existsSync(beaconTrackingDir + '/beaconTracking.txt')) {
-//		var array = fs.readFileSync(beaconTrackingDir + '/beaconTracking.txt').toString().split("\n");
-//		for (i in array)
-//			playServerTestingHelper.printStatus(array[i]);
-//	}else {
-//		playServerTestingHelper.printError("Can't read " + beaconTrackingDir + '/beaconTracking.txt - file doesn\'t exists');
-//	}
-//}
-
 }
 
 playServerTestingHelper.parseCommandLineOptionsAndRunTest(main);
@@ -100,29 +99,21 @@ function main(){
 	playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 }
 
-
 function testInit(client) {
 	sessionClient = client;
-	let adTester = new AdTester();
 	let entry;
-	let testName = 'AdTester';
+	let testName = 'PreRoleAdTest';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
 
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	if (!fs.existsSync(beaconTrackingDir))
-		fs.mkdirSync(beaconTrackingDir);
-
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/testingVideo.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/Video30Secs.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 8000, 6000);
-		})
-		.then(function (cuePoint) {
-			cuePointList.push(cuePoint);
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 24000, 4000);
+			// when bug is fixed please modify cue point start time to 0
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 1000, 5000);
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
@@ -133,8 +124,8 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			let adTester = new AdTester();
-			return playServerTestingHelper.testInvoker(testName, adTester, input);
+			let preRoleAdTester = new PreRoleAdTester();
+			return playServerTestingHelper.testInvoker(testName, preRoleAdTester, input);
 		})
 		.catch(playServerTestingHelper.printError);
 }

@@ -229,7 +229,7 @@ class PlayServerTestingHelper {
                         reject(results);
                     } else {
                         PlayServerTestingHelper.printOk("entry was created and content was added");
-                        PlayServerTestingHelper.waitForEntryToBeReady(input, 10, resolve, reject);
+                        PlayServerTestingHelper.waitForEntryToBeReady(input, 15, resolve, reject);
                     }
                 },
                 input.entry.id,
