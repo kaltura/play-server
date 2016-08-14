@@ -1,6 +1,7 @@
 Environment:
 =======================
  - 1 Memcache server per cloud. [will be installed in next steps]
+ - 1 CouchBase per cloud (optional) [will be installed in next steps]
  - 1 Shared disc per cloud /opt/kaltura/shared
  - 1 Load balancer per cloud (I recommend to use haproxy for QA environment, see http://cbonte.github.io/haproxy-dconv/configuration-1.5.html)
 
@@ -8,6 +9,7 @@ Machine prerequisites:
 =======================
 - Git (For Ubuntu: https://www.digitalocean.com/community/tutorials/how-to-install-git-on-ubuntu-12-04)
 - Memcahced (For Ubuntu https://www.digitalocean.com/community/tutorials/how-to-install-and-use-memcache-on-ubuntu-12-04)
+- CouchBase (optional) (https://kaltura.atlassian.net/wiki/display/AdStitching/How+to+install+CouchBase?flashId=2015080482)
 - Install mediaInfo by running: apt-get install mediainfo
 - Run apt-get install python-software-properties
 - Install Node.js 0.10.26 or above: installation reference: https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager#ubuntu-mint-elementary-os
@@ -16,9 +18,11 @@ Machine prerequisites:
 - Apache Ant 1.8.2 or above: apt-get -u install ant
 - Run apt-get install libmemcached-dev
 - Run apt-get install libfontconfig1
+- Install ffmpeg + ffprobe with the same version as your API server
 
 Kaltura platform required changes:
 =======================
+- to play VOD content with play server configure an NGINX server and confiure it to use the play server
 - Please note for play-server needs version IX-9.19.1 at least for it to run. So if you are behind please update you Kaltura installation before continuing to any of the next steps.
 - Minimum html5 player lib version is v2.15.
 - Create play-server partner by running: mysql /opt/kaltura/app/deployment/updates/sql/2014_08_04_create_play_partner.sql?
@@ -61,6 +65,12 @@ Replace tokens in user_input.ini files:
 - @CLOUD_SECRET@ - Random short string, e.g. 'abc'
 - @CLOUD_SHARED_BASE_PATH@ - path to shared folder disc, e.g. /opt/kaltura/shared/
 - @LOG_DIR@ - Path to logs folder, e.g. /opt/kaltura/log.  
+- @MEMCACHE_HOST@ - memcache host
+- @PLAY_SERVER_BASE_DIR@ = play-server code basedir
+- @CACHE_TYPE@ = memcach or couchbase(if installed)
+- @CLUSTER_NAME@ = for couchebase use (leave empty if no couchebase was installed)
+- @BUCKET_NAME@ = for couchebase use (leave empty if no couchebase was installed)
+
 
 Install:
 =======================

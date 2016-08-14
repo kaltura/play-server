@@ -1,0 +1,5 @@
+[testing]
+serviceUrl = @SERVICE_URL@
+partnerId = -6
+secret = @PLAY_PARTNER_ADMIN_SECRET@
+
