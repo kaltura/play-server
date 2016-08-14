@@ -85,6 +85,3 @@ binDir = @PLAY_SERVER_BASE_DIR@/bin
 [bin][debug]
 enabled = false
 port = 6000
-
-
-

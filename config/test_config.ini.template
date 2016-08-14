@@ -5,6 +5,8 @@ secret = @PLAY_PARTNER_ADMIN_SECRET@
 timeout = 90
 verifySSL = false
 flavorId = @FLAVOR_ID@
+resourcesPath = @PLAY_SERVER_BASE_DIR@/tests/resources
+outputPath = @PLAY_SERVER_BASE_DIR@/tests/output
 impersonatePartnerId = @PARTNER_ID@
 uiConfId = @UI_CONF_ID@
 
@@ -16,3 +18,4 @@ month = @MONTH_0_TO_11@
 year = @YEAR@
 prefix = @PREFIX@
 suffix = @SUFFIX@
+
