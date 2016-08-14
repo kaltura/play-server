@@ -1,4 +1,15 @@
 This file includes features per version in descending order (started on v2.0.0)
+# v3.0.0 #
+
+## VOD ##
+- Issue Type: New Feature
+- Issue Short Description: Enable support of ad-stitching to VOD content
+
+## NGINX support ##
+- Issue Type: New Feature
+- Issue Short Description: Enable support of ad-stitching to VOD content
+
+
 
 # v2.0.0 #
 
