@@ -7,3 +7,12 @@ verifySSL = false
 flavorId = @FLAVOR_ID@
 impersonatePartnerId = @PARTNER_ID@
 uiConfId = @UI_CONF_ID@
+
+[fileUtils]
+dirPath = @DIR_PATH@
+filePath = @FILE_PATH@
+day = @DAY@
+month = @MONTH_0_TO_11@
+year = @YEAR@
+prefix = @PREFIX@
+suffix = @SUFFIX@
