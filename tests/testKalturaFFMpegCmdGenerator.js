@@ -49,4 +49,22 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 			expect(err).to.be.null;
 		});
 	});
+
+	it('test - check fill command ', function()
+	{
+		let format = 'File: __inFileName__ out File: __outFileName__';
+		let cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(format, '/dev/zero/1.1', '/opt/tmp/2.2');
+		expect(cmdLine).to.equal('File: /dev/zero/1.1 out File: /opt/tmp/2.2');
+		format = 'File: __inFileName__';
+		cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(format, '/dev/zero/1.1', '/opt/tmp/2.2');
+		expect(cmdLine).to.equal('File: /dev/zero/1.1');
+		cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(format, '/dev/zero/1.1', null);
+		expect(cmdLine).to.equal('File: /dev/zero/1.1');
+		format = 'out File: __outFileName__';
+		cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(format, '/dev/zero/1.1', '/opt/tmp/2.2');
+		expect(cmdLine).to.equal('out File: /opt/tmp/2.2');
+		cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(format, null, '/opt/tmp/2.2');
+		expect(cmdLine).to.equal('out File: /opt/tmp/2.2');
+
+	})
 });

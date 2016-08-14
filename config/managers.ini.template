@@ -44,9 +44,11 @@ adFileIdLimitBytes = 100000
 
 [layout]
 ;domain = @LAYOUT_SERVICE_HOSTNAME@
+fillerDefaultDurationSecs = 30
 
 [fetch]
 ;domain = @LAYOUT_SERVICE_HOSTNAME@
+durationCoefficient = 1
 
 [system]
 [tracking]

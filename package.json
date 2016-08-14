@@ -17,7 +17,8 @@
 		"forever": ">=0.10.10",
 		"binstring": ">=0.2.1",
 		"mkdirp": "=0.5.1",
-		"bluebird": "~3.4.1"
+		"bluebird": "~3.4.1",
+	  	"couchbase": ">=2.1.1"
  	},
 	"devDependencies": {
 		"chai": ">=3.5.0",
