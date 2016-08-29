@@ -115,14 +115,10 @@ function testInit(client) {
 	if (!fs.existsSync(beaconTrackingDir))
 		fs.mkdirSync(beaconTrackingDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/testingVideo.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 8000, 6000);
-		})
-		.then(function (cuePoint) {
-			cuePointList.push(cuePoint);
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 24000, 4000);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
