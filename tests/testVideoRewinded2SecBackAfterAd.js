@@ -26,9 +26,9 @@ class VideoRewindTester {
 			for (let i = 0; i < qrCodesResults.length; i++) {
 				if (!VideoRewindTester.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
-						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
+						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning of video but Ad cue point is not defined for that time");
 					else
-						errorsArray.push('FAIL - Found video thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is defined for that time");
+						errorsArray.push('FAIL - Found video thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning of video but Ad cue point is defined for that time");
 				}
 			}
 			if (errorsArray.length > 0) {
@@ -63,17 +63,26 @@ class VideoRewindTester {
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Video is rewinded 2 seconds back after ad...');
 			let errorsArray = [];
-			for (let j = 0; thumbsToCompare.length; j++) {
+			for (let j = 0; j < thumbsToCompare.length; j++) {
+				playServerTestingHelper.printStatus('validating thumb ' + j + ': ' + JSON.stringify(thumbsToCompare[j]));
 				for (let i = 0; i < qrCodesResults.length; i++) {
-					if (!thumbsToCompare[j].startThumb == (qrCodesResults[i].startTime)) {
-						for (let k = 0; k < qrCodesResults.length; i++) {
-							if (!thumbsToCompare[j].endThumb == (qrCodesResults[k].startTime)) {
-								if (JSON.stringify(qrCodesResults[i]) === JSON.stringify(qrCodesResults[k]))
+					let found = false;
+					if (thumbsToCompare[j].startThumb == qrCodesResults[i].thumbTime) {
+						for (let k = 0; k < qrCodesResults.length; k++) {
+							if (thumbsToCompare[j].endThumb == qrCodesResults[k].thumbTime) {
+								if (qrCodesResults[i].contentTime == qrCodesResults[k].contentTime) {
 									playServerTestingHelper.printOk('Video thumb before Ad is the same as video thumb after Ad');
-								else
-									errorsArray.push('Video thumb before Ad [' + qrCodesResults[i].thumbTime + " seconds] from beginning of video is NOT the same as video thumb after Ad [ " + qrCodesResults[k].thumbTime + " seconds ] from beginning of video");
+									found = true;
+								} else {
+									errorsArray.push('Video thumb before Ad [' + qrCodesResults[i].thumbTime + " seconds] from beginning of video " +
+										" is NOT the same as video thumb after Ad [ " + qrCodesResults[k].thumbTime + " seconds ] from beginning of video." +
+										"[EXPECTED BOTH CONTENT TIME TO BE EQUAL - " + qrCodesResults[i].contentTime + " vs. "+ qrCodesResults[k].contentTime + " ]");
+									found = true;
+								}
 							}
 						}
+						if ( !found )
+							errorsArray.push('Video thumb before Ad [' + qrCodesResults[i].thumbTime + " seconds] from beginning of video was found but Video after ad Not found");
 					}
 				}
 			}
@@ -138,20 +147,20 @@ function testInit(client) {
 	if (!fs.existsSync(beaconTrackingDir))
 		fs.mkdirSync(beaconTrackingDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/Video30Secs.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 8000, 6000);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 15000, 6500);
 
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
-			thumbsToCompare.push({"startThumb":cuePoint.startTime-2, "endThumb":(cuePoint.startTime + cuePoint.duration)});
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 24000, 4000);
+			thumbsToCompare.push({"startThumb":Math.floor((cuePoint.startTime-2)/1000), "endThumb":Math.ceil((cuePoint.startTime + cuePoint.duration)/1000)});
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 29000, 4000);
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
-			thumbsToCompare.push({"startThumb":cuePoint.startTime-2, "endThumb":(cuePoint.startTime + cuePoint.duration)});
+			thumbsToCompare.push({"startThumb":Math.floor((cuePoint.startTime-2)/1000), "endThumb":Math.ceil((cuePoint.startTime + cuePoint.duration + 1)/1000)});
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
