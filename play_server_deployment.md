@@ -16,6 +16,7 @@ Machine prerequisites:
 - Node Packaged Modules (npm) 1.4.3 or above (see above) 
 - Node gyp 0.13.0 or above: npm install -g node-gyp
 - Apache Ant 1.8.2 or above: apt-get -u install ant
+- g++ of version 4.8 and above
 - Run apt-get install libmemcached-dev
 - Run apt-get install libfontconfig1
 - Install ffmpeg + ffprobe with the same version as your API server
