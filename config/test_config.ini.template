@@ -3,6 +3,7 @@ serviceUrl = @SERVICE_URL@
 partnerId = -6
 secret = @PLAY_PARTNER_ADMIN_SECRET@
 timeout = 90
+scaleTestInvokers = 10
 verifySSL = false
 flavorId = @FLAVOR_ID@
 resourcesPath = @PLAY_SERVER_BASE_DIR@/tests/resources
