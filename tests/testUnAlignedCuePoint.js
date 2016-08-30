@@ -97,10 +97,10 @@ function testInit(client)
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	playServerTestingHelper.createEntry(sessionClient, `${resourcesPath}/testUnAlignedCuePoint.mp4`)
+	playServerTestingHelper.createEntry(sessionClient, `${resourcesPath}/1MinVideo.mp4`)
 		.then(function (resultEntry) {
 			entry = resultEntry;
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 6900, 6000);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 16900, 6000);
 		}).
 		then(function (cuePoint) {
 			cuePointList.push(cuePoint);
@@ -116,3 +116,4 @@ function testInit(client)
 		})
 		.catch(playServerTestingHelper.printError);
 }
+

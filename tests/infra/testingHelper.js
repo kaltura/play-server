@@ -11,6 +11,7 @@ const rmdir = require('rmdir');
 const kalturaClient = require('../../lib/client/KalturaClient');
 const zbarimg = require('zbarimg');
 const child_process = require('child_process');
+const uuid = require('uuid');
 
 const config = require('../../lib/utils/KalturaConfig')
 const outputDir = KalturaConfig.config.testClient.outputPath;
@@ -243,7 +244,7 @@ class PlayServerTestingHelper {
             cuePoint.entryId = entry.id;
             cuePoint.startTime = cuePointStartTime;
             cuePoint.duration = cuePointDuration;
-            cuePoint.sourceUrl = "http://testUrl.com";
+            cuePoint.sourceUrl = "http://dev-backend3.dev.kaltura.com/p/1/testing/getVast";
 
             client.cuePoint.add(function (results) {
                     if (!results) {
@@ -299,7 +300,7 @@ class PlayServerTestingHelper {
                             }
                         }
 
-                        let m3u8Url = 'http://' + PlayServerTestingHelper.serverHost + ':88/hls/p/' + PlayServerTestingHelper.partnerId + '/serveFlavor/entryId/' + entry.id + '/v/2/flavorId/' + flavor.id + '/index.m3u8';
+                        let m3u8Url = 'http://' + PlayServerTestingHelper.serverHost + ':82/hls/p/' + PlayServerTestingHelper.partnerId + '/usePlayServer/1/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/uiConfId/23448255/sessionId/' + uuid.v1() + '/index.m3u8';
                         PlayServerTestingHelper.printStatus("Build m3u8 Url is: " + m3u8Url);
                         resolve(m3u8Url);
                     }
@@ -359,9 +360,7 @@ class PlayServerTestingHelper {
 
     static ReadQrCode(videoThumbDir, filename) {
         return new Promise(function (resolve, reject) {
-            //console.log("ReadQrCode " + videoThumbDir + " " + filename);
             let thumbTime = ((filename.split("."))[0] - 1) * 2;
-            //console.log("Time Of thumb is: [" + thumbTime + " seconds] from beginning if video.");
             child_process.exec('zbarimg ' + videoThumbDir + filename,
                 (error, stdout, stderr) => {
                     let result = stdout.split("QR-Code:")[1];
