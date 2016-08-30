@@ -116,3 +116,4 @@ function testInit(client)
 		})
 		.catch(playServerTestingHelper.printError);
 }
+
