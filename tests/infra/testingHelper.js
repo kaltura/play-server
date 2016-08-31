@@ -12,6 +12,7 @@ const kalturaClient = require('../../lib/client/KalturaClient');
 const zbarimg = require('zbarimg');
 const child_process = require('child_process');
 const uuid = require('uuid');
+require('../../lib/utils/KalturaUtils.js');
 
 const config = require('../../lib/utils/KalturaConfig')
 const outputDir = KalturaConfig.config.testClient.outputPath;
@@ -304,6 +305,30 @@ class PlayServerTestingHelper {
                         let m3u8Url = 'http://' + PlayServerTestingHelper.serverHost + ':82/hls/p/' + PlayServerTestingHelper.partnerId + '/usePlayServer/1/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/uiConfId/23448255/sessionId/' + uuid.v1() + '/index.m3u8';
                         PlayServerTestingHelper.printStatus("Build m3u8 Url is: " + m3u8Url);
                         resolve(m3u8Url);
+
+                        //let playManifest = 'http://' + PlayServerTestingHelper.serverHost + '/p/' + PlayServerTestingHelper.partnerId + '/sp/10300/playManifest/usePlayServer/1/uiconf/23448262/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/format/applehttp/protocol/http/a.m3u8';
+                        //PlayServerTestingHelper.printStatus("trying to get play manifest " + playManifest);
+                        //
+                        //new Promise( function (resolve, reject){
+                        //    KalturaUtils.getHttpUrl(playManifest, null, function (manifestContent) {
+                        //        PlayServerTestingHelper.printStatus("manifestContent is: " + manifestContent);
+                        //        if(resolve){
+                        //            let m3u8Url;
+                        //            var split = manifestContent.split('\n');
+                        //            for (let i = 0 ; i < split.length ; i++)
+                        //            if (split[i].trim().startsWith("http"))
+                        //                m3u8Url = split[i];
+                        //            PlayServerTestingHelper.printStatus("Build m3u8 Url is: " + m3u8Url);
+                        //            resolve(m3u8Url);
+                        //        }
+                        //    }, function (err) {
+                        //        PlayServerTestingHelper.printStatus("Error getting manifestContent:");
+                        //        if(reject){
+                        //            reject(err);
+                        //        }
+                        //    });
+                        //}
+                        //).then(resolve,reject );
                     }
                 },
                 entry.id);

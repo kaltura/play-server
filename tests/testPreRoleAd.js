@@ -72,9 +72,15 @@ class PreRoleAdTester {
 									, function (results) {
 										playServerTestingHelper.printOk('1st Attempt failed as expected');
 										playServerTestingHelper.printStatus('2st Attempt - Validating Ads and Videos according to CuePoints. Expected To Succeed and play Ad at starting of video');
-										PreRoleAdTester.ValidateAll(results).then(function () {
-											resolve(true);
-										}, reject);
+
+										playServerTestingHelper.cleanFolder(input.outputDir);
+
+										input.outputDir = outputDir +'/attempt2/';
+
+										if (!fs.existsSync(input.outputDir))
+											fs.mkdirSync(input.outputDir);
+
+										PreRoleAdTester.runTest2ndAttempt(input, resolve, reject);
 									})
 									.catch(function () {
 										reject(false);
@@ -89,7 +95,37 @@ class PreRoleAdTester {
 			reject(false);
 		});
 	}
+
+	static runTest2ndAttempt(input, resolve, reject) {
+		playServerTestingHelper.generateThumbsFromM3U8Promise(input.m3u8Url, input.outputDir)
+			.then(function () {
+				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
+					.then(function (filenames) {
+						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
+								playServerTestingHelper.printStatus('2nd Attempt - Validating Ads and Videos according to CuePoints. Expected To play Ads');
+								PreRoleAdTester.ValidateAll(results).then(function () {
+										playServerTestingHelper.printError('Pre-role Ad was played on first attempt.');
+										playServerTestingHelper.printError('Ads were verified on 2nd attempt.');
+										resolve(true);
+									}
+									, function (results) {
+										playServerTestingHelper.printOk('2nd Attempt failed');
+										reject(fail);
+									})
+									.catch(function () {
+										reject(false);
+									});
+							})
+							.catch(function () {
+								reject(false);
+							});
+					});
+			}).catch(function () {
+			reject(false);
+		});
+	}
 }
+
 
 playServerTestingHelper.parseCommandLineOptionsAndRunTest(main);
 
@@ -109,11 +145,19 @@ function testInit(client) {
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/Video30Secs.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			// when bug is fixed please modify cue point start time to 0
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 1000, 5000);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 1000, 15000);
+		})
+		.then(function (cuePoint) {
+			cuePointList.push(cuePoint);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 20000, 15000);
+		})
+		.then(function (cuePoint) {
+			cuePointList.push(cuePoint);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 40000, 15000);
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
