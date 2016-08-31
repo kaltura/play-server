@@ -93,7 +93,7 @@ function testInit(client) {
 	sessionClient = client;
 	let adTester = new AdTester();
 	let entry;
-	let testName = 'AdTester';
+	let testName = 'fullFlowMultiCuePointTest';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
 
