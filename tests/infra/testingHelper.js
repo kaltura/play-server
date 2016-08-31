@@ -20,6 +20,7 @@ if (!fs.existsSync(outputDir))
     fs.mkdirSync(outputDir);
 
 let errorsArray = [];
+let testsErrorsArray = [];
 let qrResults = [];
 
 const KalturaClientLogger = {
@@ -41,13 +42,11 @@ class PlayServerTestingHelper {
         console.log(colors.red("ERROR: " + msg));
     }
 
-    static printOk(msg)
-    {
+    static printOk(msg) {
         console.log(colors.green(msg));
     }
 
-    static printStatus(msg)
-    {
+    static printStatus(msg) {
         console.log(colors.yellow(msg));
     }
 
@@ -152,7 +151,9 @@ class PlayServerTestingHelper {
                 .then(PlayServerTestingHelper.uploadTokenPromise)
                 .then(PlayServerTestingHelper.uploadFilePromise)
                 .then(PlayServerTestingHelper.addContentPromise)
-                .then(function(result){resolve(result.entry);})
+                .then(function (result) {
+                    resolve(result.entry);
+                })
                 .catch(reject);
         });
     }
@@ -309,8 +310,30 @@ class PlayServerTestingHelper {
         });
     }
 
-    static generateThumbsFromM3U8Promise(m3u8Url, videoThumbDir)
-    {
+    static getFlavorAssetToUse(client, entry) {
+        return new Promise(function (resolve, reject) {
+            client.flavorAsset.getByEntryId(function (results) {
+                    if (results && results.code && results.message) {
+                        PlayServerTestingHelper.printError('Kaltura Error', results);
+                        reject(results);
+                    } else {
+                        console.log('Got FlavorAssests for entry id');
+                        let flavor = null;
+                        for (let i = 0; i < results.length; i++) {
+                            if (!(results[i].tags.indexOf('source') > -1)) {
+                                flavor = results[i];
+                                resolve(flavor);
+                                return;
+                            }
+                        }
+                        reject('No Suitable flavor asset was found for entry ' + entry.id );
+                    }
+                },
+                entry.id);
+        });
+    }
+
+    static generateThumbsFromM3U8Promise(m3u8Url, videoThumbDir) {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printStatus("Generating thumbs from M3U8 url ");
             child_process.exec('ffmpeg -i ' + m3u8Url + ' -vf fps=0.5 -f image2 -r 0.5 -y ' + videoThumbDir + '%d.jpg',
@@ -326,8 +349,7 @@ class PlayServerTestingHelper {
         });
     }
 
-    static getThumbsFileNamesFromDir(videoThumbDir)
-    {
+    static getThumbsFileNamesFromDir(videoThumbDir) {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printStatus("Reading thumbs from dir " + videoThumbDir);
             fs.readdir(videoThumbDir, function (err, filenames) {
@@ -395,17 +417,69 @@ class PlayServerTestingHelper {
         PlayServerTestingHelper.printInfo("Starting testing: " + testName);
 
         test.runTest(input, function (res) {
-            PlayServerTestingHelper.printInfo("Finished Test");
+            PlayServerTestingHelper.printInfo("Finished Test: " + testName);
             PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
-            PlayServerTestingHelper.cleanFolder(input.outputDir);
+            //PlayServerTestingHelper.cleanFolder(input.outputDir);
             return assert.equal(res, true);
         }, function (res) {
-            PlayServerTestingHelper.printInfo("Finished Test");
-            PlayServerTestingHelper.cleanFolder(input.outputDir);
+            PlayServerTestingHelper.printInfo("Finished Test" + testName);
+            //PlayServerTestingHelper.cleanFolder(input.outputDir);
             PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
             return assert.equal(res, false);
         });
     }
+
+    static runMultiTests(m3u8Urls, videoThumbDirs, testNames, testClass) {
+
+        let testsPromises = [];
+        for (let i = 0; i < testNames.length; i++) {
+            let input = [];
+            input.m3u8Url = m3u8Urls[i];
+            input.outputDir = videoThumbDirs[i];
+
+            testsPromises.push(PlayServerTestingHelper.multiTestInvoker(testNames[i], testClass, input));
+        }
+
+        Promise.all(testsPromises).then(function () {
+            if (testsErrorsArray.length > 0) {
+                for (let i = 0; i < testsErrorsArray.length; i++)
+                    PlayServerTestingHelper.printError(testsErrorsArray[i]);
+                return false;
+            } else {
+                PlayServerTestingHelper.printOk('Finished invoking Multi tests Successfully');
+                return true;
+            }
+        }, function (reason) {
+            PlayServerTestingHelper.printError(reason);
+            return false;
+        });
+
+    }
+
+    static multiTestInvoker(testName, test, input) {
+
+        return new Promise(function (resolve, reject) {
+            PlayServerTestingHelper.printInfo("Starting testing: " + testName);
+
+            test.runTest(input, function (res) {
+                PlayServerTestingHelper.printInfo("Finished Test: " + testName);
+                PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
+                PlayServerTestingHelper.cleanFolder(input.outputDir);
+                if (!res)
+                    testsErrorsArray.push(testName + " Failed");
+                resolve()
+
+            }, function (res) {
+                PlayServerTestingHelper.printInfo("Finished Test" + testName);
+                PlayServerTestingHelper.cleanFolder(input.outputDir);
+                PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+                if (!res)
+                    testsErrorsArray.push(testName + " Failed Here");
+
+                resolve();
+            });
+        });
+    }
 }
 
-module.exports.PlayServerTestingHelper = PlayServerTestingHelper;
+    module.exports.PlayServerTestingHelper = PlayServerTestingHelper;
