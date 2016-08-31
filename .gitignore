@@ -2,5 +2,6 @@
 /cache
 /config/*.ini
 /bin/*
+.idea
 !/bin/ffmpeg-2.1.3-bin.tar.gz
 !/bin/play-server.sh
