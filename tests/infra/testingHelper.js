@@ -15,7 +15,7 @@ const uuid = require('uuid');
 require('../../lib/utils/KalturaUtils.js');
 
 const config = require('../../lib/utils/KalturaConfig')
-const outputDir = KalturaConfig.config.testClient.outputPath;
+const outputDir = KalturaConfig.config.testing.outputPath;
 
 if (!fs.existsSync(outputDir))
     fs.mkdirSync(outputDir);
@@ -507,4 +507,4 @@ class PlayServerTestingHelper {
     }
 }
 
-    module.exports.PlayServerTestingHelper = PlayServerTestingHelper;
+module.exports.PlayServerTestingHelper = PlayServerTestingHelper;

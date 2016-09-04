@@ -8,8 +8,8 @@ const config = require('../lib/utils/KalturaConfig')
 
 let Promise = require("bluebird");
 
-const resourcesPath = KalturaConfig.config.testClient.resourcesPath;
-const outputDir = KalturaConfig.config.testClient.outputPath;
+const resourcesPath = KalturaConfig.config.testing.resourcesPath;
+const outputDir = KalturaConfig.config.testing.outputPath;
 const beaconTrackingDir = outputDir  + '/beaconTracking';
 
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;

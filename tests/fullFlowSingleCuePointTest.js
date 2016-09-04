@@ -8,8 +8,8 @@ const config = require('../lib/utils/KalturaConfig')
 
 let Promise = require("bluebird");
 
-const resourcesPath = KalturaConfig.config.testClient.resourcesPath;
-const outputDir = KalturaConfig.config.testClient.outputPath;
+const resourcesPath = KalturaConfig.config.testing.resourcesPath;
+const outputDir = KalturaConfig.config.testing.outputPath;
 const beaconTrackingDir = outputDir  + '/beaconTracking';
 
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
@@ -125,12 +125,30 @@ function testInit(client) {
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
-			let input = [];
-			input.m3u8Url = m3u8Url;
-			input.outputDir = videoThumbDir;
-
-			let adTester = new AdTester();
-			return playServerTestingHelper.testInvoker(testName, adTester, input);
+			for (let i = 0; i < 2000; i++)
+			{
+				const secondm3u8 = m3u8Url;
+				const input = [];
+				input.m3u8Url = m3u8Url;
+				input.outputDir = videoThumbDir;
+				const y = i;
+				videoThumbDir = outputDir + '/' + testName + y + '/';
+				input.outputDir = videoThumbDir;
+				if (!fs.existsSync(videoThumbDir))
+					fs.mkdirSync(videoThumbDir);
+				// every minute let it run again
+				let myArray = secondm3u8.split('sessionId');
+				if (myArray.length !== 2){
+					throw new Error('only single sessionId allowed');
+				}
+				let suffix = myArray[1].substr(myArray[1].indexOf('/index'));
+				input.m3u8Url = myArray[0] + 'sessionId/' + Math.floor(Math.random() * 50000000) + suffix;
+				setTimeout(function(){
+					console.log('test ' + y);
+					const adTester = new AdTester();
+					playServerTestingHelper.testInvoker(testName, adTester, input);
+				}, y * 60000);
+			}
 		})
 		.catch(playServerTestingHelper.printError);
 }
