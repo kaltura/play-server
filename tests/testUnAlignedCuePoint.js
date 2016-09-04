@@ -2,8 +2,8 @@ const fs = require('fs');
 const testingHelper = require('./infra/testingHelper');
 require('../lib/utils/KalturaConfig');
 const Promise = require('bluebird');
-const resourcesPath = KalturaConfig.config.testClient.resourcesPath;
-const outputDir = KalturaConfig.config.testClient.outputPath;
+const resourcesPath = KalturaConfig.config.testing.resourcesPath;
+const outputDir = KalturaConfig.config.testing.outputPath;
 
 const playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;

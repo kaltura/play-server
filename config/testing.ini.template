@@ -2,4 +2,14 @@
 serviceUrl = @SERVICE_URL@
 partnerId = -6
 secret = @PLAY_PARTNER_ADMIN_SECRET@
+timeout = 90
+verifySSL = false
+uiConfId = @UI_CONF_ID@
+impersonatePartnerId = @PARTNER_ID@
+flavorId = @FLAVOR_ID@
+resourcesPath = /opt/kaltura/play-server/tests/resources
+outputPath = /opt/kaltura/play-server/tests/output
 
+[testing][singleCuePoint]
+iterations = 2000
+intervalInMili = 60000
