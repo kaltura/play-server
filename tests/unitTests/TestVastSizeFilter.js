@@ -36,8 +36,6 @@ describe('Test Size Filter', function(){
 		const height = 360;
 		const bitrate = 719;
 		const flavorAttributes = new VideoAttributes(id, width, height, bitrate);
-		//console.log('asdf');
-		//console.log(vastResponse);
 		const ad = vastResponse.ads[0];
 		const fileURL = VastSizeFilter.filter(flavorAttributes, ad);
 		expect(fileURL).to.includes('63021BC1D7A6CEC33A99C122A5E8A38C6B280515');
