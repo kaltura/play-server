@@ -1,15 +1,19 @@
 /**
  * This is a unit test to validate proper functionality of the TranscodeingEngine class
  */
+
 const chai = require('chai');
 const expect = chai.expect;
-const TranscodingEngineResponse = require('../lib/infra/TranscodingEngineResponse');
-const TrancodinfEngine = require('../lib/infra/TranscodingEngine');
+const TranscodingEngineResponse = require('../../lib/infra/TranscodingEngineResponse');
+const TrancodinfEngine = require('../../lib/infra/TranscodingEngine');
 const path = require('path');
 const testDirName = __dirname;
 
-const fileName = `${testDirName}/resources/adSample`;
-const outputPath = `${testDirName}/resources/adSample_output.mpg`;
+require('../../lib/utils/KalturaConfig');
+const fileName = KalturaConfig.config.testing.resourcesPath + '/adSample';
+const outputPath = KalturaConfig.config.testing.outputPath + '/adSample_output.mpg';
+require('../../lib/utils/KalturaLogger');
+
 const engine = new TrancodinfEngine('ffmpeg');
 const commandLine = ` -i ${fileName} -y ${outputPath}`;
 
