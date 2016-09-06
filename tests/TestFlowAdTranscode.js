@@ -39,6 +39,7 @@ describe('test the flow of ad transcode', function () {
 			commandLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(data, filePath, outPath);
 			expect(commandLine).to.not.be.null;
 		}, function (err) {
+			console.log(err);
 			expect(err).to.be.null;
 		});
 	});

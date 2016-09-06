@@ -5,13 +5,13 @@
 
 const chai = require('chai');
 const expect = chai.expect; // we are using the 'expect' style of Chai
-const VODManifestLayoutData = require('../lib/dataObjects/LayoutObjects/VODManifestLayoutData');
-const DynamicClipData = require('../lib/dataObjects/LayoutObjects/DynamicClipData');
-const SourceClipData = require('../lib/dataObjects/LayoutObjects/SourceClipData');
-const SourceClipDataArray = require('../lib/dataObjects/LayoutObjects/SourceClipDataArray');
-const NotificationLayoutData = require('../lib/dataObjects/LayoutObjects/NotificationLayoutData');
-const AdBreakLayoutData = require('../lib/dataObjects/LayoutObjects/AdBreakLayoutData');
-const AdPathLayoutData = require('../lib/dataObjects/LayoutObjects/AdPathLayoutData');
+const VODManifestLayoutData = require('../../lib/dataObjects/layoutObjects/VODManifestLayoutData');
+const DynamicClipData = require('../../lib/dataObjects/layoutObjects/DynamicClipData');
+const SourceClipData = require('../../lib/dataObjects/layoutObjects/SourceClipData');
+const SourceClipDataArray = require('../../lib/dataObjects/layoutObjects/SourceClipDataArray');
+const NotificationLayoutData = require('../../lib/dataObjects/layoutObjects/NotificationLayoutData');
+const AdBreakLayoutData = require('../../lib/dataObjects/layoutObjects/AdBreakLayoutData');
+const AdPathLayoutData = require('../../lib/dataObjects/layoutObjects/AdPathLayoutData');
 
 const DURATION_A = 1000;
 const DURATION_B = 2000;

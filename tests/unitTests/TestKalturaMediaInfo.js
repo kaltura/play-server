@@ -13,11 +13,16 @@ const testsDirName = __dirname;
 const info = new KalturaMediaInfo('ffprobe');
 const badInfo = new KalturaMediaInfo('ffrobb');
 
+function removeWhiteSpaces(text){
+	return text.replace(/ /g,'');
+}
+
+
 describe('test KalturaMediaInfo class', function () {
 	it('test KalturaMediaInfo - get media info for a file that exist', function () {
 		return info.mediaInfoExec(resourcesPath + '/adSample').then(function (data) {
 			expect(data).to.be.an.instanceof(KalturaMediaInfoResponse);
-			expect(data.jsonInfo.substring(0, 40)).to.equal('{    "programs": [    ],    "streams": [');
+			expect(removeWhiteSpaces(data.jsonInfo).substring(0, 20)).to.equal('{"programs":[],"stre');
 		}, function (err) {
 			expect(err).to.be.null;
 		});
