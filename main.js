@@ -4,6 +4,8 @@ var kaltura = require('./lib/KalturaServer');
 
 var KalturaProcess = null;
 
+Error.stackTraceLimit = Infinity;
+
 if (cluster.isMaster) {
 	KalturaProcess = new kaltura.KalturaMainProcess();
 }
