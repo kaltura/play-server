@@ -85,7 +85,6 @@ describe('testApiClientConnector', function () {
 
 	it('test handleApiRequest with flavorId get action', function () {
 		return connector.handleApiRequest('flavorAsset', 'get', [flavorId], impersonatePartnerId).then(function (data) {
-			console.log(`flavorID data: ${data}`);
 			expect(data).not.to.be.null;
 		}, function (err) {
 			if (!err)

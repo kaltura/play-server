@@ -1,12 +1,12 @@
 const chai = require('chai');
 const expect = chai.expect;
-const kalturaTypes = require('../lib/client/KalturaTypes');
-const ApiClientConnector = require('../lib/infra/ApiServerClientConnector');
-const KalturaMediaInfo = require('../lib/utils/KalturaMediaInfo');
-const TrancodinfEngine = require('../lib/infra/TranscodingEngine');
-const KalturaFFMpegCmdGenerator = require('../lib/utils/KalturaFFMpegCmdGenerator');
-const KalturaMediaInfoResponse = require('../lib/utils/KalturaMediaInfoResponse');
-const TranscodingEngineResponse = require('../lib/infra/TranscodingEngineResponse');
+const kalturaTypes = require('../../lib/client/KalturaTypes');
+const ApiClientConnector = require('../../lib/infra/ApiServerClientConnector');
+const KalturaMediaInfo = require('../../lib/utils/KalturaMediaInfo');
+const TrancodinfEngine = require('../../lib/infra/TranscodingEngine');
+const KalturaFFMpegCmdGenerator = require('../../lib/utils/KalturaFFMpegCmdGenerator');
+const KalturaMediaInfoResponse = require('../../lib/utils/KalturaMediaInfoResponse');
+const TranscodingEngineResponse = require('../../lib/infra/TranscodingEngineResponse');
 
 
 const serviceUrl = KalturaConfig.config.testing.serviceUrl;
@@ -39,7 +39,6 @@ describe('test the flow of ad transcode', function () {
 			commandLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(data, filePath, outPath);
 			expect(commandLine).to.not.be.null;
 		}, function (err) {
-			console.log(err);
 			expect(err).to.be.null;
 		});
 	});

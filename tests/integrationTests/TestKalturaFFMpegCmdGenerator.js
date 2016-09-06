@@ -3,21 +3,21 @@
  */
 const chai = require('chai');
 const expect = chai.expect;
-const KalturaFFMpegCmdGenerator = require('../lib/utils/KalturaFFMpegCmdGenerator');
-const kalturaTypes = require('../lib/client/KalturaTypes');
-const ApiClientConnector = require('../lib/infra/ApiServerClientConnector');
-const KalturaMediaInfo = require('../lib/utils/KalturaMediaInfo');
-const KalturaMediaInfoResponse = require('../lib/utils/KalturaMediaInfoResponse');
+const KalturaFFMpegCmdGenerator = require('../../lib/utils/KalturaFFMpegCmdGenerator');
+const kalturaTypes = require('../../lib/client/KalturaTypes');
+const ApiClientConnector = require('../../lib/infra/ApiServerClientConnector');
+const KalturaMediaInfo = require('../../lib/utils/KalturaMediaInfo');
+const KalturaMediaInfoResponse = require('../../lib/utils/KalturaMediaInfoResponse');
 
 const serviceUrl = KalturaConfig.config.testing.serviceUrl;
 const secret = KalturaConfig.config.testing.secret;
 const partnerId = KalturaConfig.config.testing.partnerId;
-const testsDirName = __dirname;
 const flavorId = KalturaConfig.config.testing.flavorId;
+const resourcesPath = KalturaConfig.config.testing.resourcesPath;
+const outputPath = KalturaConfig.config.testing.outputPath;
 const info = new KalturaMediaInfo('ffprobe');
 const connector = new ApiClientConnector(partnerId, secret, kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);
 let response = null;
-
 function removeWhiteSpaces(text){
 	return text.replace(/ /g,'');
 }
@@ -25,7 +25,7 @@ function removeWhiteSpaces(text){
 
 describe('test KalturaFFMpegCmdGenerator', function () {
 	it('test - get mediaInfo for ad', function () {
-		return info.mediaInfoExec(`${testsDirName}/resources/adSample`).then(function (data) {
+		return info.mediaInfoExec(resourcesPath + '/adSample').then(function (data) {
 			expect(data).to.be.an.instanceof(KalturaMediaInfoResponse);
 			expect(removeWhiteSpaces(data.jsonInfo).substring(0, 20)).to.equal('{"programs":[],"stre');
 			response = data;
@@ -46,15 +46,20 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 	});
 
 	it('test - get command line via Api call', function() {
-		const filePath = `${testsDirName}/resources/adSample`;
-		const outputPath = `${testsDirName}/resources/adSample_output.mpg`;
+		const filePath = resourcesPath + '/adSample';
+		const outputFilePath = outputPath + '/adSample_output.mpg';
 		return KalturaFFMpegCmdGenerator.generateCommandLineFormat(flavorId, response.jsonInfo, 15, connector, KalturaConfig.config.testing.impersonatePartnerId).then(function (data) {
 			expect(data).to.not.be.null;
-			const cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(data, filePath, outputPath);
+			const cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(data, filePath, outputFilePath);
 			expect(cmdLine).to.not.be.null;
 		}, function (err) {
-			console.log(err);
-			expect(err).to.be.null;
+			if (!err)
+				expect(true).to.be.true;
+			else {
+				expect(err).to.have.property('response');
+				const cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(err.response, filePath, outputFilePath);
+				expect(cmdLine).to.not.be.null;
+			}
 		});
 	});
 
