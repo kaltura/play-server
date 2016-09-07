@@ -1,5 +1,6 @@
 [testing]
 serviceUrl = @SERVICE_URL@
+nginxUrl = @nginxUrl@
 partnerId = -6
 secret = @PLAY_PARTNER_ADMIN_SECRET@
 timeout = 90

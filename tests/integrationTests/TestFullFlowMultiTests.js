@@ -2,9 +2,9 @@ const os = require('os');
 const util = require('util');
 const fs = require('fs');
 const child_process = require('child_process');
-const kalturaClient = require('../lib/client/KalturaClient');
-const testingHelper = require('./infra/testingHelper');
-const config = require('../lib/utils/KalturaConfig')
+const kalturaClient = require('../../lib/client/KalturaClient');
+const testingHelper = require('./../infra/testingHelper');
+const config = require('../../lib/utils/KalturaConfig')
 
 let Promise = require("bluebird");
 
