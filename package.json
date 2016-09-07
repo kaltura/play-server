@@ -16,8 +16,6 @@
 		"memjs": ">=0.8.5",
 		"forever": ">=0.10.10",
 		"binstring": ">=0.2.1",
-		"jsqrcode": ">=0.0.6",
-		"zbarimg": "1.1.1",
 		"couchbase": "~2.2.1",
 		"mkdirp": "=0.5.1",
 		"bluebird": "~3.4.1",
@@ -25,6 +23,8 @@
 		"rmdir": "1.2.0"
  	},
 	"devDependencies": {
+		"jsqrcode": ">=0.0.6",
+		"zbarimg": "1.1.1",
 		"chai": ">=3.5.0",
 		"eslint": "^3.0.1",
 		"eslint-config-airbnb": "^9.0.1",

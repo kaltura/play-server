@@ -13,9 +13,9 @@ const zbarimg = require('zbarimg');
 const child_process = require('child_process');
 const uuid = require('uuid');
 require('../../lib/utils/KalturaUtils.js');
-
-const config = require('../../lib/utils/KalturaConfig')
+const config = require('../../lib/utils/KalturaConfig');
 const outputDir = KalturaConfig.config.testing.outputPath;
+const uiConfId = KalturaConfig.config.testing.uiConfId;
 
 if (!fs.existsSync(outputDir))
     fs.mkdirSync(outputDir);
@@ -31,7 +31,6 @@ const KalturaClientLogger = {
 };
 
 class PlayServerTestingHelper {
-
     constructor() {
     }
 
@@ -79,6 +78,12 @@ class PlayServerTestingHelper {
             client.setKs(callback);
             return client;
         }
+    }
+
+    static initTestHelper(serverHost, partnerId, adminSecret) {
+        this.serverHost = serverHost;
+        this.partnerId = partnerId;
+        this.adminSecret = adminSecret;
     }
 
     static parseCommandLineOptionsAndRunTest(callback) {
@@ -302,33 +307,35 @@ class PlayServerTestingHelper {
                             }
                         }
 
-                        let m3u8Url = 'http://' + PlayServerTestingHelper.serverHost + ':82/hls/p/' + PlayServerTestingHelper.partnerId + '/usePlayServer/1/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/uiConfId/23448255/sessionId/' + uuid.v1() + '/index.m3u8';
-                        PlayServerTestingHelper.printStatus("Build m3u8 Url is: " + m3u8Url);
-                        resolve(m3u8Url);
+                        // let m3u8Url = 'http://' + PlayServerTestingHelper.serverHost + ':82/hls/p/' + PlayServerTestingHelper.partnerId + '/usePlayServer/1/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/uiConfId/23448255/sessionId/' + uuid.v1() + '/index.m3u8';
+                        // PlayServerTestingHelper.printStatus("Build m3u8 Url is: " + m3u8Url);
+                        // resolve(m3u8Url);
+                        //as return from apiServer
+                        //let b = 'http://qa-nginx-vod2.dev.kaltura.com:82/hls/p/4828/sp/482800/serveFlavor/entryId/0_f4j8vqj5/usePlayServer/1/uiConfId/15197922/sessionId/192.168.161.118_0.059987330371508/v/2/flavorId/0_giqgeu8t/name/a.mp4/index.m3u8';
+                        // take UiConf from config
+                        let playManifest = 'http://' + PlayServerTestingHelper.serverHost + '/p/' + PlayServerTestingHelper.partnerId + '/sp/10300/playManifest/usePlayServer/1/uiconf/' + uiConfId + '/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/format/applehttp/protocol/http/a.m3u8';
+                        PlayServerTestingHelper.printStatus("trying to get play manifest " + playManifest);
 
-                        //let playManifest = 'http://' + PlayServerTestingHelper.serverHost + '/p/' + PlayServerTestingHelper.partnerId + '/sp/10300/playManifest/usePlayServer/1/uiconf/23448262/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/format/applehttp/protocol/http/a.m3u8';
-                        //PlayServerTestingHelper.printStatus("trying to get play manifest " + playManifest);
-                        //
-                        //new Promise( function (resolve, reject){
-                        //    KalturaUtils.getHttpUrl(playManifest, null, function (manifestContent) {
-                        //        PlayServerTestingHelper.printStatus("manifestContent is: " + manifestContent);
-                        //        if(resolve){
-                        //            let m3u8Url;
-                        //            var split = manifestContent.split('\n');
-                        //            for (let i = 0 ; i < split.length ; i++)
-                        //            if (split[i].trim().startsWith("http"))
-                        //                m3u8Url = split[i];
-                        //            PlayServerTestingHelper.printStatus("Build m3u8 Url is: " + m3u8Url);
-                        //            resolve(m3u8Url);
-                        //        }
-                        //    }, function (err) {
-                        //        PlayServerTestingHelper.printStatus("Error getting manifestContent:");
-                        //        if(reject){
-                        //            reject(err);
-                        //        }
-                        //    });
-                        //}
-                        //).then(resolve,reject );
+                        new Promise( function (resolve, reject){
+                           KalturaUtils.getHttpUrl(playManifest, null, function (manifestContent) {
+                               PlayServerTestingHelper.printStatus("manifestContent is: " + manifestContent);
+                               if(resolve){
+                                   let m3u8Url;
+                                   var split = manifestContent.split('\n');
+                                   for (let i = 0 ; i < split.length ; i++)
+                                   if (split[i].trim().startsWith("http"))
+                                       m3u8Url = split[i];
+                                   PlayServerTestingHelper.printStatus("Build m3u8 Url is: " + m3u8Url);
+                                   resolve(m3u8Url);
+                               }
+                           }, function (err) {
+                               PlayServerTestingHelper.printStatus("Error getting manifestContent:");
+                               if(reject){
+                                   reject(err);
+                               }
+                           });
+                        }
+                        ).then(resolve,reject );
                     }
                 },
                 entry.id);
@@ -444,11 +451,11 @@ class PlayServerTestingHelper {
         test.runTest(input, function (res) {
             PlayServerTestingHelper.printInfo("Finished Test: " + testName);
             PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
-            //PlayServerTestingHelper.cleanFolder(input.outputDir);
+            PlayServerTestingHelper.cleanFolder(input.outputDir);
             return assert.equal(res, true);
         }, function (res) {
             PlayServerTestingHelper.printInfo("Finished Test" + testName);
-            //PlayServerTestingHelper.cleanFolder(input.outputDir);
+            PlayServerTestingHelper.cleanFolder(input.outputDir);
             PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
             return assert.equal(res, false);
         });
