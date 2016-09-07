@@ -2,9 +2,9 @@ const os = require('os');
 const util = require('util');
 const fs = require('fs');
 const child_process = require('child_process');
-const kalturaClient = require('../lib/client/KalturaClient');
-const testingHelper = require('./infra/testingHelper');
-const config = require('../lib/utils/KalturaConfig')
+const kalturaClient = require('../../lib/client/KalturaClient');
+const testingHelper = require('./../infra/testingHelper');
+const config = require('../../lib/utils/KalturaConfig')
 
 let Promise = require("bluebird");
 
@@ -25,9 +25,9 @@ class PreRoleAdTester {
 			for (let i = 0; i < qrCodesResults.length; i++) {
 				if (!PreRoleAdTester.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
-						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
+						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning of video but Ad cue point is not defined for that time");
 					else
-						errorsArray.push('FAIL - Found video thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is defined for that time");
+						errorsArray.push('FAIL - Found video thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning of video but Ad cue point is defined for that time");
 				}
 			}
 			if (errorsArray.length > 0) {
@@ -64,22 +64,13 @@ class PreRoleAdTester {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-								playServerTestingHelper.printStatus('1st Attempt - Validating Ads and Videos according to CuePoints. Expected To fail and not play Ad at starting of video');
+								playServerTestingHelper.printStatus('1st Attempt - Validating Ads and Videos according to CuePoints. Expected To pass or fail on first try to play Ad at starting of video');
 								PreRoleAdTester.ValidateAll(results).then(function () {
-										playServerTestingHelper.printError('Pre-role Ad was played on first attempt.');
-										reject(fail);
+										playServerTestingHelper.printStatus('Pre-role Ad was played on first attempt.');
+										resolve(true);
 									}
 									, function (results) {
-										playServerTestingHelper.printOk('1st Attempt failed as expected');
-										playServerTestingHelper.printStatus('2st Attempt - Validating Ads and Videos according to CuePoints. Expected To Succeed and play Ad at starting of video');
-
-										playServerTestingHelper.cleanFolder(input.outputDir);
-
-										input.outputDir = outputDir +'/attempt2/';
-
-										if (!fs.existsSync(input.outputDir))
-											fs.mkdirSync(input.outputDir);
-
+										playServerTestingHelper.printStatus('Pre-role Ad weren\'t played on first attempt.');
 										PreRoleAdTester.runTest2ndAttempt(input, resolve, reject);
 									})
 									.catch(function () {
@@ -96,7 +87,19 @@ class PreRoleAdTester {
 		});
 	}
 
+
+
 	static runTest2ndAttempt(input, resolve, reject) {
+
+		playServerTestingHelper.printStatus('2st Attempt - Validating Ads and Videos according to CuePoints. Expected To Succeed and play Ad at starting of video');
+
+		playServerTestingHelper.cleanFolder(input.outputDir);
+
+		input.outputDir = outputDir +'/attempt2/';
+
+		if (!fs.existsSync(input.outputDir))
+			fs.mkdirSync(input.outputDir);
+
 		playServerTestingHelper.generateThumbsFromM3U8Promise(input.m3u8Url, input.outputDir)
 			.then(function () {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
@@ -149,7 +152,7 @@ function testInit(client) {
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			// when bug is fixed please modify cue point start time to 0
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 1000, 15000);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 2000, 15000);
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
