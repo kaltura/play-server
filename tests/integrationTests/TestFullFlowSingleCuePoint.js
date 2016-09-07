@@ -2,9 +2,9 @@ const os = require('os');
 const util = require('util');
 const fs = require('fs');
 const child_process = require('child_process');
-const kalturaClient = require('../lib/client/KalturaClient');
-const testingHelper = require('./infra/testingHelper');
-const config = require('../lib/utils/KalturaConfig')
+const kalturaClient = require('../../lib/client/KalturaClient');
+const testingHelper = require('./../infra/testingHelper');
+const config = require('../../lib/utils/KalturaConfig')
 
 let Promise = require("bluebird");
 
@@ -141,7 +141,7 @@ function testInit(client) {
 				if (myArray.length !== 2){
 					throw new Error('only single sessionId allowed');
 				}
-				let suffix = myArray[1].substr(myArray[1].indexOf('/index'));
+				let suffix = myArray[1].substr(myArray[1].indexOf('/v/2/'));
 				input.m3u8Url = myArray[0] + 'sessionId/' + Math.floor(Math.random() * 50000000) + suffix;
 				setTimeout(function(){
 					console.log('test ' + y);

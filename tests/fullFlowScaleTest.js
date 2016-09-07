@@ -4,7 +4,7 @@ const fs = require('fs');
 const child_process = require('child_process');
 const kalturaClient = require('../lib/client/KalturaClient');
 const testingHelper = require('./infra/testingHelper');
-const config = require('../lib/utils/KalturaConfig')
+const config = require('../lib/utils/KalturaConfig');
 const uuid = require('uuid');
 
 let Promise = require("bluebird");
@@ -12,6 +12,8 @@ let Promise = require("bluebird");
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const scaleTestInvokers = KalturaConfig.config.testing.scaleTestInvokers;
 const outputDir = KalturaConfig.config.testing.outputPath;
+const uiConfId = KalturaConfig.config.testing.uiConfId;
+const nginxUrl = KalturaConfig.config.testing.nginxUrl;
 const beaconTrackingDir = outputDir  + '/beaconTracking';
 
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
@@ -125,7 +127,9 @@ function testInit(client) {
 			for ( let i = 0 ; i < scaleTestInvokers ; i++)
 			{
 				playServerTestingHelper.printStatus('Building m3u8Url for scaleTestInovker'+ i);
-				let m3u8Url = 'http://' + playServerTestingHelper.serverHost + ':82/hls/p/' + playServerTestingHelper.partnerId + '/usePlayServer/1/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/uiConfId/23448255/sessionId/' + uuid.v1() + '/index.m3u8';
+				let m3u8Url = nginxUrl + ':82/hls/p/' + playServerTestingHelper.partnerId + '/sp/' + playServerTestingHelper.partnerId + '00/serveFlavor/entryId/' + entry.id + '/usePlayServer/1/uiConfId/' + uiConfId + '/sessionId/' + uuid.v1() + '/v/2/flavorId/' + flavor.id + '/name/a.mp4/index.m3u8';
+				//let m3u8Url = 'http://' + playServerTestingHelper.serverHost + ':82/hls/p/' + playServerTestingHelper.partnerId + '/serveFlavor/entryId/' + entry.id + '/usePlayServer/1/uiConfId/' + uiConfId + '/sessionId/' + uuid.v1() + '/v/2/flavorId/' + flavor.id + '/name/a.mp4/index.m3u8';
+				//let m3u8Url = 'http://' + playServerTestingHelper.serverHost + ':82/hls/p/' + playServerTestingHelper.partnerId + '/usePlayServer/1/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/uiConfId/23448255/sessionId/' + uuid.v1() + '/index.m3u8';
 				playServerTestingHelper.printStatus("Build m3u8 Url is: " + m3u8Url);
 				m3u8Urls.push(m3u8Url);
 			}
