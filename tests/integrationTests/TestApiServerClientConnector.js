@@ -58,30 +58,30 @@ describe('testApiClientConnector', function () {
 			}
 		});
 	});
-	//
-	// it('test setValueInCache  ', function () {
-	// 	const params = { apiCallService: 'someService', apiCallAction: 'someAction', params: [199], impersonatePartnerId: 101 };
-	// 	const res = { member1: 'val1', member2: 'val2' };
-	// 	return ApiClientConnector._setValueInCache({ cacheParams: params, response: res }).then(function (data) {
-	// 		expect(data.response).to.have.property('member1').and.equal('val1');
-	// 		expect(data.response).to.have.property('member2').and.equal('val2');
-	// 	}, function (err) {
-	// 		expect(err).to.be.null;
-	// 	});
-	// });
-	//
-	// it('test getValueFromCache  ', function () {
-	// 	const params = { apiCallService: 'someService', apiCallAction: 'someAction', params: [199], impersonatePartnerId: 101};
-	// 	return ApiClientConnector._getValueFromCache(params).then(
-	// 		function (data) {
-	// 			expect(data.response).to.have.property('member1').and.equal('val1');
-	// 			expect(data.response).to.have.property('member2').and.equal('val2');
-	// 		}, function (err) {
-	// 			expect(err).to.be.null;
-	// 		}
-	// 	);
-	// });
-	//
+
+	it('test setValueInCache  ', function () {
+		const params = { apiCallService: 'someService', apiCallAction: 'someAction', params: [199], impersonatePartnerId: 101 };
+		const res = { member1: 'val1', member2: 'val2' };
+		return ApiClientConnector._setValueInCache({ cacheParams: params, response: res }).then(function (data) {
+			expect(data.response).to.have.property('member1').and.equal('val1');
+			expect(data.response).to.have.property('member2').and.equal('val2');
+		}, function (err) {
+			expect(err).to.be.null;
+		});
+	});
+
+	it('test getValueFromCache  ', function () {
+		const params = { apiCallService: 'someService', apiCallAction: 'someAction', params: [199], impersonatePartnerId: 101};
+		return ApiClientConnector._getValueFromCache(params).then(
+			function (data) {
+				expect(data.response).to.have.property('member1').and.equal('val1');
+				expect(data.response).to.have.property('member2').and.equal('val2');
+			}, function (err) {
+				expect(err).to.be.null;
+			}
+		);
+	});
+
 
 	it('test handleApiRequest with flavorId get action', function () {
 		return connector.handleApiRequest('flavorAsset', 'get', [flavorId], impersonatePartnerId).then(function (data) {

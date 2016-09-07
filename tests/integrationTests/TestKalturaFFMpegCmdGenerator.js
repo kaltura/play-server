@@ -39,9 +39,10 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 			expect(data).to.not.be.null;
 			expect(connector.client.getKs()).to.not.be.null;
 		}, function (err) {
-			expect(err).to.have.property('response');
-			expect(err.response).to.not.equal('').and.not.equal(null);
-			//expect(err).to.be.null;
+			//to check with no cache:
+			//expect(err).to.have.property('response');
+			//expect(err.response).to.not.equal('').and.not.equal(null);
+			expect(err).to.be.null;
 		});
 	});
 

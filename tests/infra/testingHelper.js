@@ -307,12 +307,6 @@ class PlayServerTestingHelper {
                             }
                         }
 
-                        // let m3u8Url = 'http://' + PlayServerTestingHelper.serverHost + ':82/hls/p/' + PlayServerTestingHelper.partnerId + '/usePlayServer/1/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/uiConfId/23448255/sessionId/' + uuid.v1() + '/index.m3u8';
-                        // PlayServerTestingHelper.printStatus("Build m3u8 Url is: " + m3u8Url);
-                        // resolve(m3u8Url);
-                        //as return from apiServer
-                        //let b = 'http://qa-nginx-vod2.dev.kaltura.com:82/hls/p/4828/sp/482800/serveFlavor/entryId/0_f4j8vqj5/usePlayServer/1/uiConfId/15197922/sessionId/192.168.161.118_0.059987330371508/v/2/flavorId/0_giqgeu8t/name/a.mp4/index.m3u8';
-                        // take UiConf from config
                         let playManifest = 'http://' + PlayServerTestingHelper.serverHost + '/p/' + PlayServerTestingHelper.partnerId + '/sp/10300/playManifest/usePlayServer/1/uiconf/' + uiConfId + '/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/format/applehttp/protocol/http/a.m3u8';
                         PlayServerTestingHelper.printStatus("trying to get play manifest " + playManifest);
 

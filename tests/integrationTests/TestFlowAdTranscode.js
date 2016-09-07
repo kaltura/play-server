@@ -19,13 +19,16 @@ const info = new KalturaMediaInfo('ffprobe');
 const connector = new ApiClientConnector(partnerId, secret, kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);
 let response = null;
 let commandLine = null;
+function removeWhiteSpaces(text){
+	return text.replace(/ /g,'');
+}
 
 describe('test the flow of ad transcode', function () {
 	this.timeout(0);
 	it('test - get mediaInfo for ad', function () {
 		return info.mediaInfoExec(filePath).then(function (data) {
 			expect(data).to.be.an.instanceof(KalturaMediaInfoResponse);
-			expect(data.jsonInfo.substring(0, 40)).to.equal('{    "programs": [    ],    "streams": [');
+			expect(removeWhiteSpaces(data.jsonInfo).substring(0, 20)).to.equal('{"programs":[],"stre');
 			response = data;
 		}, function (err) {
 			expect(err).to.be.null;
