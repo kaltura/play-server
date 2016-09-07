@@ -1,16 +1,19 @@
 const chai = require('chai');
-const VastSizeFilter = require('../lib/protocols/vast/filters/VastSizeFilter');
+const VastSizeFilter = require('../../lib/protocols/vast/filters/VastSizeFilter');
 const expect = chai.expect; // we are using the "expect" style of Chai
-const KalturaVastParser = require('../lib/protocols/vast/KalturaVastParser');
-const VideoAttributes = require('../lib/dataObjects/ApiResponseObjects/VideoAttributes');
+const KalturaVastParser = require('../../lib/protocols/vast/KalturaVastParser');
+const VideoAttributes = require('../../lib/dataObjects/apiResponseObjects/VideoAttributes');
 
-const VAST_EXAMPLE_URL = `file:${__dirname}/resources/VastExample.xml`;
+
+require('../../lib/utils/KalturaConfig');
+const resourcesPath = KalturaConfig.config.testing.resourcesPath;
+const VAST_EXAMPLE_URL = 'file:' + resourcesPath + '/VastExampleForUnitTest.xml';
+
 const VAST_TIMEOUT = 1000;
-const DEFAULT_HEADERS = null;
+const DEFAULT_HEADERS = {};
 let vastResponse = null;
 
 describe('Test Size Filter', function(){
-
 	// Since the call is asynchronous we need to use done to verify completion
 	before(function(done){
 		KalturaVastParser.parse(VAST_EXAMPLE_URL, DEFAULT_HEADERS, VAST_TIMEOUT,

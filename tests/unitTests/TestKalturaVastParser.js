@@ -1,10 +1,13 @@
 const chai = require('chai');
 const expect = chai.expect; // we are using the "expect" style of Chai
-const KalturaVastParser = require('../lib/protocols/vast/KalturaVastParser');
+const KalturaVastParser = require('../../lib/protocols/vast/KalturaVastParser');
 
-const VAST_FILE_EXAMPLE_URL = `file:${__dirname}/resources/VastExample.xml`;
+require('../../lib/utils/KalturaConfig');
+const resourcesPath = KalturaConfig.config.testing.resourcesPath;
+const VAST_FILE_EXAMPLE_URL = 'file:' + resourcesPath + '/VastExampleForUnitTest.xml';
+
 const VAST_ONLINE_EXAMPLE_URL = `http://projects.kaltura.com/vast/vast12.xml`;
-const DEFAULT_HEADERS = null;
+const DEFAULT_HEADERS = {};
 const VAST_TIMEOUT = 1000;
 
 let vastResponse = null;

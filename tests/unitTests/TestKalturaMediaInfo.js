@@ -3,25 +3,33 @@
  */
 const chai = require('chai');
 const expect = chai.expect;
-const KalturaMediaInfo = require('../lib/utils/KalturaMediaInfo');
-const KalturaMediaInfoResponse = require('../lib/utils/KalturaMediaInfoResponse');
+const KalturaMediaInfo = require('../../lib/utils/KalturaMediaInfo');
+const KalturaMediaInfoResponse = require('../../lib/utils/KalturaMediaInfoResponse');
+
+require('../../lib/utils/KalturaConfig');
+const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 
 const testsDirName = __dirname;
 const info = new KalturaMediaInfo('ffprobe');
 const badInfo = new KalturaMediaInfo('ffrobb');
 
+function removeWhiteSpaces(text){
+	return text.replace(/ /g,'');
+}
+
+
 describe('test KalturaMediaInfo class', function () {
 	it('test KalturaMediaInfo - get media info for a file that exist', function () {
-		return info.mediaInfoExec(`${testsDirName}/resources/adSample`).then(function (data) {
+		return info.mediaInfoExec(resourcesPath + '/adSample').then(function (data) {
 			expect(data).to.be.an.instanceof(KalturaMediaInfoResponse);
-			expect(data.jsonInfo.substring(0, 20)).to.equal('{"programs":[],"stre');
+			expect(removeWhiteSpaces(data.jsonInfo).substring(0, 20)).to.equal('{"programs":[],"stre');
 		}, function (err) {
 			expect(err).to.be.null;
 		});
 	});
 
 	it('test KalturaMediaInfo - file doesn\'t exist', function () {
-		const fileName = `${testsDirName}/resources/12345`;
+		const fileName = resourcesPath + '/12345';
 		return info.mediaInfoExec(fileName).then(function (data) {
 			expect(data).to.be.null;
 		}, function (err) {
@@ -30,7 +38,7 @@ describe('test KalturaMediaInfo class', function () {
 	});
 
 	it('test KalturaMediaInfo - command line error', function () {
-		return badInfo.mediaInfoExec(`${testsDirName}/resources/adSample`).then(function (data) {
+		return badInfo.mediaInfoExec(resourcesPath + '/adSample').then(function (data) {
 			expect(data).to.be.null;
 		}, function (err) {
 			expect(err).to.be.an('error');
@@ -38,7 +46,7 @@ describe('test KalturaMediaInfo class', function () {
 	});
 
 	it('test KalturaMediaInfo - emptyFile', function () {
-		return info.mediaInfoExec(`${testsDirName}/resources/emptyFile`).then(function (data) {
+		return info.mediaInfoExec(resourcesPath + '/emptyFile').then(function (data) {
 			expect(data).to.be.null;
 		}, function (err) {
 			expect(err).to.not.be.null;

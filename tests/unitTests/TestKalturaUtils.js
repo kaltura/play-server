@@ -1,6 +1,6 @@
 const chai = require('chai');
 const expect = chai.expect; // we are using the "expect" style of Chai
-require('../lib/utils/KalturaUtils');
+require('../../lib/utils/KalturaUtils');
 
 
 describe('Testing KalturaUtils', function(){

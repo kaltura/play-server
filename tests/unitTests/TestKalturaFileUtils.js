@@ -3,9 +3,9 @@
 */
 const chai = require('chai');
 const expect = chai.expect;
-const KalturaFileUtils = require('../lib/utils/KalturaFileUtils');
-require('../lib/utils/KalturaUtils');
-require('../lib/utils/KalturaConfig');
+const KalturaFileUtils = require('../../lib/utils/KalturaFileUtils');
+require('../../lib/utils/KalturaUtils');
+require('../../lib/utils/KalturaConfig');
 const testDirPath = KalturaConfig.config.fileUtils.dirPath;
 const testFilePath = KalturaConfig.config.fileUtils.filePath;
 const day = KalturaConfig.config.fileUtils.day;

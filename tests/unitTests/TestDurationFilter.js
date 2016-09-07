@@ -1,11 +1,14 @@
 const chai = require('chai');
-const VastDurationFilter = require('../lib/protocols/vast/filters/VastDurationFilter');
+const VastDurationFilter = require('../../lib/protocols/vast/filters/VastDurationFilter');
 const expect = chai.expect; // we are using the "expect" style of Chai
-const KalturaVastParser = require('../lib/protocols/vast/KalturaVastParser');
+const KalturaVastParser = require('../../lib/protocols/vast/KalturaVastParser');
 
-const VAST_EXAMPLE_URL = `file:${__dirname}/resources/VastExample.xml`;
+require('../../lib/utils/KalturaConfig');
+const resourcesPath = KalturaConfig.config.testing.resourcesPath;
+const VAST_EXAMPLE_URL = 'file:' + resourcesPath + '/VastExampleForUnitTest.xml';
+
 const VAST_TIMEOUT = 1000;
-const DEFAULT_HEADERS = null;
+const DEFAULT_HEADERS = {};
 const COEFFICIENT = 1;
 
 let vastResponse = null;
