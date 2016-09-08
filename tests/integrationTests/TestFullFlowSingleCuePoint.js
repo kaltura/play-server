@@ -1,16 +1,20 @@
 const os = require('os');
 const util = require('util');
 const fs = require('fs');
+const chai = require('chai');
 const child_process = require('child_process');
 const kalturaClient = require('../../lib/client/KalturaClient');
 const testingHelper = require('./../infra/testingHelper');
-const config = require('../../lib/utils/KalturaConfig')
+const config = require('../../lib/utils/KalturaConfig');
 
 let Promise = require("bluebird");
 
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const outputDir = KalturaConfig.config.testing.outputPath;
 const beaconTrackingDir = outputDir  + '/beaconTracking';
+const serviceUrl = KalturaConfig.config.testing.serviceUrl;
+const impersonatePartnerId = KalturaConfig.config.testing.impersonatePartnerId;
+const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonatePartnerId;
 
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
@@ -92,14 +96,21 @@ class TestFullFlowSingleCuePoint {
 
 }
 
-playServerTestingHelper.parseCommandLineOptionsAndRunTest(main);
 
-function main(){
-	playServerTestingHelper.printInfo("Starting Test for: ");
-	playServerTestingHelper.printInfo('serverHost: [' + playServerTestingHelper.serverHost + '] partnerId: [' +  playServerTestingHelper.partnerId + '] adminSecret: [' + playServerTestingHelper.adminSecret + ']');
-	playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
+
+let DoneMethod;
+describe('test full flow', function () {
+	it('test - Single Cue Point', function (done) {
+		this.timeout(6000000);
+		DoneMethod = done;
+		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
+		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
+	});
+});
+function finishTest(res){
+	chai.expect(res).to.be.true;
+	DoneMethod();
 }
-
 
 function testInit(client) {
 	sessionClient = client;
@@ -146,7 +157,7 @@ function testInit(client) {
 				setTimeout(function(){
 					console.log('test ' + y);
 					const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
-					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input);
+					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, finishTest);
 				}, y * 60000);
 			}
 		})

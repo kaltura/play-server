@@ -16,7 +16,6 @@ require('../../lib/utils/KalturaUtils.js');
 const config = require('../../lib/utils/KalturaConfig');
 const outputDir = KalturaConfig.config.testing.outputPath;
 const uiConfId = KalturaConfig.config.testing.uiConfId;
-testResponse = 0;
 if (!fs.existsSync(outputDir))
     fs.mkdirSync(outputDir);
 
@@ -84,7 +83,6 @@ class PlayServerTestingHelper {
         this.serverHost = serverHost;
         this.partnerId = partnerId;
         this.adminSecret = adminSecret;
-        testResponse = 0;
     }
 
     static parseCommandLineOptionsAndRunTest(callback) {
@@ -440,23 +438,27 @@ class PlayServerTestingHelper {
         return qrPromises;
     }
 
-    static testInvoker(testName, test, input) {
+    static testInvoker(testName, test, input, doneMethod = null) {
         PlayServerTestingHelper.printInfo("Starting testing: " + testName);
 
         test.runTest(input, function (res) {
             PlayServerTestingHelper.printInfo("Finished Test: " + testName);
             PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
             PlayServerTestingHelper.cleanFolder(input.outputDir);
+			if (typeof doneMethod === 'function')
+				doneMethod(res);
             return assert.equal(res, true);
         }, function (res) {
             PlayServerTestingHelper.printInfo("Finished Test" + testName);
             PlayServerTestingHelper.cleanFolder(input.outputDir);
             PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+			if (typeof doneMethod === 'function')
+				doneMethod(res);
             return assert.equal(res, false);
         });
     }
 
-    static runMultiTests(m3u8Urls, videoThumbDirs, testNames, testClass) {
+    static runMultiTests(m3u8Urls, videoThumbDirs, testNames, testClass, doneMethod = null) {
 
         let testsPromises = [];
         for (let i = 0; i < testNames.length; i++) {
@@ -465,19 +467,26 @@ class PlayServerTestingHelper {
             input.outputDir = videoThumbDirs[i];
 
             testsPromises.push(PlayServerTestingHelper.multiTestInvoker(testNames[i], testClass, input));
+            PlayServerTestingHelper.sleep(100);
         }
 
         Promise.all(testsPromises).then(function () {
             if (testsErrorsArray.length > 0) {
                 for (let i = 0; i < testsErrorsArray.length; i++)
                     PlayServerTestingHelper.printError(testsErrorsArray[i]);
+				if (typeof doneMethod === 'function')
+					doneMethod(false);
                 return false;
             } else {
                 PlayServerTestingHelper.printOk('Finished invoking Multi tests Successfully');
+				if (typeof doneMethod === 'function')
+					doneMethod(true);
                 return true;
             }
         }, function (reason) {
             PlayServerTestingHelper.printError(reason);
+			if (typeof doneMethod === 'function')
+				doneMethod(false);
             return false;
         });
 
@@ -494,16 +503,14 @@ class PlayServerTestingHelper {
                 PlayServerTestingHelper.cleanFolder(input.outputDir);
                 if (!res)
                     testsErrorsArray.push(testName + " Failed");
-                testResponse = 1;
                 resolve()
 
             }, function (res) {
                 PlayServerTestingHelper.printInfo("Finished Test" + testName);
-                PlayServerTestingHelper.cleanFolder(input.outputDir);
                 PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+                PlayServerTestingHelper.cleanFolder(input.outputDir);
                 if (!res)
                     testsErrorsArray.push(testName + " Failed Here");
-                testResponse = -1;
                 resolve();
             });
         });
