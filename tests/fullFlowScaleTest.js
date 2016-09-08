@@ -20,14 +20,14 @@ let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
 
-class AdTester {
+class FullFlowScaleTest{
 
 	static ValidateAll(qrCodesResults) {
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Ads and Videos according to CuePoints...');
 			let errorsArray = [];
 			for (let i = 0; i < qrCodesResults.length; i++) {
-				if (!AdTester.validateQrResult(qrCodesResults[i])) {
+				if (!FullFlowScaleTest.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
 						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
 					else
@@ -47,9 +47,9 @@ class AdTester {
 
 	static validateQrResult(qrCodeItem) {
 		if (qrCodeItem.ad)
-			return AdTester.isValidAd(qrCodeItem);
+			return FullFlowScaleTest.isValidAd(qrCodeItem);
 		else // case of thumb not of a ad - should not be in time of a cuePoint
-			return !AdTester.isValidAd(qrCodeItem);
+			return !FullFlowScaleTest.isValidAd(qrCodeItem);
 	}
 
 	static isValidAd(qrCodeItem){
@@ -68,7 +68,7 @@ class AdTester {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							AdTester.ValidateAll(results).then(function () {
+							FullFlowScaleTest.ValidateAll(results).then(function () {
 									resolve(true);
 								}
 								, reject);
@@ -134,8 +134,8 @@ function testInit(client) {
 				m3u8Urls.push(m3u8Url);
 			}
 
-			let adTester = new AdTester();
-			playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, adTester);
+			let fullFlowScaleTest = new FullFlowScaleTest();
+			playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, FullFlowScaleTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

@@ -10,7 +10,6 @@ let Promise = require("bluebird");
 
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const outputDir = KalturaConfig.config.testing.outputPath;
-const beaconTrackingDir = outputDir  + '/beaconTracking';
 
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
@@ -31,7 +30,7 @@ class AdIsFillerOnlyTester {
 				}
 				else {
 					if (qrCodesResults[i].ad && qrCodesResults[i].ad.status != 3){
-						errorsArray.push('FAIL - Found Ad thumb with status ' + console.log(qrCodesResults[i].ad.status) + ' at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Filler should have been displayed");
+						errorsArray.push('FAIL - Found Ad thumb with status ' + qrCodesResults[i].ad.status + ' at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Filler should have been displayed");
 					}
 				}
 			}
@@ -103,10 +102,10 @@ function testInit(client) {
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/VideoWithFillerOnlyInCuePoint.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 10000, 5000, 'vastUrlWhenAdsAreLongerThan5Secs');
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 20000);
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
