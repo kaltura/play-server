@@ -2,14 +2,14 @@ const os = require('os');
 const util = require('util');
 const fs = require('fs');
 const child_process = require('child_process');
-const kalturaClient = require('../lib/client/KalturaClient');
-const testingHelper = require('./infra/testingHelper');
-const config = require('../lib/utils/KalturaConfig')
+const kalturaClient = require('../../lib/client/KalturaClient');
+const testingHelper = require('./../infra/testingHelper');
+const config = require('../../lib/utils/KalturaConfig')
 
 let Promise = require("bluebird");
 
-const resourcesPath = KalturaConfig.config.testClient.resourcesPath;
-const outputDir = KalturaConfig.config.testClient.outputPath;
+const resourcesPath = KalturaConfig.config.testing.resourcesPath;
+const outputDir = KalturaConfig.config.testing.outputPath;
 
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
@@ -46,8 +46,8 @@ class LengthOfVideoWithAdTest {
 			return LengthOfVideoWithAdTest.isValidAd(qrCodeItem);
 		else // case of thumb not of a ad - should not be in time of a cuePoint
 		{
-			return !LengthOfVideoWithAdTest.isValidAd(qrCodeItem);
 			videoTimings.push(qrCodeItem.contentTime);
+			return !LengthOfVideoWithAdTest.isValidAd(qrCodeItem);
 		}
 	}
 
@@ -68,16 +68,15 @@ class LengthOfVideoWithAdTest {
 				reject(false);
 				return;
 			}
-
 			var sorted_arr = videoTimings.slice().sort();
 
-			for (var i = 0; i < arr.length - 1; i++) {
+			for (var i = 0; i < sorted_arr.length - 1; i++) {
 				if (sorted_arr[i + 1] == sorted_arr[i]) {
 					playServerTestingHelper.printError("Found duplicated video thumbs at video content time:  " + sorted_arr[i + 1]);
 					reject(false);
 				}
 			}
-			playServerTestingHelper.printOk("All video thumb recieved succesfully and were unique without any duplicates.");
+			playServerTestingHelper.printOk("All video thumb received successfully and were unique without any duplicates.");
 			resolve(true);
 		});
 	}
@@ -92,7 +91,7 @@ class LengthOfVideoWithAdTest {
 									LengthOfVideoWithAdTest.validateLengthOfVideo().then(function () {
 											resolve(true);
 										}
-										, reject);
+										, reject(false));
 								}
 								, reject);
 						}, reject);
@@ -118,7 +117,6 @@ function main(){
 
 function testInit(client) {
 	sessionClient = client;
-	let LengthOfVideoWithAdTest = new LengthOfVideoWithAdTest();
 	let entry;
 	let testName = 'LengthOfVideoWithAdTest.js';
 
@@ -141,8 +139,8 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			let LengthOfVideoWithAdTest = new LengthOfVideoWithAdTest();
-			return playServerTestingHelper.testInvoker(testName, LengthOfVideoWithAdTest, input);
+			let lengthOfVideoWithAdTest = new LengthOfVideoWithAdTest();
+			return playServerTestingHelper.testInvoker(testName, lengthOfVideoWithAdTest, input);
 		})
 		.catch(playServerTestingHelper.printError);
 }

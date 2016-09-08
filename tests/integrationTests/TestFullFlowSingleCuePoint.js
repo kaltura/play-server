@@ -16,14 +16,14 @@ let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
 
-class AdTester {
+class TestFullFlowSingleCuePoint {
 
 	static ValidateAll(qrCodesResults) {
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Ads and Videos according to CuePoints...');
 			let errorsArray = [];
 			for (let i = 0; i < qrCodesResults.length; i++) {
-				if (!AdTester.validateQrResult(qrCodesResults[i])) {
+				if (!TestFullFlowSingleCuePoint.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
 						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
 					else
@@ -43,9 +43,9 @@ class AdTester {
 
 	static validateQrResult(qrCodeItem) {
 		if (qrCodeItem.ad)
-			return AdTester.isValidAd(qrCodeItem);
+			return TestFullFlowSingleCuePoint.isValidAd(qrCodeItem);
 		else // case of thumb not of a ad - should not be in time of a cuePoint
-			return !AdTester.isValidAd(qrCodeItem);
+			return !TestFullFlowSingleCuePoint.isValidAd(qrCodeItem);
 	}
 
 	static isValidAd(qrCodeItem){
@@ -64,7 +64,7 @@ class AdTester {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							AdTester.ValidateAll(results).then(function () {
+							TestFullFlowSingleCuePoint.ValidateAll(results).then(function () {
 									resolve(true);
 								}
 								, reject);
@@ -103,9 +103,9 @@ function main(){
 
 function testInit(client) {
 	sessionClient = client;
-	let adTester = new AdTester();
+	let testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
 	let entry;
-	let testName = 'AdTester';
+	let testName = 'TestFullFlowSingleCuePoint';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
 
@@ -145,8 +145,8 @@ function testInit(client) {
 				input.m3u8Url = myArray[0] + 'sessionId/' + Math.floor(Math.random() * 50000000) + suffix;
 				setTimeout(function(){
 					console.log('test ' + y);
-					const adTester = new AdTester();
-					playServerTestingHelper.testInvoker(testName, adTester, input);
+					const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
+					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input);
 				}, y * 60000);
 			}
 		})

@@ -16,14 +16,14 @@ let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
 
-class AdTester {
+class FullFlowWithCouchBaseRestartTest{
 
 	static ValidateAll(qrCodesResults) {
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Ads and Videos according to CuePoints...');
 			let errorsArray = [];
 			for (let i = 0; i < qrCodesResults.length; i++) {
-				if (!AdTester.validateQrResult(qrCodesResults[i])) {
+				if (!FullFlowWithCouchBaseRestartTest.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
 						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
 					else
@@ -43,9 +43,9 @@ class AdTester {
 
 	static validateQrResult(qrCodeItem) {
 		if (qrCodeItem.ad)
-			return AdTester.isValidAd(qrCodeItem);
+			return FullFlowWithCouchBaseRestartTest.isValidAd(qrCodeItem);
 		else // case of thumb not of a ad - should not be in time of a cuePoint
-			return !AdTester.isValidAd(qrCodeItem);
+			return !FullFlowWithCouchBaseRestartTest.isValidAd(qrCodeItem);
 	}
 
 	static isValidAd(qrCodeItem){
@@ -64,7 +64,7 @@ class AdTester {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							AdTester.ValidateAll(results).then(function () {
+							FullFlowWithCouchBaseRestartTest.ValidateAll(results).then(function () {
 									resolve(true);
 								}
 								, reject);
@@ -77,18 +77,6 @@ class AdTester {
 				reject(false);
 			});
 	}
-
-	//function validateTrackedBeaconsFile() {
-//	playServerTestingHelper.printInfo("Start validateTrackedBeaconsFile");
-//
-//	if (fs.existsSync(beaconTrackingDir + '/beaconTracking.txt')) {
-//		var array = fs.readFileSync(beaconTrackingDir + '/beaconTracking.txt').toString().split("\n");
-//		for (i in array)
-//			playServerTestingHelper.printStatus(array[i]);
-//	}else {
-//		playServerTestingHelper.printError("Can't read " + beaconTrackingDir + '/beaconTracking.txt - file doesn\'t exists');
-//	}
-//}
 
 }
 
@@ -120,7 +108,7 @@ function testInit(client) {
 	sessionClient = client;
 	let adTester = new AdTester();
 	let entry;
-	let testName = 'AdTester';
+	let testName = 'FullFlowWithCouchBaseRestartTest';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
 
@@ -144,8 +132,8 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			let adTester = new AdTester();
-			return playServerTestingHelper.testInvoker(testName, adTester, input);
+			let fullFlowWithCouchBaseRestartTest = new FullFlowWithCouchBaseRestartTest();
+			return playServerTestingHelper.testInvoker(testName, fullFlowWithCouchBaseRestartTest, input);
 		})
 		.catch(playServerTestingHelper.printError);
 }
