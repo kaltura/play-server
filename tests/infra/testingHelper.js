@@ -16,7 +16,7 @@ require('../../lib/utils/KalturaUtils.js');
 const config = require('../../lib/utils/KalturaConfig');
 const outputDir = KalturaConfig.config.testing.outputPath;
 const uiConfId = KalturaConfig.config.testing.uiConfId;
-
+testResponse = 0;
 if (!fs.existsSync(outputDir))
     fs.mkdirSync(outputDir);
 
@@ -84,6 +84,7 @@ class PlayServerTestingHelper {
         this.serverHost = serverHost;
         this.partnerId = partnerId;
         this.adminSecret = adminSecret;
+        testResponse = 0;
     }
 
     static parseCommandLineOptionsAndRunTest(callback) {
@@ -493,6 +494,7 @@ class PlayServerTestingHelper {
                 PlayServerTestingHelper.cleanFolder(input.outputDir);
                 if (!res)
                     testsErrorsArray.push(testName + " Failed");
+                testResponse = 1;
                 resolve()
 
             }, function (res) {
@@ -501,7 +503,7 @@ class PlayServerTestingHelper {
                 PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
                 if (!res)
                     testsErrorsArray.push(testName + " Failed Here");
-
+                testResponse = -1;
                 resolve();
             });
         });
