@@ -1,7 +1,7 @@
 const chai = require('chai');
 const expect = chai.expect; // we are using the 'expect' style of Chai
-const KalturaCouchbaseConnector = require('../lib/utils/KalturaCouchbaseConnector');
-const KalturaMemcacheConnector = require('../lib/utils/KalturaMemcacheConnector');
+const KalturaCouchbaseConnector = require('../../lib/utils/KalturaCouchbaseConnector');
+const KalturaMemcacheConnector = require('../../lib/utils/KalturaMemcacheConnector');
 
 describe('testMemcacheConnector', function() {
 	const connector = KalturaMemcacheConnector;

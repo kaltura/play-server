@@ -22,3 +22,6 @@ year = @YEAR@
 prefix = @PREFIX@
 suffix = @SUFFIX@
 
+[testing][singleCuePoint]
+iterations = 2000
+intervalInMili = 60000

@@ -60,7 +60,7 @@ class PlayServerTestingHelper {
         console.log('Initializing client');
         var clientConfig = new kalturaClient.KalturaConfiguration(partnerId);
 
-        clientConfig.serviceUrl = 'http://' + serverHost;
+        clientConfig.serviceUrl = serverHost;
         clientConfig.clientTag = 'play-server-test-' + os.hostname();
         clientConfig.setLogger(KalturaClientLogger);
 
@@ -306,7 +306,7 @@ class PlayServerTestingHelper {
                             }
                         }
 
-                        let playManifest = 'http://' + PlayServerTestingHelper.serverHost + '/p/' + PlayServerTestingHelper.partnerId + '/sp/10300/playManifest/usePlayServer/1/uiconf/' + uiConfId + '/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/format/applehttp/protocol/http/a.m3u8';
+                        let playManifest = PlayServerTestingHelper.serverHost + '/p/' + PlayServerTestingHelper.partnerId + '/sp/10300/playManifest/usePlayServer/1/uiconf/' + uiConfId + '/entryId/' + entry.id + '/flavorIds/' + flavor.id + '/format/applehttp/protocol/http/a.m3u8';
                         PlayServerTestingHelper.printStatus("trying to get play manifest " + playManifest);
 
                         new Promise( function (resolve, reject){
