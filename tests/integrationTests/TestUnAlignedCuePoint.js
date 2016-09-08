@@ -1,9 +1,13 @@
 const fs = require('fs');
+const chai = require('chai');
 const testingHelper = require('./../infra/testingHelper');
 require('../../lib/utils/KalturaConfig');
 const Promise = require('bluebird');
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const outputDir = KalturaConfig.config.testing.outputPath;
+const serviceUrl = KalturaConfig.config.testing.serviceUrl;
+const impersonatePartnerId = KalturaConfig.config.testing.impersonatePartnerId;
+const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonatePartnerId;
 
 const playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
@@ -77,13 +81,20 @@ class UnAlignedCuePointTester {
 	}
 }
 
-playServerTestingHelper.parseCommandLineOptionsAndRunTest(main);
 
-function main()
-{
-	playServerTestingHelper.printInfo('Starting Test for: ');
-	playServerTestingHelper.printInfo(`serverHost: [${playServerTestingHelper.serverHost}] partnerId: [${playServerTestingHelper.partnerId}] adminSecret: [${playServerTestingHelper.adminSecret}]`);
-	playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
+
+let DoneMethod;
+describe('test full flow', function () {
+	it('test - UnAligned Cue-Point', function (done) {
+		this.timeout(180000);
+		DoneMethod = done;
+		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
+		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
+	});
+});
+function finishTest(res){
+	chai.expect(res).to.be.true;
+	DoneMethod();
 }
 
 function testInit(client)
@@ -112,7 +123,7 @@ function testInit(client)
 			input.outputDir = videoThumbDir;
 
 			const unalignedCuePointTester = new UnAlignedCuePointTester();
-			return playServerTestingHelper.testInvoker(testName, unalignedCuePointTester, input);
+			return playServerTestingHelper.testInvoker(testName, unalignedCuePointTester, input, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

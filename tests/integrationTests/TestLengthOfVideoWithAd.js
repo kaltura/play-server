@@ -1,15 +1,19 @@
 const os = require('os');
 const util = require('util');
 const fs = require('fs');
+const chai = require('chai');
 const child_process = require('child_process');
 const kalturaClient = require('../../lib/client/KalturaClient');
 const testingHelper = require('./../infra/testingHelper');
-const config = require('../../lib/utils/KalturaConfig')
+const config = require('../../lib/utils/KalturaConfig');
 
 let Promise = require("bluebird");
 
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const outputDir = KalturaConfig.config.testing.outputPath;
+const serviceUrl = KalturaConfig.config.testing.serviceUrl;
+const impersonatePartnerId = KalturaConfig.config.testing.impersonatePartnerId;
+const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonatePartnerId;
 
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
@@ -88,10 +92,11 @@ class LengthOfVideoWithAdTest {
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
 							LengthOfVideoWithAdTest.ValidateAll(results).then(function () {
-									LengthOfVideoWithAdTest.validateLengthOfVideo().then(function () {
+									 LengthOfVideoWithAdTest.validateLengthOfVideo().then(function () {
 											resolve(true);
-										}
-										, reject(false));
+										 } , function () {
+											 reject(false);
+										 });
 								}
 								, reject);
 						}, reject);
@@ -106,14 +111,21 @@ class LengthOfVideoWithAdTest {
 
 }
 
-playServerTestingHelper.parseCommandLineOptionsAndRunTest(main);
 
-function main(){
-	playServerTestingHelper.printInfo("Starting Test for: ");
-	playServerTestingHelper.printInfo('serverHost: [' + playServerTestingHelper.serverHost + '] partnerId: [' +  playServerTestingHelper.partnerId + '] adminSecret: [' + playServerTestingHelper.adminSecret + ']');
-	playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
+
+let DoneMethod;
+describe('test full flow', function () {
+	it('test - Length Of Video With Ad', function (done) {
+		this.timeout(180000);
+		DoneMethod = done;
+		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
+		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
+	});
+});
+function finishTest(res){
+	chai.expect(res).to.be.true;
+	DoneMethod();
 }
-
 
 function testInit(client) {
 	sessionClient = client;
@@ -140,7 +152,7 @@ function testInit(client) {
 			input.outputDir = videoThumbDir;
 
 			let lengthOfVideoWithAdTest = new LengthOfVideoWithAdTest();
-			return playServerTestingHelper.testInvoker(testName, lengthOfVideoWithAdTest, input);
+			return playServerTestingHelper.testInvoker(testName, lengthOfVideoWithAdTest, input, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }
