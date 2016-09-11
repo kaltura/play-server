@@ -244,13 +244,16 @@ class PlayServerTestingHelper {
         });
     }
 
-    static createCuePoint(client, entry, cuePointStartTime, cuePointDuration) {
+    static createCuePoint(client, entry, cuePointStartTime, cuePointDuration, specificVast) {
         return new Promise(function (resolve, reject) {
             let cuePoint = new kalturaClient.objects.KalturaAdCuePoint();
             cuePoint.entryId = entry.id;
             cuePoint.startTime = cuePointStartTime;
             cuePoint.duration = cuePointDuration;
-            cuePoint.sourceUrl = "http://dev-backend3.dev.kaltura.com/p/1/testing/getVast";
+            if (specificVast)
+                cuePoint.sourceUrl = "http://dev-backend3.dev.kaltura.com/p/1/testing/getVast?specificVast=".specificVast;
+            else 
+                cuePoint.sourceUrl = "http://dev-backend3.dev.kaltura.com/p/1/testing/getVast";
 
             client.cuePoint.add(function (results) {
                     if (!results) {

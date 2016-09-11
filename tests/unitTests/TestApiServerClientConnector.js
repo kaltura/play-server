@@ -29,7 +29,6 @@ describe('testApiClientConnector', function () {
 			}
 		});
 	});
-
 	it('test api exception', function () {
 		let wrongSecret = '123456789abcdefghi';
 		const falseConnector = new ApiClientConnector(partnerId, wrongSecret, kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);

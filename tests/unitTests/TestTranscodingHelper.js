@@ -50,7 +50,7 @@ describe('testTranscodingHelper', function ()
 	it('test transcode Ad To Disk', function (done)
 	{
 		this.timeout(30000);
-		console.log('transcodeExistingFileToDisk test out path ' + testsDirName);
+		console.log('transcodeExistingFileToDisk test out path ' + outputPath);
 		TranscodingHelper.transcodeExistingFileToDisk(flavorId, connector, impersonatePartnerId, adVideoFile, outputPath).then(
 			function (outPath) {
 				//console.log("\n3: " +JSON.stringify(outPath));
