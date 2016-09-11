@@ -87,18 +87,31 @@ class TestFullFlowMultiCuePoint {
 
 function validateTrackedBeaconsFile() {
 	playServerTestingHelper.printInfo("Start validateTrackedBeaconsFile");
-
 	if (fs.existsSync(beaconTrackingFile)) {
-		var array = fs.readFileSync(beaconTrackingFile).toString().split("\n");
-		for (i in array)
-			playServerTestingHelper.printStatus(array[i]);
-		if (array.length == 7)
+		var array = fs.readFileSync(beaconTrackingFile).toString().split('\n').map(function (line) {
+			return line.trim();
+		}).filter(Boolean);
+		var flag = true;
+		// those option are using in vastForBeaconTest
+		let options = ['start1', 'start2', 'midpoint', 'firstQuartile', 'thirdQuartile', 'complete1', 'complete2'];
+		array.forEach(function (line) {
+			playServerTestingHelper.printStatus(line);
+			let start = ('Tracked beacon: id: 10 of event Type: ').length;
+			line = line.substring(start,line.length);
+			let beaconTag = line.substring(0, line.indexOf(' '));
+			if (options.indexOf(beaconTag) < 0)
+				flag =  false;
+
+		});
+		playServerTestingHelper.printInfo('found ' + array.length + ' beacon Tracks');
+		if (array.length == 7 && flag)  // this is the number of beacon for this test using vastForBeaconTest
 			return true;
-	}else {
-		playServerTestingHelper.printError("Can't read " + beaconTrackingFile + ' - file doesn\'t exists');
+	} else {
+		playServerTestingHelper.printError("Can't read " + beaconTrackingDir + '/beaconTracking.txt - file doesn\'t exists');
+		return false;
 	}
-	return false;
 }
+
 
 let DoneMethod;
 describe('test full flow', function () {
@@ -112,10 +125,9 @@ describe('test full flow', function () {
 	});
 });
 function finishTest(res){
-	chai.expect(res).to.be.true;
-	res = validateTrackedBeaconsFile();
-	chai.expect(res).to.be.true;
-	DoneMethod();
+	let res2 = validateTrackedBeaconsFile();
+	if (res && res2)
+		DoneMethod();
 }
 
 function testInit(client) {
