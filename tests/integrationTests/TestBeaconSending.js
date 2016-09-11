@@ -11,7 +11,7 @@ let Promise = require("bluebird");
 
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const outputDir = KalturaConfig.config.testing.outputPath;
-const beaconTrackingDir = outputDir  + '/beaconTracking';
+const beaconTrackingFile = outputDir  + '/beaconTracking.txt';
 const serviceUrl = KalturaConfig.config.testing.serviceUrl;
 const impersonatePartnerId = KalturaConfig.config.testing.impersonatePartnerId;
 const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonatePartnerId;
@@ -88,13 +88,16 @@ class TestFullFlowMultiCuePoint {
 function validateTrackedBeaconsFile() {
 	playServerTestingHelper.printInfo("Start validateTrackedBeaconsFile");
 
-	if (fs.existsSync(beaconTrackingDir + '/beaconTracking.txt')) {
-		var array = fs.readFileSync(beaconTrackingDir + '/beaconTracking.txt').toString().split("\n");
+	if (fs.existsSync(beaconTrackingFile)) {
+		var array = fs.readFileSync(beaconTrackingFile).toString().split("\n");
 		for (i in array)
 			playServerTestingHelper.printStatus(array[i]);
+		if (array.length == 7)
+			return true;
 	}else {
-		playServerTestingHelper.printError("Can't read " + beaconTrackingDir + '/beaconTracking.txt - file doesn\'t exists');
+		playServerTestingHelper.printError("Can't read " + beaconTrackingFile + ' - file doesn\'t exists');
 	}
+	return false;
 }
 
 let DoneMethod;
@@ -102,13 +105,16 @@ describe('test full flow', function () {
 	it('test - Multi cue points', function (done) {
 		this.timeout(300000);
 		DoneMethod = done;
+		if (fs.existsSync(beaconTrackingFile))
+			fs.unlinkSync(beaconTrackingFile);
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 	});
 });
 function finishTest(res){
 	chai.expect(res).to.be.true;
-	validateTrackedBeaconsFile();
+	res = validateTrackedBeaconsFile();
+	chai.expect(res).to.be.true;
 	DoneMethod();
 }
 
@@ -123,17 +129,10 @@ function testInit(client) {
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	if (!fs.existsSync(beaconTrackingDir))
-		fs.mkdirSync(beaconTrackingDir);
-
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000, 'vastForBeaconTest');
-		})
-		.then(function (cuePoint) {
-			cuePointList.push(cuePoint);
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 90000, 15000, 'vastForBeaconTest');
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);

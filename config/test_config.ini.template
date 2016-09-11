@@ -1,6 +1,7 @@
 [testing]
 serviceUrl = @SERVICE_URL@
-nginxUrl = @nginxUrl@
+nginxUrl = @NGINX_URL@
+beaconServer = @BEACON_SERVER@
 partnerId = -6
 secret = @PLAY_PARTNER_ADMIN_SECRET@
 timeout = 90
