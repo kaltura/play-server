@@ -92,8 +92,8 @@ function validateTrackedBeaconsFile() {
 			return line.trim();
 		}).filter(Boolean);
 		var flag = true;
-		// those option are using in vastForBeaconTest
-		let options = ['start1', 'start2', 'midpoint', 'firstQuartile', 'thirdQuartile', 'complete1', 'complete2'];
+		// those option are using in vastForBeaconPODTest
+		let options = ['start', 'midpoint', 'firstQuartile', 'thirdQuartile', 'complete', 'impression'];
 		array.forEach(function (line) {
 			playServerTestingHelper.printStatus(line);
 			let start = ('Tracked beacon: id: 10 of event Type: ').length;
@@ -104,7 +104,7 @@ function validateTrackedBeaconsFile() {
 
 		});
 		playServerTestingHelper.printInfo('found ' + array.length + ' beacon Tracks');
-		if (array.length == 7 && flag)  // this is the number of beacon for this test using vastForBeaconTest
+		if (array.length == 12 && flag)  // this is the number of beacon for this test using vastForBeaconPODTest
 			return true;
 	} else {
 		playServerTestingHelper.printError("Can't read " + beaconTrackingDir + '/beaconTracking.txt - file doesn\'t exists');
@@ -115,7 +115,7 @@ function validateTrackedBeaconsFile() {
 
 let DoneMethod;
 describe('test full flow', function () {
-	it('test - Beacon Sending', function (done) {
+	it('test - Beacon POD Sending', function (done) {
 		this.timeout(300000);
 		DoneMethod = done;
 		if (fs.existsSync(beaconTrackingFile))
@@ -134,7 +134,7 @@ function testInit(client) {
 	sessionClient = client;
 	let testFullFlowMultiCuePoint = new TestFullFlowMultiCuePoint();
 	let entry;
-	let testName = 'fullFlowBeaconSendingTest';
+	let testName = 'fullFlowBeaconPODSendingTest';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
 
@@ -144,7 +144,7 @@ function testInit(client) {
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15500, 'vastForBeaconTest');
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 30500, 'vastForBeaconPODTest');
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
