@@ -1,16 +1,20 @@
 const os = require('os');
 const util = require('util');
 const fs = require('fs');
+const chai = require('chai');
 const child_process = require('child_process');
-const kalturaClient = require('../lib/client/KalturaClient');
-const testingHelper = require('./infra/testingHelper');
-const config = require('../lib/utils/KalturaConfig')
+const kalturaClient = require('../../lib/client/KalturaClient');
+const testingHelper = require('./../infra/testingHelper');
+const config = require('../../lib/utils/KalturaConfig');
 
 let Promise = require("bluebird");
 
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const outputDir = KalturaConfig.config.testing.outputPath;
 const beaconTrackingDir = outputDir  + '/beaconTracking';
+const serviceUrl = KalturaConfig.config.testing.serviceUrl;
+const impersonatePartnerId = KalturaConfig.config.testing.impersonatePartnerId;
+const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonatePartnerId;
 
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
@@ -81,32 +85,36 @@ class FullFlowWithCouchBaseRestartTest{
 }
 
 
-playServerTestingHelper.parseCommandLineOptionsAndRunTest(main);
-
-function main() {
-	playServerTestingHelper.printInfo("Starting Test for: ");
-	playServerTestingHelper.printInfo('serverHost: [' + playServerTestingHelper.serverHost + '] partnerId: [' + playServerTestingHelper.partnerId + '] adminSecret: [' + playServerTestingHelper.adminSecret + ']');
-
-	new Promise(function (resolve, reject) {
-		child_process.exec('service couchbase-server restart',
-			function (error, stdout, stderr) {
-				if (error !== null) {
-					playServerTestingHelper.printError('Couchbase restart Failed ' + error);
-					return;
-				} else {
-					playServerTestingHelper.printOk('Couchbase restart SUCCESS');
-					resolve()
-				}
-			});
-	}).then(function () {
-		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit)
+let DoneMethod;
+describe('test full flow', function () {
+	it('test - With CouchBase Restart', function (done) {
+		this.timeout(300000);
+		DoneMethod = done;
+		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
+		new Promise(function (resolve, reject) {
+			child_process.exec('service couchbase-server restart',
+				function (error, stdout, stderr) {
+					if (error !== null) {
+						playServerTestingHelper.printError('Couchbase restart Failed ' + error);
+						chai.expect(false).to.be.true;
+					} else {
+						playServerTestingHelper.printOk('Couchbase restart SUCCESS');
+						resolve()
+					}
+				});
+		}).then(function () {
+			playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit)
+		});
 	});
+});
+function finishTest(res){
+	chai.expect(res).to.be.true;
+	DoneMethod();
 }
 
 
 function testInit(client) {
 	sessionClient = client;
-	let adTester = new AdTester();
 	let entry;
 	let testName = 'FullFlowWithCouchBaseRestartTest';
 
@@ -133,7 +141,7 @@ function testInit(client) {
 			input.outputDir = videoThumbDir;
 
 			let fullFlowWithCouchBaseRestartTest = new FullFlowWithCouchBaseRestartTest();
-			return playServerTestingHelper.testInvoker(testName, fullFlowWithCouchBaseRestartTest, input);
+			return playServerTestingHelper.testInvoker(testName, fullFlowWithCouchBaseRestartTest, input, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

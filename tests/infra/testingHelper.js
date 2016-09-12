@@ -149,8 +149,11 @@ class PlayServerTestingHelper {
         process.exit(1);
     }
 
-    static createEntry(client, path) {
+    static createEntry(client, path, entryId) {
         let input = {client: client, path: path};
+        if (entryId)
+            return PlayServerTestingHelper.getEntryPromise(client, entryId);
+
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.createEntryPromise(input)
                 .then(PlayServerTestingHelper.uploadTokenPromise)
@@ -161,6 +164,20 @@ class PlayServerTestingHelper {
                 })
                 .catch(reject);
         });
+    }
+
+    static getEntryPromise(client, endryId) {
+        return new Promise(function (resolve, reject) {
+            client.baseEntry.get(function (results) {
+                if (results && results.code && results.message) {
+                    PlayServerTestingHelper.printError('Kaltura Error', results);
+                    reject(results);
+                } else {
+                    PlayServerTestingHelper.printOk('createEntry OK');
+                    resolve(results);
+                }
+            }, endryId);
+        })
     }
 
     static createEntryPromise(input) {
@@ -244,14 +261,18 @@ class PlayServerTestingHelper {
         });
     }
 
-    static createCuePoint(client, entry, cuePointStartTime, cuePointDuration) {
+    static createCuePoint(client, entry, cuePointStartTime, cuePointDuration, specificVast) {
         return new Promise(function (resolve, reject) {
             let cuePoint = new kalturaClient.objects.KalturaAdCuePoint();
             cuePoint.entryId = entry.id;
             cuePoint.startTime = cuePointStartTime;
             cuePoint.duration = cuePointDuration;
-            cuePoint.sourceUrl = "http://dev-backend3.dev.kaltura.com/p/1/testing/getVast";
-
+            let beaconServer = KalturaConfig.config.testing.beaconServer;
+            if (specificVast)
+                cuePoint.sourceUrl = beaconServer + "/p/1/testing/getVast?specificVast=" + specificVast;
+            else 
+                cuePoint.sourceUrl = beaconServer + "/p/1/testing/getVast";
+            console.log(cuePoint.sourceUrl);
             client.cuePoint.add(function (results) {
                     if (!results) {
                         reject("No cue point was created");

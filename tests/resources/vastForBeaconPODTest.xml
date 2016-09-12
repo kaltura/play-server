@@ -1,0 +1,80 @@
+<VAST version="3.0" xsi:noNamespaceSchemaLocation="vast.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<Ad id="ad1" sequence="1">
+		<InLine>
+			<AdSystem version="2.0">KALTURA_TEST</AdSystem>
+			<AdTitle/>
+			<Description/>
+			<Survey/>
+			<Impression id="DART"><![CDATA[
+				http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=impression
+			]]></Impression>
+			<Creatives>
+				<Creative sequence="1" AdID="10">
+					<Linear>
+						<Duration>00:00:15</Duration>
+						<TrackingEvents>
+							<Tracking event="start"><![CDATA[
+								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=start
+							]]></Tracking>
+							<Tracking event="midpoint"><![CDATA[
+								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=midpoint
+							]]></Tracking>
+							<Tracking event="firstQuartile"><![CDATA[
+								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=firstQuartile
+							]]></Tracking>
+							<Tracking event="thirdQuartile"><![CDATA[
+								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=thirdQuartile
+							]]></Tracking>
+							<Tracking event="complete"><![CDATA[
+								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=complete
+							]]></Tracking>
+						</TrackingEvents>
+						<AdParameters/>
+						<MediaFiles>
+							<MediaFile id="1" delivery="progressive" type="video/mp4" bitrate="2125" width="1280" height="720">http://dev-backend3.dev.kaltura.com:81/play-server-resources/15SecAd.mp4</MediaFile>
+						</MediaFiles>
+					</Linear>
+				</Creative>
+			</Creatives>
+		</InLine>
+	</Ad>
+	<Ad id="ad2" sequence="2">
+		<InLine>
+			<AdSystem version="2.0">KALTURA_TEST</AdSystem>
+			<AdTitle/>
+			<Description/>
+			<Survey/>
+			<Impression id="DART"><![CDATA[
+				http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=12&eventType=impression
+			]]></Impression>
+			<Creatives>
+				<Creative sequence="2" AdID="12">
+					<Linear>
+						<Duration>00:00:15</Duration>
+						<TrackingEvents>
+							<Tracking event="start"><![CDATA[
+								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=12&eventType=start
+							]]></Tracking>
+							<Tracking event="midpoint"><![CDATA[
+								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=12&eventType=midpoint
+							]]></Tracking>
+							<Tracking event="firstQuartile"><![CDATA[
+								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=12&eventType=firstQuartile
+							]]></Tracking>
+							<Tracking event="thirdQuartile"><![CDATA[
+								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=12&eventType=thirdQuartile
+							]]></Tracking>
+							<Tracking event="complete"><![CDATA[
+								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=12&eventType=complete
+							]]></Tracking>
+						</TrackingEvents>
+						<AdParameters/>
+						<MediaFiles>
+							<MediaFile id="1" delivery="progressive" type="video/mp4" bitrate="2125" width="1280" height="720">http://dev-backend3.dev.kaltura.com:81/play-server-resources/15SecAd.mp4</MediaFile>
+						</MediaFiles>
+					</Linear>
+				</Creative>
+			</Creatives>
+		</InLine>
+	</Ad>
+</VAST>
