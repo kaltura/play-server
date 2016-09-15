@@ -1,6 +1,11 @@
 {
 	"name": "kaltura-play-server",
 	"version": "v3.0.0",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/kaltura/play-server.git"
+  	},
+	"license": " AGPL-3.0",
 	"dependencies": {
 		"node-ini": ">=1.0.0",
 		"memcached": ">=2.2.2",
