@@ -4,7 +4,7 @@ partnerId = -6
 secret = @PLAY_PARTNER_ADMIN_SECRET@
 timeout = 90
 verifySSL = false
-
+ksExpiryTime=86000
 
 [cloud]
 domain = @CLOUD_HOSTNAME@
