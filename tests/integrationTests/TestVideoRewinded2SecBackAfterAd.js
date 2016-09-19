@@ -132,23 +132,32 @@ class VideoRewindTester {
 let DoneMethod;
 describe('test full flow', function () {
 	it('test - Video Rewinded 2 Sec Back After', function (done) {
-		this.timeout(600000);
+		this.timeout(150000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 	});
 });
+
+let entry;
 function finishTest(res){
-	chai.expect(res).to.be.true;
-	DoneMethod();
+	if (res)
+		playServerTestingHelper.printOk("test SUCCESS");
+	else
+		playServerTestingHelper.printError("test FAIL");
+	playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
+		playServerTestingHelper.printInfo("return from delete entry");
+		if (res) //if test pass finish test else wait for timeout
+			DoneMethod();
+	});
 }
+
 
 // This test validate the BEFORE LAST thumbnail of the ad and the FIRST after The ad
 // to make sure that the video was rewinded 2 seconds back
 
 function testInit(client) {
 	sessionClient = client;
-	let entry;
 	let testName = 'VideoRewindTester';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
