@@ -147,7 +147,7 @@ function finishTest(res){
 		playServerTestingHelper.printError("test FAIL");
 	playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
 		playServerTestingHelper.printInfo("return from delete entry");
-		if (res)
+		if (res) //if test pass finish test else wait for timeout
 			DoneMethod();
 	});
 }
