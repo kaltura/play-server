@@ -107,7 +107,7 @@ function validateTrackedBeaconsFile() {
 		if (array.length == 8 && flag)  // this is the number of beacon for this test using vastForBeaconTest
 			return true;
 	} else {
-		playServerTestingHelper.printError("Can't read " + beaconTrackingDir + '/beaconTracking.txt - file doesn\'t exists');
+		playServerTestingHelper.printError("Can't read " + beaconTrackingFile + ' - file doesn\'t exists');
 		return false;
 	}
 }
