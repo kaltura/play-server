@@ -33,7 +33,7 @@ ffmpeg_max_processes=10
 ; domainPort = 80
 
 [adIntegration]
-preFetchWindow = 120000
+preFetchWindow = 60000
 vastRequestTimeOut = 5
 durationCoefficient = 1
 calcMd5OnRedirect = 0
@@ -44,7 +44,10 @@ adFileIdLimitBytes = 100000
 
 [layout]
 ;domain = @LAYOUT_SERVICE_HOSTNAME@
-fillerDefaultDurationSecs = 30
+fillerDefaultDurationSecs = 10
+secondsBackwardsAfterAd = 2
+maxNumberOfAdBreakRetries = 3
+milisBetweenInnerFetchAndLayout = 3000
 
 [fetch]
 ;domain = @LAYOUT_SERVICE_HOSTNAME@
