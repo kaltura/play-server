@@ -93,7 +93,7 @@ function validateTrackedBeaconsFile() {
 		}).filter(Boolean);
 		var flag = true;
 		// those option are using in vastForBeaconTest
-		let options = ['start1', 'start2', 'midpoint', 'firstQuartile', 'thirdQuartile', 'complete1', 'complete2'];
+		let options = ['start1', 'start2', 'midpoint', 'firstQuartile', 'thirdQuartile', 'complete1', 'complete2', 'impression'];
 		array.forEach(function (line) {
 			playServerTestingHelper.printStatus(line);
 			let start = ('Tracked beacon: id: 10 of event Type: ').length;
