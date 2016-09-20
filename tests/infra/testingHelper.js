@@ -201,6 +201,22 @@ class PlayServerTestingHelper {
         });
     }
 
+    static deleteEntry(client, entry) {
+        return new Promise(function (resolve, reject) {
+            PlayServerTestingHelper.printInfo("Start DeleteEntry");
+            client.baseEntry.deleteAction(function (results) {
+                if (results && results.code && results.message) {
+                    PlayServerTestingHelper.printError('Kaltura Error', results);
+                    reject(results);
+                } else {
+                   PlayServerTestingHelper.printOk('deleteEntry OK');
+                   resolve(entry);
+                }
+            },
+            entry.id);
+        });
+    }
+
     static uploadTokenPromise(input) {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printInfo("Start uploadToken for entry:" + input.entry.id);
