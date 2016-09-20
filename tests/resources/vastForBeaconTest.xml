@@ -6,7 +6,7 @@
 			<Description/>
 			<Survey/>
 			<Impression id="DART"><![CDATA[
-				http://projects.kaltura.com/beacons/CatchBeacon.php?id=10&eventType=impression
+				http://dev-backend26.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=impression
 			]]></Impression>
 			<Creatives>
 				<Creative sequence="1" AdID="">
@@ -14,25 +14,25 @@
 						<Duration>00:00:15</Duration>
 						<TrackingEvents>
 							<Tracking event="start"><![CDATA[
-								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=start1
+								http://dev-backend26.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=start1
 							]]></Tracking>
 							<Tracking event="start"><![CDATA[
-								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=start2
+								http://dev-backend26.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=start2
 							]]></Tracking>
 							<Tracking event="midpoint"><![CDATA[
-								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=midpoint
+								http://dev-backend26.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=midpoint
 							]]></Tracking>
 							<Tracking event="firstQuartile"><![CDATA[
-								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=firstQuartile
+								http://dev-backend26.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=firstQuartile
 							]]></Tracking>
 							<Tracking event="thirdQuartile"><![CDATA[
-								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=thirdQuartile
+								http://dev-backend26.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=thirdQuartile
 							]]></Tracking>
 							<Tracking event="complete"><![CDATA[
-								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=complete1
+								http://dev-backend26.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=complete1
 							]]></Tracking>
 							<Tracking event="complete"><![CDATA[
-								http://dev-backend3.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=complete2
+								http://dev-backend26.dev.kaltura.com/p/1/testing/trackBeacon?id=10&eventType=complete2
 							]]></Tracking>
 						</TrackingEvents>
 						<AdParameters/>
