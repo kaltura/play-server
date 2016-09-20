@@ -86,21 +86,29 @@ class UnAlignedCuePointTester {
 let DoneMethod;
 describe('test full flow', function () {
 	it('test - UnAligned Cue-Point', function (done) {
-		this.timeout(180000);
+		this.timeout(120000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 	});
 });
+
+let entry;
 function finishTest(res){
-	chai.expect(res).to.be.true;
-	DoneMethod();
+        if (res)
+                playServerTestingHelper.printOk("test SUCCESS");
+        else
+                playServerTestingHelper.printError("test FAIL");
+         playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
+                playServerTestingHelper.printInfo("return from delete entry");
+                if (res)
+                         DoneMethod();
+        });
 }
 
 function testInit(client)
 {
 	sessionClient = client;
-	let entry;
 	const testName = 'unAlignedCuePointTester';
 
 	const videoThumbDir = `${outputDir}/${testName}/`;

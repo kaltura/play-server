@@ -82,40 +82,41 @@ class TestFullFlowSingleCuePoint {
 			});
 	}
 
-	//function validateTrackedBeaconsFile() {
-//	playServerTestingHelper.printInfo("Start validateTrackedBeaconsFile");
-//
-//	if (fs.existsSync(beaconTrackingDir + '/beaconTracking.txt')) {
-//		var array = fs.readFileSync(beaconTrackingDir + '/beaconTracking.txt').toString().split("\n");
-//		for (i in array)
-//			playServerTestingHelper.printStatus(array[i]);
-//	}else {
-//		playServerTestingHelper.printError("Can't read " + beaconTrackingDir + '/beaconTracking.txt - file doesn\'t exists');
-//	}
-//}
 
 }
 
 
 
 let DoneMethod;
+let numOfTests = 4;
 describe('test full flow', function () {
 	it('test - Single Cue Point', function (done) {
-		this.timeout(6000000);
+		this.timeout(90000 + 30000 * numOfTests);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 	});
 });
+
+let entry;
+let testCounter = 0
 function finishTest(res){
-	chai.expect(res).to.be.true;
-	DoneMethod();
+	testCounter += 1;
+        if (res)
+                playServerTestingHelper.printOk("test SUCCESS");
+        else
+                playServerTestingHelper.printError("test FAIL");
+	if (testCounter == numOfTests)
+        	playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
+                	playServerTestingHelper.printInfo("return from delete entry");
+                	if (res)
+                        	DoneMethod();
+        	});
 }
 
 function testInit(client) {
 	sessionClient = client;
 	let testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
-	let entry;
 	let testName = 'TestFullFlowSingleCuePoint';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
@@ -136,7 +137,7 @@ function testInit(client) {
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
-			for (let i = 0; i < 2000; i++)
+			for (let i = 0; i < numOfTests; i++)
 			{
 				const secondm3u8 = m3u8Url;
 				const input = [];
@@ -158,7 +159,7 @@ function testInit(client) {
 					console.log('test ' + y);
 					const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
 					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, finishTest);
-				}, y * 60000);
+				}, y * 25000);
 			}
 		})
 		.catch(playServerTestingHelper.printError);
