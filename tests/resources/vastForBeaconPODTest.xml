@@ -31,7 +31,7 @@
 						</TrackingEvents>
 						<AdParameters/>
 						<MediaFiles>
-							<MediaFile id="1" delivery="progressive" type="video/mp4" bitrate="2125" width="1280" height="720">http://dev-backend26.dev.kaltura.com:81/play-server-resources/15SecAd.mp4</MediaFile>
+							<MediaFile id="1" delivery="progressive" type="video/mp4" bitrate="2125" width="1280" height="720">http://dev-backend3.dev.kaltura.com:81/play-server-resources/15SecAd.mp4</MediaFile>
 						</MediaFiles>
 					</Linear>
 				</Creative>
@@ -70,7 +70,7 @@
 						</TrackingEvents>
 						<AdParameters/>
 						<MediaFiles>
-							<MediaFile id="1" delivery="progressive" type="video/mp4" bitrate="2125" width="1280" height="720">http://dev-backend26.dev.kaltura.com:81/play-server-resources/15SecAd.mp4</MediaFile>
+							<MediaFile id="1" delivery="progressive" type="video/mp4" bitrate="2125" width="1280" height="720">http://dev-backend3.dev.kaltura.com:81/play-server-resources/15SecAd.mp4</MediaFile>
 						</MediaFiles>
 					</Linear>
 				</Creative>
