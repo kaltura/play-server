@@ -107,7 +107,7 @@ function validateTrackedBeaconsFile() {
 		if (array.length == 7 && flag)  // this is the number of beacon for this test using vastForBeaconTest
 			return true;
 	} else {
-		playServerTestingHelper.printError("Can't read " + beaconTrackingDir + '/beaconTracking.txt - file doesn\'t exists');
+		playServerTestingHelper.printError("Can't read " + beaconTrackingFile + ' - file doesn\'t exists');
 		return false;
 	}
 }
@@ -116,7 +116,7 @@ function validateTrackedBeaconsFile() {
 let DoneMethod;
 describe('test full flow', function () {
 	it('test - Beacon Sending', function (done) {
-		this.timeout(300000);
+		this.timeout(180000);
 		DoneMethod = done;
 		if (fs.existsSync(beaconTrackingFile))
 			fs.unlinkSync(beaconTrackingFile);
@@ -124,16 +124,30 @@ describe('test full flow', function () {
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 	});
 });
+
+let entry;
 function finishTest(res){
+        if (res)
+                playServerTestingHelper.printOk("test SUCCESS");
+        else
+                playServerTestingHelper.printError("test FAIL");
 	let res2 = validateTrackedBeaconsFile();
-	if (res && res2)
-		DoneMethod();
+	if (res2)
+                playServerTestingHelper.printOk("beacon validation SUCCESS");
+        else
+                playServerTestingHelper.printError("beacon validation FAIL");
+	res = res && res2;
+         playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
+                playServerTestingHelper.printInfo("return from delete entry");
+                if (res)
+                         DoneMethod();
+        });
 }
+
 
 function testInit(client) {
 	sessionClient = client;
 	let testFullFlowMultiCuePoint = new TestFullFlowMultiCuePoint();
-	let entry;
 	let testName = 'fullFlowBeaconSendingTest';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
