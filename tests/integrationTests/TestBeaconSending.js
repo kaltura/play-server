@@ -93,7 +93,7 @@ function validateTrackedBeaconsFile() {
 		}).filter(Boolean);
 		var flag = true;
 		// those option are using in vastForBeaconTest
-		let options = ['start1', 'start2', 'midpoint', 'firstQuartile', 'thirdQuartile', 'complete1', 'complete2'];
+		let options = ['start1', 'start2', 'midpoint', 'firstQuartile', 'thirdQuartile', 'complete1', 'complete2', 'Impression'];
 		array.forEach(function (line) {
 			playServerTestingHelper.printStatus(line);
 			let start = ('Tracked beacon: id: 10 of event Type: ').length;
@@ -104,7 +104,7 @@ function validateTrackedBeaconsFile() {
 
 		});
 		playServerTestingHelper.printInfo('found ' + array.length + ' beacon Tracks');
-		if (array.length == 7 && flag)  // this is the number of beacon for this test using vastForBeaconTest
+		if (array.length == 8 && flag)  // this is the number of beacon for this test using vastForBeaconTest
 			return true;
 	} else {
 		playServerTestingHelper.printError("Can't read " + beaconTrackingFile + ' - file doesn\'t exists');
@@ -127,6 +127,7 @@ describe('test full flow', function () {
 
 let entry;
 function finishTest(res){
+	playServerTestingHelper.sleep(10);
         if (res)
                 playServerTestingHelper.printOk("test SUCCESS");
         else

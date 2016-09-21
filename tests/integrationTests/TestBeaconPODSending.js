@@ -131,6 +131,7 @@ function finishTest(res){
                 playServerTestingHelper.printOk("test SUCCESS");
         else
                 playServerTestingHelper.printError("test FAIL");
+	playServerTestingHelper.sleep(10000);
         let res2 = validateTrackedBeaconsFile();
         if (res2)
                 playServerTestingHelper.printOk("beacon validation SUCCESS");
