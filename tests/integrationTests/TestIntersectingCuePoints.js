@@ -1,7 +1,7 @@
 const fs = require('fs');
 const chai = require('chai');
-const testingHelper = require('./infra/testingHelper');
-require('../lib/utils/KalturaConfig');
+const testingHelper = require('./../infra/testingHelper');
+require('../../lib/utils/KalturaConfig');
 const Promise = require('bluebird');
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const outputDir = KalturaConfig.config.testing.outputPath;
@@ -123,14 +123,14 @@ function testInit(client)
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	playServerTestingHelper.createEntry(sessionClient, `${resourcesPath}/testIntersectingCuePointsMovie.mp4`)
+	playServerTestingHelper.createEntry(sessionClient, `${resourcesPath}/2MinVideo.mp4`)
 		.then(function (resultEntry) {
 			entry = resultEntry;
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 8000, 5000);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);
 		}).
 		then(function (cuePoint) {
 			cuePointList.push(cuePoint);
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 11000, 8000);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 35000, 15000);
 		}).
 		then(function (cuePoint) {
 			cuePointList.push(cuePoint);
