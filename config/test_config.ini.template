@@ -28,7 +28,7 @@ iterations = 2000
 intervalInMili = 60000
 
 [h264Verfication]
-enabled = 1
+enabled = true
 logPath = @LOG_FILE_PATH@
 scriptsPath = @SCRIPTS_PATH@
 cacheTime = @CACHE_TIME@
