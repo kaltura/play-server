@@ -20,6 +20,8 @@ let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
 let thumbsToCompare = [];
+let entry = null;
+let DoneMethod = null;
 
 class VideoRewindTester {
 
@@ -129,7 +131,6 @@ class VideoRewindTester {
 
 
 
-let DoneMethod;
 describe('test full flow', function () {
 	it('test - Video Rewinded 2 Sec Back After', function (done) {
 		this.timeout(150000);
@@ -139,7 +140,6 @@ describe('test full flow', function () {
 	});
 });
 
-let entry;
 function finishTest(res){
 	if (res)
 		playServerTestingHelper.printOk("test SUCCESS");

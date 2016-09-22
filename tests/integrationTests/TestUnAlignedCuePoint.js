@@ -12,6 +12,8 @@ const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonat
 const playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 const cuePointList = [];
+let entry = null;
+let DoneMethod = null;
 
 class UnAlignedCuePointTester {
 
@@ -83,7 +85,6 @@ class UnAlignedCuePointTester {
 
 
 
-let DoneMethod;
 describe('test full flow', function () {
 	it('test - UnAligned Cue-Point', function (done) {
 		this.timeout(120000);
@@ -93,7 +94,6 @@ describe('test full flow', function () {
 	});
 });
 
-let entry;
 function finishTest(res){
 	if (res)
 		playServerTestingHelper.printOk("test SUCCESS");

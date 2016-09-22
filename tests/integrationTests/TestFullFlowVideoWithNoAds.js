@@ -19,6 +19,8 @@ const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonat
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
+let entry = null;
+let DoneMethod = null;
 
 class VideoWithNoAdsTester {
 
@@ -64,7 +66,6 @@ class VideoWithNoAdsTester {
 
 
 
-let DoneMethod;
 describe('test full flow', function () {
 	it('test - video with no ads', function (done) {
 		this.timeout(100000);
@@ -74,7 +75,6 @@ describe('test full flow', function () {
 	});
 });
 
-let entry;
 function finishTest(res){
 	if (res)
 		playServerTestingHelper.printOk("test SUCCESS");

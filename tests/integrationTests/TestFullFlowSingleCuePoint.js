@@ -19,6 +19,8 @@ const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonat
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
+let entry = null;
+let DoneMethod = null;
 
 class TestFullFlowSingleCuePoint {
 
@@ -98,7 +100,6 @@ class TestFullFlowSingleCuePoint {
 
 
 let numOfTests = 4;
-let DoneMethod;
 describe('test full flow', function () {
 	it('test - Single Cue Point', function (done) {
 		this.timeout(90000 + 30000 * numOfTests);
@@ -108,7 +109,6 @@ describe('test full flow', function () {
 	});
 });
 
-let entry;
 let testCounter = 0;
 function finishTest(res){
 	testCounter += 1;

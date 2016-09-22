@@ -19,6 +19,8 @@ const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonat
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
+let entry = null;
+let DoneMethod = null;
 
 class TestFullFlowMultiTests {
 
@@ -85,7 +87,6 @@ class TestFullFlowMultiTests {
 }
 
 
-let DoneMethod;
 describe('test full flow multi test', function () {
 	it('test - video with no ads', function (done) {
 		this.timeout(180000);
@@ -95,7 +96,6 @@ describe('test full flow multi test', function () {
 	});
 });
 
-let entry;
 function finishTest(res){
 	if (res)
 		playServerTestingHelper.printOk("test SUCCESS");

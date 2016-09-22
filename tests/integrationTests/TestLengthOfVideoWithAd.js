@@ -19,6 +19,8 @@ let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
 let videoTimings = [];
+let entry = null;
+let DoneMethod = null;
 
 class LengthOfVideoWithAdTest {
 
@@ -113,7 +115,6 @@ class LengthOfVideoWithAdTest {
 
 
 
-let DoneMethod;
 describe('test full flow', function () {
 	it('test - Length Of Video With Ad', function (done) {
 		this.timeout(120000);
@@ -123,7 +124,6 @@ describe('test full flow', function () {
 	});
 });
 
-let entry;
 function finishTest(res){
 	if (res)
 		playServerTestingHelper.printOk("test SUCCESS");

@@ -19,6 +19,8 @@ const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonat
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
+let entry = null;
+let DoneMethod = null;
 
 class TestFullFlowMultiCuePoint {
 
@@ -113,7 +115,6 @@ function validateTrackedBeaconsFile() {
 }
 
 
-let DoneMethod;
 describe('test full flow', function () {
 	it('test - Beacon POD Sending', function (done) {
 		this.timeout(150000);
@@ -125,7 +126,6 @@ describe('test full flow', function () {
 	});
 });
 
-let entry;
 function finishTest(res){
 	if (res)
 		playServerTestingHelper.printOk("test SUCCESS");

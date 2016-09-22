@@ -168,13 +168,13 @@ class PlayServerTestingHelper {
 
     static deleteEntry(client, entry) {
         return new Promise(function (resolve, reject) {
-            PlayServerTestingHelper.printInfo("Start DeleteEntry");
+            PlayServerTestingHelper.printInfo("Start DeleteEntry " + entry.id);
             client.baseEntry.deleteAction(function (results) {
                     if (results && results.code && results.message) {
                         PlayServerTestingHelper.printError('Kaltura Error', results);
                         reject(results);
                     } else {
-                        PlayServerTestingHelper.printOk('deleteEntry OK');
+                        PlayServerTestingHelper.printOk('deleteEntry ' + entry.id + ' OK');
                         resolve(entry);
                     }
                 },
