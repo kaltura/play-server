@@ -12,8 +12,8 @@ Machine prerequisites:
 - CouchBase (optional) (https://kaltura.atlassian.net/wiki/display/AdStitching/How+to+install+CouchBase?flashId=2015080482)
 - Install mediaInfo by running: apt-get install mediainfo
 - Run apt-get install python-software-properties
-- Install Node.js 0.10.26 or above: installation reference: https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager#ubuntu-mint-elementary-os
-- Node Packaged Modules (npm) 1.4.3 or above (see above) 
+- Install Node.js 6.3.0 or above
+- Node Packaged Modules (npm) 3.10.3 or above (see above)
 - Node gyp 0.13.0 or above: npm install -g node-gyp
 - Apache Ant 1.8.2 or above: apt-get -u install ant
 - g++ of version 4.8 and above
@@ -23,7 +23,7 @@ Machine prerequisites:
 
 Kaltura platform required changes:
 =======================
-- to play VOD content with play server configure an NGINX server and confiure it to use the play server
+- For VOD content with play server you will need to configure an NGINX server and configure it to use the play server by using a delivery profile
 - Please note for play-server needs version IX-9.19.1 at least for it to run. So if you are behind please update you Kaltura installation before continuing to any of the next steps.
 - Minimum html5 player lib version is v2.15.
 - Create play-server partner by running: mysql /opt/kaltura/app/deployment/updates/sql/2014_08_04_create_play_partner.sql?
@@ -77,7 +77,7 @@ Install:
 =======================
  - cd /opt/kaltura/play-server
  - npm install
- - ant -Dversion={version} -DconfigFilePath={user_input.ini file path} (e.g -Dversion=v1.1 -DconfigFilePath=/opt/kaltura/play-server/config/user_input.ini)
+ - ant -Dversion={version of the vast coffee script} -DconfigFilePath={user_input.ini file path} (e.g -Dversion=v1.1 -DconfigFilePath=/opt/kaltura/play-server/config/user_input.ini)
  
  Post Install requirements:
  =======================
@@ -87,3 +87,8 @@ Install:
 Execute:
 =======================
 /etc/init.d/kaltura_play start
+
+
+For developers:
+=======================
+- Install zbarimg via zbar tools for the automated tests
