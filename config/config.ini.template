@@ -88,3 +88,9 @@ binDir = @PLAY_SERVER_BASE_DIR@/bin
 [bin][debug]
 enabled = false
 port = 6000
+
+[h264Verification]
+enabled = true
+logPath = @LOG_FILE_PATH@
+scriptsPath = @SCRIPTS_PATH@
+cacheTime = @CACHE_TIME@
