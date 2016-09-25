@@ -24,36 +24,36 @@ function checkIfExist(path){
 
 describe('testTrackingManager', function() {
 	this.timeout(60000);
-	it('check kalturaTrackingManager', function () {
-
-		let beaconParams = {
-			url: 'beaconUrl',
-			cuePointId: 'cp1',
-			type: 'TrackType1',
-			entryId: 'e1'
-		};
-
-		let generatedBeaconRequest = KalturaLayoutManager.generateBeaconRequest('erezHost','p1', beaconParams);
-
-		let b64 = KalturaUtils.encodeString(JSON.stringify({type: 'p1', url: beaconParams, cuePointId: 'erezHost'}));
-		let expectedAns = 'tracking/sendBeacon/trackingId/' + b64;
-		expect(removeWhiteSpaces(generatedBeaconRequest)).to.equal(expectedAns);
-	});
-
-	it('check buildTrackingBeaconCacheKey', function () {
-
-		let beaconParams = {
-			url: 'testUrl',
-			cuePointId: 'cpId1',
-			type: 'TrackType1',
-			entryId: 'eId1',
-			partnerId: 'p1',
-			headers: 'headers1',
-			trackingId: '999999'
-		};
-		let beaconUrlCacheKey = KalturaTrackingManager.buildTrackingBeaconCacheKey(beaconParams);
-		expect(removeWhiteSpaces(beaconUrlCacheKey)).to.equal('999999-add28d9b3afc617ff6ca7a570fd416a2');
-	});
+	//it('check kalturaTrackingManager', function () {
+	//
+	//	let beaconParams = {
+	//		url: 'beaconUrl',
+	//		cuePointId: 'cp1',
+	//		type: 'TrackType1',
+	//		entryId: 'e1'
+	//	};
+	//
+	//	let generatedBeaconRequest = KalturaLayoutManager.generateBeaconRequest('erezHost','p1', beaconParams);
+	//
+	//	let b64 = KalturaUtils.encodeString(JSON.stringify({type: 'p1', url: beaconParams, cuePointId: 'erezHost'}));
+	//	let expectedAns = 'tracking/sendBeacon/trackingId/' + b64;
+	//	expect(removeWhiteSpaces(generatedBeaconRequest)).to.equal(expectedAns);
+	//});
+	//
+	//it('check buildTrackingBeaconCacheKey', function () {
+	//
+	//	let beaconParams = {
+	//		url: 'testUrl',
+	//		cuePointId: 'cpId1',
+	//		type: 'TrackType1',
+	//		entryId: 'eId1',
+	//		partnerId: 'p1',
+	//		headers: 'headers1',
+	//		trackingId: '999999'
+	//	};
+	//	let beaconUrlCacheKey = KalturaTrackingManager.buildTrackingBeaconCacheKey(beaconParams);
+	//	expect(removeWhiteSpaces(beaconUrlCacheKey)).to.equal('999999-add28d9b3afc617ff6ca7a570fd416a2');
+	//});
 
 	const kalturaTesting = require('./../../lib/managers/KalturaTestingManager');
 	it('check trackingBeacons', function (done) {

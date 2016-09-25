@@ -4,7 +4,7 @@ partnerId = -6
 secret = @PLAY_PARTNER_ADMIN_SECRET@
 timeout = 90
 verifySSL = false
-
+ksExpiryTime=86000
 
 [cloud]
 domain = @CLOUD_HOSTNAME@
@@ -43,7 +43,10 @@ serverProcess = 60
 trackingBeaconUrl = 10
 fileDownloadTimeout = 60
 lock = 50
-vodApiTimeout = 3600
+vodApiTimeout = 600
+layout = 600
+calcLayoutMili = 100
+errorAdBreakTTL = 10
 
 [memcache]
 hostname = @MEMCACHE_HOST@
