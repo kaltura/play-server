@@ -19,6 +19,8 @@ const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonat
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
+let entry = null;
+let DoneMethod = null;
 
 class TestFullFlowSingleCuePoint {
 
@@ -97,27 +99,36 @@ class TestFullFlowSingleCuePoint {
 }
 
 
-
-let DoneMethod;
+let numOfTests = 4;
 describe('test full flow', function () {
 	it('test - Single Cue Point', function (done) {
-		this.timeout(6000000);
+		this.timeout(90000 + 30000 * numOfTests);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 	});
 });
+
+let testCounter = 0;
 function finishTest(res){
-	chai.expect(res).to.be.true;
-	DoneMethod();
+	testCounter += 1;
+	if (res)
+		playServerTestingHelper.printOk("test num " + testCounter + " SUCCESS");
+	else
+		playServerTestingHelper.printError("test num " + testCounter + " FAIL");
+	if (testCounter == numOfTests)
+		playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
+			playServerTestingHelper.printInfo("return from delete entry");
+			if (res)
+				DoneMethod();
+		});
 }
+
 
 function testInit(client) {
 	sessionClient = client;
 	let testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
-	let entry;
 	let testName = 'TestFullFlowSingleCuePoint';
-
 	let videoThumbDir = outputDir + '/' + testName +'/';
 
 	if (!fs.existsSync(videoThumbDir))
