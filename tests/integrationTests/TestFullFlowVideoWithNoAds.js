@@ -19,6 +19,8 @@ const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonat
 let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let cuePointList = [];
+let entry = null;
+let DoneMethod = null;
 
 class VideoWithNoAdsTester {
 
@@ -64,23 +66,30 @@ class VideoWithNoAdsTester {
 
 
 
-let DoneMethod;
 describe('test full flow', function () {
 	it('test - video with no ads', function (done) {
-		this.timeout(180000);
+		this.timeout(100000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 	});
 });
+
 function finishTest(res){
-	chai.expect(res).to.be.true;
-	DoneMethod();
+	if (res)
+		playServerTestingHelper.printOk("test SUCCESS");
+	else
+		playServerTestingHelper.printError("test FAIL");
+	playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
+		playServerTestingHelper.printInfo("return from delete entry");
+		if (res)
+			DoneMethod();
+	});
 }
+
 
 function testInit(client) {
 	sessionClient = client;
-	let entry;
 	let testName = 'VideoWithNoAdsTester';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
