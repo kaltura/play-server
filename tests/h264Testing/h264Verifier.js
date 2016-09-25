@@ -17,7 +17,7 @@ class h264Verifier
 	static insertFlavorsPathToCache(flavorIds, flavorPaths)
 	{
 		h264Verifier.writeToLog(`called insertFlavorsPathToCache with ${flavorIds} and ${flavorPaths}`);
-		const testTime = KalturaConfig.config.h264Verfication.cacheTime;
+		const testTime = KalturaConfig.config.h264Verification.cacheTime;
 		for (let i = 0; i < flavorIds.length; i++)
 		{
 			KalturaCache.set(flavorIds[i], { path: flavorPaths[i] }, testTime,
@@ -58,7 +58,7 @@ class h264Verifier
 	static runVerification(flavorId, flavorPath, adPath)
 	{
 		h264Verifier.writeToLog(`called runVerification with flavorId - ${flavorId} , flavorPath - ${flavorPath} , adPath - ${adPath}`);
-		const scriptsPath = KalturaConfig.config.h264Verfication.scriptsPath;
+		const scriptsPath = KalturaConfig.config.h264Verification.scriptsPath;
 
 		h264Verifier.execPythonScript(`${scriptsPath}get_stsd_atoms.py ${flavorPath}`).then(function (flavorOutput) {
 			h264Verifier.execPythonScript(`${scriptsPath}get_stsd_atoms.py ${adPath}`).then(function (adOutput) {
@@ -139,7 +139,7 @@ class h264Verifier
 	 */
 	static writeToLog(str)
 	{
-		fs.appendFile(`${KalturaConfig.config.h264Verfication.logPath}`, `${str}\n`);
+		fs.appendFile(`${KalturaConfig.config.h264Verification.logPath}`, `${str}\n`);
 	}
 }
 module.exports = h264Verifier;
