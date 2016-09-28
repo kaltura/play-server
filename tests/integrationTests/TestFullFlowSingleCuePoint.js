@@ -147,7 +147,7 @@ function testInit(client) {
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
-			for (let i = 0; i < 2000; i++)
+			for (let i = 0; i < numOfTests; i++)
 			{
 				const secondm3u8 = m3u8Url;
 				const input = [];
@@ -165,6 +165,7 @@ function testInit(client) {
 				}
 				let suffix = myArray[1].substr(myArray[1].indexOf('/v/2/'));
 				input.m3u8Url = myArray[0] + 'sessionId/' + Math.floor(Math.random() * 50000000) + suffix;
+				playServerTestingHelper.warmupVideo(m3u8Url);
 				setTimeout(function(){
 					console.log('test ' + y);
 					const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
