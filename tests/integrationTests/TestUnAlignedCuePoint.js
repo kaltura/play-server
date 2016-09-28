@@ -131,10 +131,8 @@ function testInit(client)
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 			playServerTestingHelper.warmupVideo(m3u8Url);
-			setTimeout(function(){
-				const unalignedCuePointTester = new UnAlignedCuePointTester();
-				return playServerTestingHelper.testInvoker(testName, unalignedCuePointTester, input, finishTest);
-			}, 60000);
+			const unalignedCuePointTester = new UnAlignedCuePointTester();
+			return playServerTestingHelper.testInvoker(testName, unalignedCuePointTester, input, 60000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

@@ -117,7 +117,7 @@ function validateTrackedBeaconsFile() {
 
 describe('test full flow', function () {
 	it('test - Beacon POD Sending', function (done) {
-		this.timeout(150000);
+		this.timeout(210000);
 		DoneMethod = done;
 		if (fs.existsSync(beaconTrackingFile))
 			fs.unlinkSync(beaconTrackingFile);
@@ -169,8 +169,9 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
+			playServerTestingHelper.warmupVideo(m3u8Url);
 			let testFullFlowMultiCuePoint = new TestFullFlowMultiCuePoint();
-			return playServerTestingHelper.testInvoker(testName, testFullFlowMultiCuePoint, input, finishTest);
+			return playServerTestingHelper.testInvoker(testName, testFullFlowMultiCuePoint, input, 60000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

@@ -89,7 +89,7 @@ class FullFlowWithCouchBaseRestartTest{
 
 describe('test full flow', function () {
 	it('test - With CouchBase Restart', function (done) {
-		this.timeout(120000);
+		this.timeout(180000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		new Promise(function (resolve, reject) {
@@ -149,8 +149,9 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
+			playServerTestingHelper.warmupVideo(m3u8Url);
 			let fullFlowWithCouchBaseRestartTest = new FullFlowWithCouchBaseRestartTest();
-			return playServerTestingHelper.testInvoker(testName, fullFlowWithCouchBaseRestartTest, input, finishTest);
+			return playServerTestingHelper.testInvoker(testName, fullFlowWithCouchBaseRestartTest, input, 60000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

@@ -166,11 +166,9 @@ function testInit(client) {
 				let suffix = myArray[1].substr(myArray[1].indexOf('/v/2/'));
 				input.m3u8Url = myArray[0] + 'sessionId/' + Math.floor(Math.random() * 50000000) + suffix;
 				playServerTestingHelper.warmupVideo(m3u8Url);
-				setTimeout(function(){
-					console.log('test ' + y);
-					const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
-					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, finishTest);
-				}, (y * 5000) + 60000);
+				console.log('test ' + y);
+				const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
+				playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, ((y * 5000) + 60000), finishTest);
 			}
 		})
 		.catch(playServerTestingHelper.printError);

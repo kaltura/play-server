@@ -68,7 +68,7 @@ class VideoWithNoAdsTester {
 
 describe('test full flow', function () {
 	it('test - video with no ads', function (done) {
-		this.timeout(100000);
+		this.timeout(160000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
@@ -107,8 +107,9 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
+			playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, finishTest);
 			let tester = new VideoWithNoAdsTester();
-			return playServerTestingHelper.testInvoker(testName, tester, input, finishTest);
+			return playServerTestingHelper.testInvoker(testName, tester, input, 60000 finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }
