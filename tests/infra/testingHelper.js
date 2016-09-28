@@ -413,7 +413,7 @@ class PlayServerTestingHelper {
 
     static warmupVideo(m3u8Url)
     {
-        chid.process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4  -t 2 -y /dev/null'),
+        child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4  -t 2 -y /dev/null'),
             function(error, stdout, stderr)
             {
                 if (error !== null) {

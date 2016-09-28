@@ -170,7 +170,7 @@ function testInit(client) {
 					console.log('test ' + y);
 					const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
 					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, finishTest);
-				}, y * 60000);
+				}, (y * 5000) + 60000);
 			}
 		})
 		.catch(playServerTestingHelper.printError);
