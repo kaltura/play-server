@@ -57,7 +57,7 @@ class TestFullFlowMultiCuePoint {
 	static isValidAd(qrCodeItem){
 		let timeInMillis = qrCodeItem.thumbTime * 1000;
 		for (let i = 0; i < cuePointList.length; i++) {
-			if (timeInMillis >= cuePointList[i].startTime && timeInMillis < (cuePointList[i].startTime + cuePointList[i].duration)) {
+			if (timeInMillis >= cuePointList[i].startTime && timeInMillis <= (cuePointList[i].startTime + cuePointList[i].duration)) {
 				return true;
 			}
 		}
@@ -106,6 +106,8 @@ function finishTest(res){
 		playServerTestingHelper.printInfo("return from delete entry");
 		if (res)
 			DoneMethod();
+		else
+			DoneMethod('Test FAIL');
 	});
 }
 
@@ -119,21 +121,28 @@ function testInit(client) {
 
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
-
+	let aggregateAdTime = 0;
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime; //So we can know when the add will actually play
+
+			aggregateAdTime += cuePoint.duration;
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 60000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime;
+			aggregateAdTime += cuePoint.duration;
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 90000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime;
+			aggregateAdTime += cuePoint.duration;
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
