@@ -13,6 +13,9 @@ const adVideoFile = KalturaConfig.config.testing.resourcesPath + '/15SecAd.mp4';
 const outputPath = KalturaConfig.config.testing.outputPath;
 const connector = new ApiClientConnector(partnerId, secret, kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);
 
+const continuationLocalStorage = require('continuation-local-storage');
+const namespace = continuationLocalStorage.createNamespace('play-server');//Here just to make sure we create it only once
+
 describe('testTranscodingHelper', function ()
 {
 	it('test get Adapted Transcoding Command', function (done)

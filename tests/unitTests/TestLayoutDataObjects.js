@@ -4,6 +4,7 @@
 
 
 const chai = require('chai');
+const util = require('util');
 const expect = chai.expect; // we are using the 'expect' style of Chai
 const VODManifestLayoutData = require('../../lib/dataObjects/layoutObjects/VODManifestLayoutData');
 const DynamicClipData = require('../../lib/dataObjects/layoutObjects/DynamicClipData');
@@ -107,6 +108,19 @@ describe('testLayoutObjects', function() {
 		const adPathData = new AdPathLayoutData();
 		adPathData.setPath(SOURCE1_PATH_FALVOR1);
 		expect(removeWhiteSpaces(adPathData.toJSON())).to.equal(AD_PATH_EXPECTED_RESULT);
+	});
+
+	it('check Notification layout object sort', function() {
+		const trackingList = [];
+		trackingList.push(new NotificationLayoutData(BEACON2_ID, BEACON2_OFFSET));
+		trackingList.push(new NotificationLayoutData(BEACON3_ID, BEACON3_OFFSET));
+		trackingList.push(new NotificationLayoutData(BEACON1_ID, BEACON1_OFFSET));
+		trackingList.push(new NotificationLayoutData(BEACON4_ID, BEACON4_OFFSET));
+		trackingList.sort(NotificationLayoutData.compare);
+		expect(trackingList[0].offset).to.equal(BEACON1_OFFSET);
+		expect(trackingList[1].offset).to.equal(BEACON2_OFFSET);
+		expect(trackingList[2].offset).to.equal(BEACON3_OFFSET);
+		expect(trackingList[3].offset).to.equal(BEACON4_OFFSET);
 	});
 });
 
