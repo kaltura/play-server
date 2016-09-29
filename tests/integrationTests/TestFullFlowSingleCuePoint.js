@@ -147,7 +147,7 @@ function testInit(client) {
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
-			for (let i = 0; i < 2000; i++)
+			for (let i = 0; i < 1; i++)
 			{
 				const secondm3u8 = m3u8Url;
 				const input = [];
