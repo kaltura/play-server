@@ -104,7 +104,9 @@ function finishTest(res){
 	playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
 		playServerTestingHelper.printInfo("return from delete entry");
 		if (res)
-			DoneMethod();
+			Do=neMethod();
+		else
+			DoneMethod('Test failed');
 	});
 }
 
@@ -128,7 +130,7 @@ function testInit(client) {
 	videoThumbDirs.push(videoThumbDir1);
 	videoThumbDirs.push(videoThumbDir2);
 	waitBeforeRunningTests.push(60000);
-	waitBeforeRunningTests.push(60000);
+	waitBeforeRunningTests.push(70000);
 
 	if (!fs.existsSync(videoThumbDir1))
 		fs.mkdirSync(videoThumbDir1);
