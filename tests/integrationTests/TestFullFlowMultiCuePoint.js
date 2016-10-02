@@ -90,7 +90,7 @@ class TestFullFlowMultiCuePoint {
 
 describe('test full flow', function () {
 	it('test - Multi cue points', function (done) {
-		this.timeout(180000);
+		this.timeout(240000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
