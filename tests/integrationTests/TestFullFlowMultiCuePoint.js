@@ -57,7 +57,7 @@ class TestFullFlowMultiCuePoint {
 	static isValidAd(qrCodeItem){
 		let timeInMillis = qrCodeItem.thumbTime * 1000;
 		for (let i = 0; i < cuePointList.length; i++) {
-			if (timeInMillis >= cuePointList[i].startTime && timeInMillis <= (cuePointList[i].startTime + cuePointList[i].duration)) {
+			if (timeInMillis >= cuePointList[i].startTime && timeInMillis <= (cuePointList[i].startTime + cuePointList[i].duration - 500)) {
 				return true;
 			}
 		}
