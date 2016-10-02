@@ -121,11 +121,14 @@ function testInit(client) {
 	let m3u8Urls = [];
 	let videoThumbDirs = [];
 	let testNames = [];
+	let waitBeforeRunningTests = [];
 
 	testNames.push(testName1);
 	testNames.push(testName2);
 	videoThumbDirs.push(videoThumbDir1);
 	videoThumbDirs.push(videoThumbDir2);
+	waitBeforeRunningTests.push(60000);
+	waitBeforeRunningTests.push(60000);
 
 	if (!fs.existsSync(videoThumbDir1))
 		fs.mkdirSync(videoThumbDir1);
@@ -144,11 +147,12 @@ function testInit(client) {
 		})
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
+			playServerTestingHelper.warmupVideo(m3u8Url);
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
-
+			playServerTestingHelper.warmupVideo(m3u8Url);
 			let testFullFlowMultiTests = new TestFullFlowMultiTests();
 			playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, testFullFlowMultiTests, finishTest);
 		})
