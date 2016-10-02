@@ -99,7 +99,7 @@ class TestFullFlowSingleCuePoint {
 }
 
 
-let numOfTests = 4;
+let numOfTests = 1;
 describe('test full flow', function () {
 	it('test - Single Cue Point', function (done) {
 		this.timeout(90000 + 30000 * numOfTests);
@@ -170,7 +170,7 @@ function testInit(client) {
 				playServerTestingHelper.warmupVideo(input.m3u8Url);
 				console.log('test ' + y);
 				const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
-				playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, ((y * 5000) + 60000), finishTest);
+				playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, ((y * 10000) + 60000), finishTest);
 			}
 		})
 		.catch(playServerTestingHelper.printError);
