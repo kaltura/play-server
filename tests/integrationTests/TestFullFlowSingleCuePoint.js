@@ -102,7 +102,7 @@ class TestFullFlowSingleCuePoint {
 let numOfTests = 1;
 describe('test full flow', function () {
 	it('test - Single Cue Point', function (done) {
-		this.timeout(90000 + 30000 * numOfTests);
+		this.timeout(180000 + 30000 * numOfTests);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
