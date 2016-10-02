@@ -135,11 +135,11 @@ class PlayServerTestingHelper {
     static cleanFolder(folder) {
         let This = this;
         console.log("remove folder: " + folder);
-        //rmdir(folder, function (err, dirs, files) {
-        //    if (err) {
-        //        This.printError(err);
-        //    }
-        //});
+        rmdir(folder, function (err, dirs, files) {
+            if (err) {
+                This.printError(err);
+            }
+        });
     }
 
     static printHelp() {
