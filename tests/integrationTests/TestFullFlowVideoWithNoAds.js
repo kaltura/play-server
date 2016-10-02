@@ -107,7 +107,7 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, finishTest);
+			playServerTestingHelper.warmupVideo(m3u8Url);
 			let tester = new VideoWithNoAdsTester();
 			return playServerTestingHelper.testInvoker(testName, tester, input, 60000, finishTest);
 		})
