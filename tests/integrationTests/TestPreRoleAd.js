@@ -176,6 +176,7 @@ function testInit(client) {
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 2000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = 0; // Any ad that is set to the first two seconds of the movie will be set to the beginning (to time 0);
 			aggregateAdTime += cuePoint.duration;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 20000, 15000);
