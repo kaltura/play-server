@@ -57,7 +57,7 @@ class PreRoleAdTester {
 	static isValidAd(qrCodeItem) {
 		let timeInMillis = qrCodeItem.thumbTime * 1000;
 		for (let i = 0; i < cuePointList.length; i++) {
-			if (timeInMillis >= cuePointList[i].startTime && timeInMillis < (cuePointList[i].startTime + cuePointList[i].duration)) {
+			if (timeInMillis >= cuePointList[i].startTime && timeInMillis < (cuePointList[i].startTime + cuePointList[i].duration - 500)) {
 				return true;
 			}
 		}
@@ -168,6 +168,7 @@ function testInit(client) {
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
+	let aggregateAdTime = 0;
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
@@ -175,14 +176,19 @@ function testInit(client) {
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 2000, 15000);
 		})
 		.then(function (cuePoint) {
+			aggregateAdTime += cuePoint.duration;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 20000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime;
+			aggregateAdTime += cuePoint.duration + 2000;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 40000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime;
+			aggregateAdTime += cuePoint.duration + 2000;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
