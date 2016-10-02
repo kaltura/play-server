@@ -104,7 +104,7 @@ function finishTest(res){
 	playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
 		playServerTestingHelper.printInfo("return from delete entry");
 		if (res)
-			Do=neMethod();
+			DoneMethod();
 		else
 			DoneMethod('Test failed');
 	});
