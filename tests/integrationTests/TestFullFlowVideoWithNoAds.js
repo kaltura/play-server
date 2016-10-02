@@ -109,7 +109,7 @@ function testInit(client) {
 
 			playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, finishTest);
 			let tester = new VideoWithNoAdsTester();
-			return playServerTestingHelper.testInvoker(testName, tester, input, 60000 finishTest);
+			return playServerTestingHelper.testInvoker(testName, tester, input, 60000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }
