@@ -574,8 +574,8 @@ class PlayServerTestingHelper {
                             testsErrorsArray.push(testName + " Failed Here");
                         resolve();
                     });
-                });
-        }, waitBeforeRunningTest);
+                }, waitBeforeRunningTest);
+        });
     }
 }
 

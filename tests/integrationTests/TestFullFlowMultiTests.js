@@ -154,7 +154,7 @@ function testInit(client) {
 			m3u8Urls.push(m3u8Url);
 			playServerTestingHelper.warmupVideo(m3u8Url);
 			let testFullFlowMultiTests = new TestFullFlowMultiTests();
-			playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, testFullFlowMultiTests, finishTest);
+			playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, testFullFlowMultiTests, waitBeforeRunningTests, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }
