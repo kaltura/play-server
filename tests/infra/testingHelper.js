@@ -411,6 +411,32 @@ class PlayServerTestingHelper {
         });
     }
 
+    static getVideoSecBySec(m3u8Url, lengthOfVideo)
+    {
+        let startTimeForReading = new Date();
+        const interval = setInterval(function()
+                    {
+                        let currentSecond = Math.floor((new Date() - startTimeForReading)/1000);
+                        if ((currentSecond + 1) > lengthOfVideo)
+                        {
+                            PlayServerTestingHelper.printOk('SUCCESS video is warmed-up');
+                            clearInterval(interval);
+                            return;
+                        }
+                        child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4 -ss ' + currentSecond + ' -t 1 -y /dev/null'),
+                            function(error, stdout, stderr)
+                            {
+                                if (error !== null) {
+                                    PlayServerTestingHelper.printError('Error while trying to get second ' + currentSecond + ' of video: ' + error);
+                                }
+                                //else {
+                                //    currentVideoTime++;
+                                //}
+                            }
+                        ;
+                    }, 1000);
+    }
+
     static warmupVideo(m3u8Url)
     {
         child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4  -t 2 -y /dev/null'),
