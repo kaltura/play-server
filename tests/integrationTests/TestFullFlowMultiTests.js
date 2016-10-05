@@ -89,7 +89,7 @@ class TestFullFlowMultiTests {
 
 describe('test full flow multi test', function () {
 	it('test - video with no ads', function (done) {
-		this.timeout(180000);
+		this.timeout(240000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
@@ -129,8 +129,8 @@ function testInit(client) {
 	testNames.push(testName2);
 	videoThumbDirs.push(videoThumbDir1);
 	videoThumbDirs.push(videoThumbDir2);
-	waitBeforeRunningTests.push(60000);
-	waitBeforeRunningTests.push(70000);
+	waitBeforeRunningTests.push(78000);
+	waitBeforeRunningTests.push(88000);
 
 	if (!fs.existsSync(videoThumbDir1))
 		fs.mkdirSync(videoThumbDir1);
@@ -149,12 +149,14 @@ function testInit(client) {
 		})
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
-			playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 77);
+			//playServerTestingHelper.warmupVideo(m3u8Url);
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
-			playServerTestingHelper.warmupVideo(m3u8Url);
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 77);
 			let testFullFlowMultiTests = new TestFullFlowMultiTests();
 			playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, testFullFlowMultiTests, waitBeforeRunningTests, finishTest);
 		})

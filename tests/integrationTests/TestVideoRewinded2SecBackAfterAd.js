@@ -189,9 +189,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			playServerTestingHelper.warmupVideo(m3u8Url);
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 73);
 			let videoRewindTester = new VideoRewindTester();
-			return playServerTestingHelper.testInvoker(testName, videoRewindTester, input, 60000, finishTest);
+			return playServerTestingHelper.testInvoker(testName, videoRewindTester, input, 74000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

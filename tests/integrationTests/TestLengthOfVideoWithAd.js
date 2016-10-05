@@ -162,9 +162,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			playServerTestingHelper.warmupVideo(m3u8Url);
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 77);
 			let lengthOfVideoWithAdTest = new LengthOfVideoWithAdTest();
-			return playServerTestingHelper.testInvoker(testName, lengthOfVideoWithAdTest, input, 60000, finishTest);
+			return playServerTestingHelper.testInvoker(testName, lengthOfVideoWithAdTest, input, 78000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

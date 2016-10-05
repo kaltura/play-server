@@ -90,7 +90,7 @@ class TestFullFlowMultiCuePoint {
 
 describe('test full flow', function () {
 	it('test - Multi cue points', function (done) {
-		this.timeout(240000);
+		this.timeout(480000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
@@ -151,9 +151,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			playServerTestingHelper.warmupVideo(m3u8Url);
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 171);
 			let testFullFlowMultiCuePoint = new TestFullFlowMultiCuePoint();
-			return playServerTestingHelper.testInvoker(testName, testFullFlowMultiCuePoint, input, 60000, finishTest);
+			return playServerTestingHelper.testInvoker(testName, testFullFlowMultiCuePoint, input, 172000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

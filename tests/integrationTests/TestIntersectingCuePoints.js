@@ -141,9 +141,10 @@ function testInit(client)
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			playServerTestingHelper.warmupVideo(m3u8Url);
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 137);
 			const intersectingCuePointsTester = new IntersectingCuePointsTester();
-			return playServerTestingHelper.testInvoker(testName, intersectingCuePointsTester, input, 60000, finishTest);
+			return playServerTestingHelper.testInvoker(testName, intersectingCuePointsTester, input, 138000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

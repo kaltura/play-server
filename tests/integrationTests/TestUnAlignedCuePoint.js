@@ -103,6 +103,8 @@ function finishTest(res){
 		playServerTestingHelper.printInfo("return from delete entry");
 		if (res)
 			DoneMethod();
+		else
+			DoneMethod('Test failed');
 	});
 }
 
@@ -130,9 +132,10 @@ function testInit(client)
 			let input = [];
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
-			playServerTestingHelper.warmupVideo(m3u8Url);
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 68);
 			const unalignedCuePointTester = new UnAlignedCuePointTester();
-			return playServerTestingHelper.testInvoker(testName, unalignedCuePointTester, input, 60000, finishTest);
+			return playServerTestingHelper.testInvoker(testName, unalignedCuePointTester, input, 69000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }
