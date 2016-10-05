@@ -69,8 +69,8 @@ class LengthOfVideoWithAdTest {
 
 	static validateLengthOfVideo() {
 		return new Promise(function (resolve, reject) {
-			if (videoTimings.length != 39) {//39 <==> 60 seconds orig vid + 15 seconds ad + 2 seconds back from ad.
-				playServerTestingHelper.printError("Video content length should be 77 Seconds (39 thumbs) but received only :  " + videoTimings.length);
+			if (videoTimings.length != 31) {
+				playServerTestingHelper.printError("Video content length should be 60 Seconds (31 thumbs) but received only :  " + videoTimings.length);
 				reject(false);
 				return;
 			}
