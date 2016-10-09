@@ -1,6 +1,4 @@
 const chai = require('chai');
-const continuationLocalStorage = require('continuation-local-storage');
-const clsBluebird = require('cls-bluebird');
 const expect = chai.expect;
 const kalturaTypes = require('../../lib/client/KalturaTypes');
 const ApiClientConnector = require('../../lib/infra/ApiServerClientConnector');
@@ -26,10 +24,6 @@ function removeWhiteSpaces(text){
 }
 
 describe('test the flow of ad transcode', function () {
-	before(function() {
-		const namespace = continuationLocalStorage.createNamespace('play-server');//Here just to make sure we create it only once
-		clsBluebird(namespace);
-	});
 	this.timeout(0);
 	it('test - get mediaInfo for ad', function () {
 		return info.mediaInfoExec(filePath).then(function (data) {

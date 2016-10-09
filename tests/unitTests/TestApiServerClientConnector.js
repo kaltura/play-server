@@ -3,8 +3,6 @@
  */
 const chai = require('chai');
 const expect = chai.expect;
-const continuationLocalStorage = require('continuation-local-storage');
-const clsBluebird = require('cls-bluebird');
 const kalturaTypes = require('../../lib/client/KalturaTypes');
 const ApiClientConnector = require('../../lib/infra/ApiServerClientConnector');
 require('../../lib/utils/KalturaConfig');
@@ -17,10 +15,6 @@ const flavorId = KalturaConfig.config.testing.flavorId;
 const connector = new ApiClientConnector(partnerId, secret, kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);
 
 describe('testApiClientConnector', function () {
-	before(function() {
-		const namespace = continuationLocalStorage.createNamespace('play-server');//Here just to make sure we create it only once
-		clsBluebird(namespace);
-	});
 	it('test session start', function () {
 		return connector._startSession().then(function (data) {
 			expect(data).to.not.be.null;
