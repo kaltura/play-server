@@ -149,8 +149,6 @@ function finishTest(res){
 
 function testInit(client) {
 	sessionClient = client;
-	let testFullFlowMultiCuePoint = new TestFullFlowMultiCuePoint();
-
 	let testName = 'fullFlowBeaconSendingTest';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';

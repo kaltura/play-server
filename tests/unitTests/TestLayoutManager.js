@@ -115,7 +115,7 @@ describe('test filtering cue points', function() {
 describe('test generateBeaconRequest', function() {
 	it('test generation with no special chars', function(){
 		const url = 'http://projects.kaltura.com/beacons/CatchBeacon.php?id=10&eventType=start2';
-		const beaconRequest = KalturaLayoutManager.generateBeaconRequest('0_xfrt', 'start', url, '0_gstsgsu');
+		const beaconRequest = KalturaLayoutManager.generateBeaconRequest('0_xfrt', 'start', url, '0_gstsgsu', 1);
 
 	})
 });

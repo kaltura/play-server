@@ -22,18 +22,18 @@ let cuePointList = [];
 let entry = null;
 let DoneMethod = null;
 
-class TestFullFlowMultiCuePoint {
+class TestBeaconPODSending {
 
 	static ValidateAll(qrCodesResults) {
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Ads and Videos according to CuePoints...');
 			let errorsArray = [];
 			for (let i = 0; i < qrCodesResults.length; i++) {
-				if (!TestFullFlowMultiCuePoint.validateQrResult(qrCodesResults[i])) {
+				if (!TestBeaconPODSending.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
-						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
+						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning of video but Ad cue point is not defined for that time");
 					else
-						errorsArray.push('FAIL - Found video thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is defined for that time");
+						errorsArray.push('FAIL - Found video thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning of video but Ad cue point is defined for that time");
 				}
 			}
 			if (errorsArray.length > 0) {
@@ -49,9 +49,9 @@ class TestFullFlowMultiCuePoint {
 
 	static validateQrResult(qrCodeItem) {
 		if (qrCodeItem.ad)
-			return TestFullFlowMultiCuePoint.isValidAd(qrCodeItem);
+			return TestBeaconPODSending.isValidAd(qrCodeItem);
 		else // case of thumb not of a ad - should not be in time of a cuePoint
-			return !TestFullFlowMultiCuePoint.isValidAd(qrCodeItem);
+			return !TestBeaconPODSending.isValidAd(qrCodeItem);
 	}
 
 	static isValidAd(qrCodeItem){
@@ -70,7 +70,7 @@ class TestFullFlowMultiCuePoint {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							TestFullFlowMultiCuePoint.ValidateAll(results).then(function () {
+							TestBeaconPODSending.ValidateAll(results).then(function () {
 									resolve(true);
 								}
 								, reject);
@@ -149,7 +149,6 @@ function finishTest(res){
 
 function testInit(client) {
 	sessionClient = client;
-	let testFullFlowMultiCuePoint = new TestFullFlowMultiCuePoint();
 	let testName = 'fullFlowBeaconPODSendingTest';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
@@ -160,7 +159,7 @@ function testInit(client) {
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 30500, 'vastForBeaconPODTest');
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 32000, 'vastForBeaconPODTest');
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
