@@ -3,6 +3,8 @@
  */
 const chai = require('chai');
 const expect = chai.expect;
+const continuationLocalStorage = require('continuation-local-storage');
+const clsBluebird = require('cls-bluebird');
 const KalturaFFMpegCmdGenerator = require('../../lib/utils/KalturaFFMpegCmdGenerator');
 const kalturaTypes = require('../../lib/client/KalturaTypes');
 const ApiClientConnector = require('../../lib/infra/ApiServerClientConnector');
@@ -24,6 +26,10 @@ function removeWhiteSpaces(text){
 
 
 describe('test KalturaFFMpegCmdGenerator', function () {
+	before(function() {
+		const namespace = continuationLocalStorage.createNamespace('play-server');//Here just to make sure we create it only once
+		clsBluebird(namespace);
+	});
 	it('test - get mediaInfo for ad', function () {
 		return info.mediaInfoExec(resourcesPath + '/adSample').then(function (data) {
 			expect(data).to.be.an.instanceof(KalturaMediaInfoResponse);
