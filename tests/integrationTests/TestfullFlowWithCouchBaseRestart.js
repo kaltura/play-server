@@ -89,7 +89,7 @@ class FullFlowWithCouchBaseRestartTest{
 
 describe('test full flow', function () {
 	it('test - With CouchBase Restart', function (done) {
-		this.timeout(120000);
+		this.timeout(180000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		new Promise(function (resolve, reject) {
@@ -118,6 +118,8 @@ function finishTest(res){
 		playServerTestingHelper.printInfo("return from delete entry");
 		if (res)
 			DoneMethod();
+		else
+			DoneMethod('Test failed');
 	});
 }
 
@@ -149,8 +151,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 77);
 			let fullFlowWithCouchBaseRestartTest = new FullFlowWithCouchBaseRestartTest();
-			return playServerTestingHelper.testInvoker(testName, fullFlowWithCouchBaseRestartTest, input, finishTest);
+			return playServerTestingHelper.testInvoker(testName, fullFlowWithCouchBaseRestartTest, input, 78000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

@@ -133,7 +133,7 @@ class VideoRewindTester {
 
 describe('test full flow', function () {
 	it('test - Video Rewinded 2 Sec Back After', function (done) {
-		this.timeout(150000);
+		this.timeout(210000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
@@ -189,8 +189,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 73);
 			let videoRewindTester = new VideoRewindTester();
-			return playServerTestingHelper.testInvoker(testName, videoRewindTester, input, finishTest);
+			return playServerTestingHelper.testInvoker(testName, videoRewindTester, input, 74000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

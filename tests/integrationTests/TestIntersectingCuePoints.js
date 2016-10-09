@@ -101,7 +101,7 @@ class IntersectingCuePointsTester {
 let DoneMethod;
 describe('test full flow', function () {
 	it('test - Intersecting CuePoints Tester', function (done) {
-		this.timeout(300000);
+		this.timeout(360000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
@@ -141,8 +141,10 @@ function testInit(client)
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 137);
 			const intersectingCuePointsTester = new IntersectingCuePointsTester();
-			return playServerTestingHelper.testInvoker(testName, intersectingCuePointsTester, input,finishTest);
+			return playServerTestingHelper.testInvoker(testName, intersectingCuePointsTester, input, 138000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

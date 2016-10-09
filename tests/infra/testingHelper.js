@@ -411,6 +411,46 @@ class PlayServerTestingHelper {
         });
     }
 
+    static getVideoSecBySec(m3u8Url, lengthOfVideo)
+    {
+        let startTimeForReading = new Date();
+        const interval = setInterval(function()
+                    {
+                        let currentSecond = Math.floor((new Date() - startTimeForReading)/1000);
+                        if ((currentSecond + 1) > lengthOfVideo)
+                        {
+                            PlayServerTestingHelper.printOk('SUCCESS video is warmed-up');
+                            clearInterval(interval);
+                            return;
+                        }
+                        child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4 -ss ' + currentSecond + ' -t 1 -y /dev/null'),
+                            function(error, stdout, stderr)
+                            {
+                                if (error !== null) {
+                                    PlayServerTestingHelper.printError('Error while trying to get second ' + currentSecond + ' of video: ' + error);
+                                }
+                                //else {
+                                //    currentVideoTime++;
+                                //}
+                            }
+                        ;
+                    }, 1000);
+    }
+
+    static warmupVideo(m3u8Url)
+    {
+        child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4  -t 2 -y /dev/null'),
+            function(error, stdout, stderr)
+            {
+                if (error !== null) {
+                    PlayServerTestingHelper.printError('Error while trying to warmup video: ' + error);
+                } else {
+                    PlayServerTestingHelper.printOk('SUCCESS video is warmed-up');
+                }
+            }
+        ;
+    }
+
     static getThumbsFileNamesFromDir(videoThumbDir) {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printStatus("Reading thumbs from dir " + videoThumbDir);
@@ -482,27 +522,32 @@ class PlayServerTestingHelper {
         return qrPromises;
     }
 
-    static testInvoker(testName, test, input, doneMethod = null) {
+    static testInvoker(testName, test, input, waitBeforeRunningTest = 0, doneMethod = null) {
         PlayServerTestingHelper.printInfo("Starting testing: " + testName);
-
-        test.runTest(input, function (res) {
-            PlayServerTestingHelper.printInfo("Finished Test: " + testName);
-            PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
-            PlayServerTestingHelper.cleanFolder(input.outputDir);
-			if (typeof doneMethod === 'function')
-				doneMethod(res);
-            return assert.equal(res, true);
-        }, function (res) {
-            PlayServerTestingHelper.printInfo("Finished Test" + testName);
-            PlayServerTestingHelper.cleanFolder(input.outputDir);
-            PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
-			if (typeof doneMethod === 'function')
-				doneMethod(res);
-            return assert.equal(res, false);
-        });
+        setTimeout(
+            function()
+            {
+                test.runTest(input, function (res)
+                {
+                    PlayServerTestingHelper.printInfo("Finished Test: " + testName);
+                    PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
+                    PlayServerTestingHelper.cleanFolder(input.outputDir);
+                    if (typeof doneMethod === 'function')
+                        doneMethod(res);
+                    return assert.equal(res, true);
+                }, function (res)
+                {
+                    PlayServerTestingHelper.printInfo("Finished Test" + testName);
+                    PlayServerTestingHelper.cleanFolder(input.outputDir);
+                    PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+                    if (typeof doneMethod === 'function')
+                        doneMethod(res);
+                    return assert.equal(res, false);
+                });
+            }, waitBeforeRunningTest);
     }
 
-    static runMultiTests(m3u8Urls, videoThumbDirs, testNames, testClass, doneMethod = null) {
+    static runMultiTests(m3u8Urls, videoThumbDirs, testNames, testClass, waitBeforeRunningTests, doneMethod = null) {
 
         let testsPromises = [];
         for (let i = 0; i < testNames.length; i++) {
@@ -510,7 +555,7 @@ class PlayServerTestingHelper {
             input.m3u8Url = m3u8Urls[i];
             input.outputDir = videoThumbDirs[i];
 
-            testsPromises.push(PlayServerTestingHelper.multiTestInvoker(testNames[i], testClass, input));
+            testsPromises.push(PlayServerTestingHelper.multiTestInvoker(testNames[i], testClass, input, waitBeforeRunningTests[i]));
             PlayServerTestingHelper.sleep(100);
         }
 
@@ -536,27 +581,33 @@ class PlayServerTestingHelper {
 
     }
 
-    static multiTestInvoker(testName, test, input) {
+    static multiTestInvoker(testName, test, input, waitBeforeRunningTest = 0) {
 
-        return new Promise(function (resolve, reject) {
+        return new Promise(function (resolve, reject)
+        {
             PlayServerTestingHelper.printInfo("Starting testing: " + testName);
+            setTimeout(
+                function ()
+                {
+                    test.runTest(input, function (res)
+                    {
+                        PlayServerTestingHelper.printInfo("Finished Test: " + testName);
+                        PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
+                        PlayServerTestingHelper.cleanFolder(input.outputDir);
+                        if (!res)
+                            testsErrorsArray.push(testName + " Failed");
+                        resolve()
 
-            test.runTest(input, function (res) {
-                PlayServerTestingHelper.printInfo("Finished Test: " + testName);
-                PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
-                PlayServerTestingHelper.cleanFolder(input.outputDir);
-                if (!res)
-                    testsErrorsArray.push(testName + " Failed");
-                resolve()
-
-            }, function (res) {
-                PlayServerTestingHelper.printInfo("Finished Test" + testName);
-                PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
-                PlayServerTestingHelper.cleanFolder(input.outputDir);
-                if (!res)
-                    testsErrorsArray.push(testName + " Failed Here");
-                resolve();
-            });
+                    }, function (res)
+                    {
+                        PlayServerTestingHelper.printInfo("Finished Test" + testName);
+                        PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+                        PlayServerTestingHelper.cleanFolder(input.outputDir);
+                        if (!res)
+                            testsErrorsArray.push(testName + " Failed Here");
+                        resolve();
+                    });
+                }, waitBeforeRunningTest);
         });
     }
 }

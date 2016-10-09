@@ -89,7 +89,7 @@ class TestFullFlowMultiTests {
 
 describe('test full flow multi test', function () {
 	it('test - video with no ads', function (done) {
-		this.timeout(180000);
+		this.timeout(240000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
@@ -105,6 +105,8 @@ function finishTest(res){
 		playServerTestingHelper.printInfo("return from delete entry");
 		if (res)
 			DoneMethod();
+		else
+			DoneMethod('Test failed');
 	});
 }
 
@@ -121,11 +123,14 @@ function testInit(client) {
 	let m3u8Urls = [];
 	let videoThumbDirs = [];
 	let testNames = [];
+	let waitBeforeRunningTests = [];
 
 	testNames.push(testName1);
 	testNames.push(testName2);
 	videoThumbDirs.push(videoThumbDir1);
 	videoThumbDirs.push(videoThumbDir2);
+	waitBeforeRunningTests.push(78000);
+	waitBeforeRunningTests.push(88000);
 
 	if (!fs.existsSync(videoThumbDir1))
 		fs.mkdirSync(videoThumbDir1);
@@ -144,13 +149,16 @@ function testInit(client) {
 		})
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(m3u8Url, 77);
+			//playServerTestingHelper.warmupVideo(m3u8Url);
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
-
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(m3u8Url, 77);
 			let testFullFlowMultiTests = new TestFullFlowMultiTests();
-			playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, testFullFlowMultiTests, finishTest);
+			playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, testFullFlowMultiTests, waitBeforeRunningTests, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

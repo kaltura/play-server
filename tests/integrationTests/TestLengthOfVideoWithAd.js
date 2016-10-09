@@ -117,7 +117,7 @@ class LengthOfVideoWithAdTest {
 
 describe('test full flow', function () {
 	it('test - Length Of Video With Ad', function (done) {
-		this.timeout(120000);
+		this.timeout(180000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
@@ -133,6 +133,8 @@ function finishTest(res){
 		playServerTestingHelper.printInfo("return from delete entry");
 		if (res)
 			DoneMethod();
+		else
+			DoneMethod('Test failed');
 	});
 }
 
@@ -160,8 +162,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 77);
 			let lengthOfVideoWithAdTest = new LengthOfVideoWithAdTest();
-			return playServerTestingHelper.testInvoker(testName, lengthOfVideoWithAdTest, input, finishTest);
+			return playServerTestingHelper.testInvoker(testName, lengthOfVideoWithAdTest, input, 78000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

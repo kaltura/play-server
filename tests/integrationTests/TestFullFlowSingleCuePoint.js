@@ -99,10 +99,10 @@ class TestFullFlowSingleCuePoint {
 }
 
 
-let numOfTests = 4;
+let numOfTests = 1;
 describe('test full flow', function () {
 	it('test - Single Cue Point', function (done) {
-		this.timeout(90000 + 30000 * numOfTests);
+		this.timeout(180000 + 30000 * numOfTests);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
@@ -121,6 +121,8 @@ function finishTest(res){
 			playServerTestingHelper.printInfo("return from delete entry");
 			if (res)
 				DoneMethod();
+			else
+				DoneMethod('Test failed');
 		});
 }
 
@@ -147,7 +149,7 @@ function testInit(client) {
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
-			for (let i = 0; i < 1; i++)
+			for (let i = 0; i < numOfTests; i++)
 			{
 				const secondm3u8 = m3u8Url;
 				const input = [];
@@ -165,11 +167,11 @@ function testInit(client) {
 				}
 				let suffix = myArray[1].substr(myArray[1].indexOf('/v/2/'));
 				input.m3u8Url = myArray[0] + 'sessionId/' + Math.floor(Math.random() * 50000000) + suffix;
-				setTimeout(function(){
-					console.log('test ' + y);
-					const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
-					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, finishTest);
-				}, y * 60000);
+				//playServerTestingHelper.warmupVideo(input.m3u8Url);
+				playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 77);
+				console.log('test ' + y);
+				const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
+				playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, ((y * 10000) + 78000), finishTest);
 			}
 		})
 		.catch(playServerTestingHelper.printError);

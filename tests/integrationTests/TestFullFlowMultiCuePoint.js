@@ -57,7 +57,7 @@ class TestFullFlowMultiCuePoint {
 	static isValidAd(qrCodeItem){
 		let timeInMillis = qrCodeItem.thumbTime * 1000;
 		for (let i = 0; i < cuePointList.length; i++) {
-			if (timeInMillis >= cuePointList[i].startTime && timeInMillis < (cuePointList[i].startTime + cuePointList[i].duration)) {
+			if (timeInMillis >= cuePointList[i].startTime && timeInMillis <= (cuePointList[i].startTime + cuePointList[i].duration - 500)) {
 				return true;
 			}
 		}
@@ -90,7 +90,7 @@ class TestFullFlowMultiCuePoint {
 
 describe('test full flow', function () {
 	it('test - Multi cue points', function (done) {
-		this.timeout(120000);
+		this.timeout(480000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
@@ -106,6 +106,8 @@ function finishTest(res){
 		playServerTestingHelper.printInfo("return from delete entry");
 		if (res)
 			DoneMethod();
+		else
+			DoneMethod('Test FAIL');
 	});
 }
 
@@ -119,21 +121,28 @@ function testInit(client) {
 
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
-
+	let aggregateAdTime = 0;
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime; //So we can know when the add will actually play
+
+			aggregateAdTime += cuePoint.duration + 2000;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 60000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime;
+			aggregateAdTime += cuePoint.duration + 2000;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 90000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime;
+			aggregateAdTime += cuePoint.duration + 2000;
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
@@ -142,8 +151,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 171);
 			let testFullFlowMultiCuePoint = new TestFullFlowMultiCuePoint();
-			return playServerTestingHelper.testInvoker(testName, testFullFlowMultiCuePoint, input, finishTest);
+			return playServerTestingHelper.testInvoker(testName, testFullFlowMultiCuePoint, input, 172000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }

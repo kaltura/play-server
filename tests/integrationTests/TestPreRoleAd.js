@@ -57,7 +57,7 @@ class PreRoleAdTester {
 	static isValidAd(qrCodeItem) {
 		let timeInMillis = qrCodeItem.thumbTime * 1000;
 		for (let i = 0; i < cuePointList.length; i++) {
-			if (timeInMillis >= cuePointList[i].startTime && timeInMillis < (cuePointList[i].startTime + cuePointList[i].duration)) {
+			if (timeInMillis >= cuePointList[i].startTime && timeInMillis < (cuePointList[i].startTime + cuePointList[i].duration - 500)) {
 				return true;
 			}
 		}
@@ -139,7 +139,7 @@ class PreRoleAdTester {
 
 describe('test full flow', function () {
 	it('test - Pre Role Ad', function (done) {
-		this.timeout(120000);
+		this.timeout(240000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 		playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
@@ -155,6 +155,8 @@ function finishTest(res){
 		playServerTestingHelper.printInfo("return from delete entry");
 		if (res)
 			DoneMethod();
+		else
+			DoneMethod('Test failed');
 	});
 }
 
@@ -168,6 +170,7 @@ function testInit(client) {
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
+	let aggregateAdTime = 0;
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
@@ -175,14 +178,20 @@ function testInit(client) {
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 2000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = 0; // Any ad that is set to the first two seconds of the movie will be set to the beginning (to time 0);
+			aggregateAdTime += cuePoint.duration;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 20000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime;
+			aggregateAdTime += cuePoint.duration + 2000;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 40000, 15000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime;
+			aggregateAdTime += cuePoint.duration + 2000;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
@@ -191,8 +200,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
+			//playServerTestingHelper.warmupVideo(m3u8Url);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 109);
 			let preRoleAdTester = new PreRoleAdTester();
-			return playServerTestingHelper.testInvoker(testName, preRoleAdTester, input, finishTest);
+			return playServerTestingHelper.testInvoker(testName, preRoleAdTester, input, 110000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }
