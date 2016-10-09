@@ -39,6 +39,8 @@ class movieMaker {
                 status = 0;
             else if (i >= adData.duration - 2)
                 status = 2;
+            if (adData.name == 'filler')
+                status = 3;
             frameData.ad = {index: num, adTime: i+1, status: status};
         } else {
             frameData.contentTime += 1;
@@ -73,6 +75,8 @@ class movieMaker {
     }
 
     static generateContentVideo(name, duration) {
+        if (duration == 0)
+            return;
         movieMaker.generateQRcodeForVideo(1, duration);
         let fileName = name + '.mp4';
         executeCommand('ffmpeg -f image2 -r 1 -i rsqr%4d.png -r 30 ' + fileName);
@@ -121,5 +125,5 @@ class movieMaker {
     
 }
 
-movieMaker.generateFullMovie(data);
-//movieMaker.generateSeparateMovie(data);
+//movieMaker.generateFullMovie(data);
+movieMaker.generateSeparateMovie(data);

@@ -459,7 +459,14 @@ class PlayServerTestingHelper {
                     else if (error !== null || stderr) {
                         console.log(error);
                         console.log(stderr);
-                        errorsArray.push("Could not read QR Code for " + filename);
+
+                        //assuming black filler
+                        result = require('./frameData');
+                        result.ad.status = 3; // as filler
+                        result.thumbTime = thumbTime;
+                        result.filename = filename;
+                        qrResults.push(result);
+                        //errorsArray.push("Could not read QR Code for " + filename);
                         resolve();
                     }
                 });
