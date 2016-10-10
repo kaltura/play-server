@@ -22,14 +22,14 @@ let cuePointList = [];
 let entry = null;
 let DoneMethod = null;
 
-class TestFullFlowMultiCuePoint {
+class TestBeaconSending {
 
 	static ValidateAll(qrCodesResults) {
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Ads and Videos according to CuePoints...');
 			let errorsArray = [];
 			for (let i = 0; i < qrCodesResults.length; i++) {
-				if (!TestFullFlowMultiCuePoint.validateQrResult(qrCodesResults[i])) {
+				if (!TestBeaconSending.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
 						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
 					else
@@ -49,9 +49,9 @@ class TestFullFlowMultiCuePoint {
 
 	static validateQrResult(qrCodeItem) {
 		if (qrCodeItem.ad)
-			return TestFullFlowMultiCuePoint.isValidAd(qrCodeItem);
+			return TestBeaconSending.isValidAd(qrCodeItem);
 		else // case of thumb not of a ad - should not be in time of a cuePoint
-			return !TestFullFlowMultiCuePoint.isValidAd(qrCodeItem);
+			return !TestBeaconSending.isValidAd(qrCodeItem);
 	}
 
 	static isValidAd(qrCodeItem){
@@ -70,7 +70,7 @@ class TestFullFlowMultiCuePoint {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							TestFullFlowMultiCuePoint.ValidateAll(results).then(function () {
+							TestBeaconSending.ValidateAll(results).then(function () {
 									resolve(true);
 								}
 								, reject);
@@ -172,8 +172,8 @@ function testInit(client) {
 
 			//playServerTestingHelper.warmupVideo(m3u8Url);
 			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 137);
-			let testFullFlowMultiCuePoint = new TestFullFlowMultiCuePoint();
-			return playServerTestingHelper.testInvoker(testName, testFullFlowMultiCuePoint, input, 138000, finishTest);
+			let testBeaconSending = new TestBeaconSending();
+			return playServerTestingHelper.testInvoker(testName, testBeaconSending, input, 138000, finishTest);
 		})
 		.catch(playServerTestingHelper.printError);
 }
