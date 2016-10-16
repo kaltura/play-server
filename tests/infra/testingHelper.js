@@ -522,29 +522,28 @@ class PlayServerTestingHelper {
         return qrPromises;
     }
 
-    static testInvoker(testName, test, input, waitBeforeRunningTest = 0, doneMethod = null) {
+	static testInvoker(testName, test, input, waitBeforeRunningTest = 0,doneMethod = null) {
         PlayServerTestingHelper.printInfo("Starting testing: " + testName);
-        setTimeout(
-            function()
-            {
-                test.runTest(input, function (res)
-                {
-                    PlayServerTestingHelper.printInfo("Finished Test: " + testName);
-                    PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
-                    PlayServerTestingHelper.cleanFolder(input.outputDir);
-                    if (typeof doneMethod === 'function')
-                        doneMethod(res);
-                    return assert.equal(res, true);
-                }, function (res)
-                {
-                    PlayServerTestingHelper.printInfo("Finished Test" + testName);
-                    PlayServerTestingHelper.cleanFolder(input.outputDir);
-                    PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
-                    if (typeof doneMethod === 'function')
-                        doneMethod(res);
-                    return assert.equal(res, false);
-                });
-            }, waitBeforeRunningTest);
+		setTimeout(function()
+		{
+			test.runTest(input, function (res)
+			{
+				PlayServerTestingHelper.printInfo("Finished Test: " + testName);
+				PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
+				PlayServerTestingHelper.cleanFolder(input.outputDir);
+				if (typeof doneMethod === 'function')
+					doneMethod(res);
+				return assert.equal(res, true);
+			}, function (res)
+			{
+				PlayServerTestingHelper.printInfo("Finished Test" + testName);
+				PlayServerTestingHelper.cleanFolder(input.outputDir);
+				PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+				if (typeof doneMethod === 'function')
+					doneMethod(res);
+				return assert.equal(res, false);
+			});
+		}, waitBeforeRunningTest);
     }
 
     static runMultiTests(m3u8Urls, videoThumbDirs, testNames, testClass, waitBeforeRunningTests, doneMethod = null) {
@@ -610,6 +609,21 @@ class PlayServerTestingHelper {
                 }, waitBeforeRunningTest);
         });
     }
+
+	static warmupVideo(m3u8Url)
+	{
+		child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4  -t 2 -y /dev/null'),
+			function(error, stdout, stderr)
+			{
+				if (error !== null) {
+					PlayServerTestingHelper.printError('Error while trying to warmup video: ' + error);
+				} else {
+					PlayServerTestingHelper.printOk('SUCCESS video is warmed-up');
+				}
+			}
+		;
+	}
+
 }
 
 module.exports.PlayServerTestingHelper = PlayServerTestingHelper;
