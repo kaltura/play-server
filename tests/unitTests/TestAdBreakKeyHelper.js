@@ -1,6 +1,6 @@
 const chai = require('chai');
 const expect = chai.expect;
-const AdBreakKeyHelper = require('../../../lib/managers/helpers/AdBreakKeyHelper');
+const AdBreakKeyHelper = require('../../lib/managers/helpers/AdBreakKeyHelper');
 const VALID_VALUE_PARTIAL_BLOCKED = '#COUNT:3#0:mykey0#2:mykey2#BLOCKED';
 const VALID_VALUE_PARTIAL_BLOCKED_EXTRA_SEPERATORS = '##COUNT:3#0:mykey0##2:mykey2#BLOCKED##';
 const VALID_VALUE_FULL_NOT_BLOCKED = '#COUNT:3#1:mykey1#0:mykey0#2:mykey2';
