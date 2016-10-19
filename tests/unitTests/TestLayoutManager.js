@@ -24,7 +24,8 @@ const FLAVOR_URLS = '["http://centos.kaltura/p/101/sp/10100/serveFlavor/entryId/
 const CUE_POINT_CASES = '{ "objects": [{ "protocolType": 0, "sourceUrl": "www.1.com", "adType": 2, "title": "non rounded odd start ad", "endTime": 2111, "duration": 1000, "id": "0_1ioqwjwh", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467621711, "tags": "", "startTime": 1111, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" }, { "protocolType": 0, "sourceUrl": "www.1.com", "adType": 2, "title": "non rounded even start ad", "endTime": 5111, "duration": 1000, "id": "0_1ioqwjwh", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467621711, "tags": "", "startTime": 4111, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" }, { "protocolType": 1, "sourceUrl": "www.2.com", "adType": 2, "title": "rounded odd ad", "endTime": 8000, "duration": 1000, "id": "0_5fdy2hz4", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467628803, "tags": "", "startTime": 7000, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" }, { "protocolType": 1, "sourceUrl": "www.2.com", "adType": 2, "title": "rounded even ad", "endTime": 11000, "duration": 1000, "id": "0_5fdy2hz4", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467628803, "tags": "", "startTime": 10000, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" }, { "protocolType": 1, "sourceUrl": "www.2.com", "adType": 2, "title": "rounded even not interlacing", "endTime": 30000, "duration": 10000, "id": "0_5fdy2hz4", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467628803, "tags": "", "startTime": 20000, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" }, { "protocolType": 1, "sourceUrl": "www.2.com", "adType": 2, "title": "rounded even interlacing", "endTime": 35000, "duration": 10000, "id": "0_5fdy2hz4", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467628803, "tags": "", "startTime": 25000, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" } ], "totalCount": 6, "objectType": "KalturaCuePointListResponse" }';
 const PARTNER_ID = 101;
 const FLAVOR_DATA_LIST = '{ "objects": [{ "flavorParamsId": 0, "width": 640, "height": 360, "bitrate": 738, "frameRate": 29.97, "isOriginal": true, "isWeb": true, "containerFormat": "mp42", "videoCodecId": "avc1", "status": 2, "language": "Undefined", "id": "0_0xtcdynb", "entryId": "0_ba9href0", "partnerId": 105, "version": "12", "size": 16793, "tags": "source,web", "fileExt": "mp4", "createdAt": 1475405555, "updatedAt": 1475405648, "description": "", "objectType": "KalturaFlavorAsset" }, { "flavorParamsId": 2, "width": 640, "height": 360, "bitrate": 465, "frameRate": 29.97, "isOriginal": false, "isWeb": true, "containerFormat": "isom", "videoCodecId": "avc1", "status": 2, "language": "Undefined", "id": "0_1r79zkh0", "entryId": "0_ba9href0", "partnerId": 105, "version": "2", "size": 10547, "tags": "mobile,web,mbr,iphone,iphonenew", "fileExt": "mp4", "createdAt": 1475405648, "updatedAt": 1475405696, "description": "", "objectType": "KalturaFlavorAsset" }], "totalCount": 2, "objectType": "KalturaFlavorAssetListResponse" }';
-
+const PARTIAL_SELECTED_FLAOVR_IDS = '["0_0xtcdynb"]';
+const FULL_SELECTED_FLAOVR_IDS = '["0_0xtcdynb", "0_1r79zkh0"]';
 const kalturaLayoutManager = new KalturaLayoutManager();
 const matchingEntry = JSON.parse(MATCHING_ENTRY);
 const nonMatchingEntry = JSON.parse(NON_MATCHING_ENTRY);
@@ -33,6 +34,8 @@ const endingCuePoints = JSON.parse(END_WITH_POINTS).objects;
 const preRollPoints = JSON.parse(PRE_ROLL_POINTS).objects;
 const flavorUrls = JSON.parse(FLAVOR_URLS);
 const flavorDataList = JSON.parse(FLAVOR_DATA_LIST).objects;
+const partialSelectedFlavorIds = JSON.parse(PARTIAL_SELECTED_FLAOVR_IDS);
+const fullSelectedFlavorIds = JSON.parse(FULL_SELECTED_FLAOVR_IDS);
 for (let x = 0 ; x < flavorDataList.length; x++)
 {
 	flavorDataList[x].url = flavorUrls[x];
@@ -40,30 +43,28 @@ for (let x = 0 ; x < flavorDataList.length; x++)
 
 describe('test ManifestLayout middle cue points and no cuepoints ', function() {
 	//var apiResults = JSON.parse(TWO_MIDDLE_CUE_POINTS_API_RESULTS);
-	const vodData = new VodData(PARTNER_ID, flavorDataList, matchingEntry, UI_CONF, middleCuePoints);
+	const vodData = new VodData(PARTNER_ID, flavorDataList, partialSelectedFlavorIds, matchingEntry, UI_CONF, middleCuePoints);
 
 	it('create No Cue Points Manifest Layout', function () {
 		const noAdsLayoutResult = kalturaLayoutManager._createNoCuePointsManifestLayout(vodData);
 		const noCuePointsLayout = JSON.parse(noAdsLayoutResult);
 		expect(noCuePointsLayout.notifications).to.equal(undefined, 'should be no notifications');
-		expect(noCuePointsLayout.sequences.length).to.equal(2, 'sequence length');
+		expect(noCuePointsLayout.sequences.length).to.equal(1, 'sequence length');
 		expect(noCuePointsLayout.sequences[0].clips.length).to.equal(1, 'clips 0 length');
-		expect(noCuePointsLayout.sequences[1].clips.length).to.equal(1, 'clips 1 length');
 	});
 
 	it('create Full Manifest Layout', function () {
 		const fullLayoutResult = kalturaLayoutManager._createFullManifestLayout(vodData);
 		const fullLayout = JSON.parse(fullLayoutResult);
 		expect(fullLayout.notifications.length).to.equal(2, 'notifications');
-		expect(fullLayout.sequences.length).to.equal(2, 'sequence length');
+		expect(fullLayout.sequences.length).to.equal(1, 'sequence length');
 		expect(fullLayout.sequences[0].clips.length).to.equal(5, 'clips 0 length');
-		expect(fullLayout.sequences[1].clips.length).to.equal(5, 'clips 1 length');
 	});
 
 });
 
 describe('test ManifestLayout ending cue points', function() {
-	const vodData = new VodData(PARTNER_ID, flavorDataList, matchingEntry, UI_CONF, endingCuePoints);
+	const vodData = new VodData(PARTNER_ID, flavorDataList, fullSelectedFlavorIds, matchingEntry, UI_CONF, endingCuePoints);
 
 	it('test _createFullManifestLayout', function () {
 		const fullLayoutResult = kalturaLayoutManager._createFullManifestLayout(vodData);
@@ -76,7 +77,7 @@ describe('test ManifestLayout ending cue points', function() {
 });
 
 describe('test ManifestLayout pre roll', function() {
-	const vodData = new VodData(PARTNER_ID, flavorDataList, matchingEntry, UI_CONF, preRollPoints);
+	const vodData = new VodData(PARTNER_ID, flavorDataList, fullSelectedFlavorIds, matchingEntry, UI_CONF, preRollPoints);
 
 	it('test _createFullManifestLayout pre roll', function () {
 		const fullLayoutResult = kalturaLayoutManager._createFullManifestLayout(vodData);
