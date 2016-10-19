@@ -23,19 +23,24 @@ const UI_CONF = '{update}';
 const FLAVOR_URLS = '["http://centos.kaltura/p/101/sp/10100/serveFlavor/entryId/0_ba9href0/v/2/flavorId/0_0xtcdynb/fileName/budget_20141014T131145_000000_(Basic_Small_-_WEB_MBL_(H264_400)).mp4/forceproxy/true/name/a.mp4","http://centos.kaltura/p/101/sp/10100/serveFlavor/entryId/0_ba9href0/v/2/flavorId/0_1r79zkh0/fileName/budget_20141014T131145_000000_(Basic_Small_-_WEB_MBL_(H264_600)).mp4/forceproxy/true/name/a.mp4"]';
 const CUE_POINT_CASES = '{ "objects": [{ "protocolType": 0, "sourceUrl": "www.1.com", "adType": 2, "title": "non rounded odd start ad", "endTime": 2111, "duration": 1000, "id": "0_1ioqwjwh", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467621711, "tags": "", "startTime": 1111, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" }, { "protocolType": 0, "sourceUrl": "www.1.com", "adType": 2, "title": "non rounded even start ad", "endTime": 5111, "duration": 1000, "id": "0_1ioqwjwh", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467621711, "tags": "", "startTime": 4111, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" }, { "protocolType": 1, "sourceUrl": "www.2.com", "adType": 2, "title": "rounded odd ad", "endTime": 8000, "duration": 1000, "id": "0_5fdy2hz4", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467628803, "tags": "", "startTime": 7000, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" }, { "protocolType": 1, "sourceUrl": "www.2.com", "adType": 2, "title": "rounded even ad", "endTime": 11000, "duration": 1000, "id": "0_5fdy2hz4", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467628803, "tags": "", "startTime": 10000, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" }, { "protocolType": 1, "sourceUrl": "www.2.com", "adType": 2, "title": "rounded even not interlacing", "endTime": 30000, "duration": 10000, "id": "0_5fdy2hz4", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467628803, "tags": "", "startTime": 20000, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" }, { "protocolType": 1, "sourceUrl": "www.2.com", "adType": 2, "title": "rounded even interlacing", "endTime": 35000, "duration": 10000, "id": "0_5fdy2hz4", "cuePointType": "adCuePoint.Ad", "status": 1, "entryId": "0_ba9href0", "partnerId": 101, "createdAt": 1467621711, "updatedAt": 1467628803, "tags": "", "startTime": 25000, "userId": "someone@kaltura.com", "objectType": "KalturaAdCuePoint" } ], "totalCount": 6, "objectType": "KalturaCuePointListResponse" }';
 const PARTNER_ID = 101;
-const FLAVOR_IDS = ['0_0xtcdynb', '0_1r79zkh0'];
+const FLAVOR_DATA_LIST = '{ "objects": [{ "flavorParamsId": 0, "width": 640, "height": 360, "bitrate": 738, "frameRate": 29.97, "isOriginal": true, "isWeb": true, "containerFormat": "mp42", "videoCodecId": "avc1", "status": 2, "language": "Undefined", "id": "0_0xtcdynb", "entryId": "0_ba9href0", "partnerId": 105, "version": "12", "size": 16793, "tags": "source,web", "fileExt": "mp4", "createdAt": 1475405555, "updatedAt": 1475405648, "description": "", "objectType": "KalturaFlavorAsset" }, { "flavorParamsId": 2, "width": 640, "height": 360, "bitrate": 465, "frameRate": 29.97, "isOriginal": false, "isWeb": true, "containerFormat": "isom", "videoCodecId": "avc1", "status": 2, "language": "Undefined", "id": "0_1r79zkh0", "entryId": "0_ba9href0", "partnerId": 105, "version": "2", "size": 10547, "tags": "mobile,web,mbr,iphone,iphonenew", "fileExt": "mp4", "createdAt": 1475405648, "updatedAt": 1475405696, "description": "", "objectType": "KalturaFlavorAsset" }], "totalCount": 2, "objectType": "KalturaFlavorAssetListResponse" }';
 
 const kalturaLayoutManager = new KalturaLayoutManager();
 const matchingEntry = JSON.parse(MATCHING_ENTRY);
 const nonMatchingEntry = JSON.parse(NON_MATCHING_ENTRY);
-const middleCuePoints = JSON.parse(MIDDLE_CUE_POINTS);
-const endingCuePoints = JSON.parse(END_WITH_POINTS);
-const preRollPoints = JSON.parse(PRE_ROLL_POINTS);
+const middleCuePoints = JSON.parse(MIDDLE_CUE_POINTS).objects;
+const endingCuePoints = JSON.parse(END_WITH_POINTS).objects;
+const preRollPoints = JSON.parse(PRE_ROLL_POINTS).objects;
 const flavorUrls = JSON.parse(FLAVOR_URLS);
+const flavorDataList = JSON.parse(FLAVOR_DATA_LIST).objects;
+for (let x = 0 ; x < flavorDataList.length; x++)
+{
+	flavorDataList[x].url = flavorUrls[x];
+}
 
 describe('test ManifestLayout middle cue points and no cuepoints ', function() {
 	//var apiResults = JSON.parse(TWO_MIDDLE_CUE_POINTS_API_RESULTS);
-	const vodData = new VodData(PARTNER_ID, FLAVOR_IDS, matchingEntry, UI_CONF, middleCuePoints, flavorUrls);
+	const vodData = new VodData(PARTNER_ID, flavorDataList, matchingEntry, UI_CONF, middleCuePoints);
 
 	it('create No Cue Points Manifest Layout', function () {
 		const noAdsLayoutResult = kalturaLayoutManager._createNoCuePointsManifestLayout(vodData);
@@ -58,7 +63,7 @@ describe('test ManifestLayout middle cue points and no cuepoints ', function() {
 });
 
 describe('test ManifestLayout ending cue points', function() {
-	const vodData = new VodData(PARTNER_ID, FLAVOR_IDS, matchingEntry, UI_CONF, endingCuePoints, flavorUrls);
+	const vodData = new VodData(PARTNER_ID, flavorDataList, matchingEntry, UI_CONF, endingCuePoints);
 
 	it('test _createFullManifestLayout', function () {
 		const fullLayoutResult = kalturaLayoutManager._createFullManifestLayout(vodData);
@@ -71,7 +76,7 @@ describe('test ManifestLayout ending cue points', function() {
 });
 
 describe('test ManifestLayout pre roll', function() {
-	const vodData = new VodData(PARTNER_ID, FLAVOR_IDS, matchingEntry, UI_CONF, preRollPoints, flavorUrls);
+	const vodData = new VodData(PARTNER_ID, flavorDataList, matchingEntry, UI_CONF, preRollPoints);
 
 	it('test _createFullManifestLayout pre roll', function () {
 		const fullLayoutResult = kalturaLayoutManager._createFullManifestLayout(vodData);
@@ -82,35 +87,6 @@ describe('test ManifestLayout pre roll', function() {
 		expect(fullLayout.sequences[1].clips.length).to.equal(4, 'clips 1 length');
 	});
 });
-
-describe('test filtering cue points', function() {
-	it('test all cue points cases', function(){
-		const cuePointsObject = JSON.parse(CUE_POINT_CASES);
-		const filteredCuePoints = kalturaLayoutManager._getFilteredCuePoints(cuePointsObject);
-		expect(filteredCuePoints.length).to.equal(5, 'validate interlacing cue point was removed ');
-		expect(filteredCuePoints[0].startTime).to.equal(2000, 'expecting 1111 to change to 2000');
-		expect(filteredCuePoints[1].startTime).to.equal(6000, 'expecting 4111 to change to 6000');
-		expect(filteredCuePoints[2].startTime).to.equal(8000, 'expecting 7000 to change to 8000');
-		expect(filteredCuePoints[3].startTime).to.equal(10000, 'expecting 10000 to remain');
-		expect(filteredCuePoints[4].startTime).to.equal(20000, 'expecting 20000 to remain');
-	});
-});
-
-//describe('test beacon offset calculation', function() {
-//	it('test all types of beacons', function(){
-//		expect(kalturaLayoutManager._calculateBeaconOffset('impression', 0, 50)).to.equal(0);
-//		expect(kalturaLayoutManager._calculateBeaconOffset('impression', 5000, 50)).to.equal(5000);
-//		expect(kalturaLayoutManager._calculateBeaconOffset('start', 3, 50)).to.equal(3);
-//		expect(kalturaLayoutManager._calculateBeaconOffset('firstQuartile', 1000, 1000)).to.equal(1250);
-//		expect(kalturaLayoutManager._calculateBeaconOffset('firstQuartile', 100, 99)).to.equal(124);
-//		expect(kalturaLayoutManager._calculateBeaconOffset('midpoint', 200, 50)).to.equal(225);
-//		expect(kalturaLayoutManager._calculateBeaconOffset('midpoint', 200, 13)).to.equal(206);
-//		expect(kalturaLayoutManager._calculateBeaconOffset('thirdQuartile', 2000, 40)).to.equal(2030);
-//		expect(kalturaLayoutManager._calculateBeaconOffset('thirdQuartile', 200, 50)).to.equal(237);
-//		expect(kalturaLayoutManager._calculateBeaconOffset('complete', 3, 50)).to.equal(53);
-//
-//	});
-//});
 
 describe('test generateBeaconRequest', function() {
 	it('test generation with no special chars', function(){
