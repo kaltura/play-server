@@ -13,7 +13,7 @@ const secret = KalturaConfig.config.testing.secret;
 const partnerId = KalturaConfig.config.testing.partnerId;
 const uiConfId = KalturaConfig.config.testing.uiConfId;
 const impersonatePartnerId = KalturaConfig.config.testing.impersonatePartnerId;
-const flavorId = KalturaConfig.config.testing.flavorId;
+const flavorId = KalturaConfig.config.testing.transcodedFlavorId;
 const connector = new ApiClientConnector(partnerId, secret, kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);
 
 describe('testApiClientConnector', function () {

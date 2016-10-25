@@ -14,7 +14,8 @@ const KalturaMediaInfoResponse = require('../../lib/utils/KalturaMediaInfoRespon
 const serviceUrl = KalturaConfig.config.testing.serviceUrl;
 const secret = KalturaConfig.config.testing.secret;
 const partnerId = KalturaConfig.config.testing.partnerId;
-const flavorId = KalturaConfig.config.testing.flavorId;
+const flavorId = KalturaConfig.config.testing.transcodedFlavorId;
+const sourceFlavorId = KalturaConfig.config.testing.sourceFlavorId;
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const outputPath = KalturaConfig.config.testing.outputPath;
 const info = new KalturaMediaInfo('ffprobe');
@@ -41,8 +42,10 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 	});
 
 	it('test - start client session', function() {
+		this.timeout(500);
 		return connector._startSession().then(function (data) {
-			expect(data).to.not.be.null;
+			if (!connector.client.getKs())
+				expect(data).to.not.be.null;
 			expect(connector.client.getKs()).to.not.be.null;
 		}, function (err) {
 			//to check with no cache:
@@ -52,7 +55,7 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 		});
 	});
 
-	it('test - get command line via Api call', function() {
+	it('test - get command line via Api call transcoded flavor id', function() {
 		const filePath = resourcesPath + '/adSample';
 		const outputFilePath = outputPath + '/adSample_output.mpg';
 		return KalturaFFMpegCmdGenerator.generateCommandLineFormat(flavorId, response.jsonInfo, 15, connector, KalturaConfig.config.testing.impersonatePartnerId).then(function (data) {
@@ -67,6 +70,19 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 				const cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(err.response, filePath, outputFilePath);
 				expect(cmdLine).to.not.be.null;
 			}
+		});
+	});
+
+	it('test - get command line via Api call source flavor id', function() {
+		return KalturaFFMpegCmdGenerator.generateCommandLineFormat(sourceFlavorId, response.jsonInfo, 15, connector, KalturaConfig.config.testing.impersonatePartnerId).then(function (data) {
+			// should not get here - if so then the data should be null - validating the opposite
+			expect(data).to.not.be.null;
+		}, function (err) {
+			expect(err).to.not.be.null;
+			if (err.code)
+				expect(err.code).to.equal('FLAVOR_PARAMS_OUTPUT_ID_NOT_FOUND');
+			else
+				expect(err.indexOf('KalturaAPIException')).to.not.equal(-1);
 		});
 	});
 
