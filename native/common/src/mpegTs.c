@@ -246,7 +246,7 @@ get_pmt_program_pid(const byte_t* pat_start, const byte_t* packet_end, int* pmt_
 		packet_offset += sizeof_pat_entry;
 		
 		// if the program number is 1, the PID is PID of the PMT
-		if (pat_entry_get_programNumber(pat_entry) == 1)
+		if (pat_entry_get_programNumber(pat_entry) == 1 || pat_entry_count == 1)
 		{
 			*pmt_program_pid = pat_entry_get_programPID(pat_entry);
 		}
