@@ -28,7 +28,7 @@ class TestBeaconSending {
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Ads and Videos according to CuePoints...');
 			let errorsArray = [];
-			for (let i = 0; i < qrCodesResults.length; i++) {
+			for (let i = 0; i < qrCodesResults.length-1; i++) {
 				if (!TestBeaconSending.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
 						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
@@ -159,7 +159,7 @@ function testInit(client) {
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 16016, 'vastForBeaconTest');
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 17000, 'vastForBeaconTest');
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
