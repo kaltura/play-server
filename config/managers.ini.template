@@ -46,8 +46,8 @@ adFileIdLimitBytes = 100000
 ;domain = @LAYOUT_SERVICE_HOSTNAME@
 fillerDefaultDurationSecs = 10
 secondsBackwardsAfterAd = 2
-maxNumberOfAdBreakRetries = 3
-milisBetweenInnerFetchAndLayout = 3000
+millisBetweenInnerFetchAndLayout = 3000
+millisAdBreakRetryTimeout = 1000
 
 [fetch]
 ;domain = @LAYOUT_SERVICE_HOSTNAME@
