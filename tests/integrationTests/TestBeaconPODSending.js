@@ -159,7 +159,7 @@ function testInit(client) {
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4")
 		.then(function (resultEntry) {
 			entry = resultEntry;
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 32000, 'vastForBeaconPODTest');
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 34000, 'vastForBeaconPODTest');
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
