@@ -99,39 +99,41 @@ class PreRoleAdTester {
 
 		playServerTestingHelper.printStatus('2st Attempt - Validating Ads and Videos according to CuePoints. Expected To Succeed and play Ad at starting of video');
 
-		playServerTestingHelper.cleanFolder(input.outputDir);
+		playServerTestingHelper.cleanFolder(input.outputDir,function() {
 
-		input.outputDir = outputDir +'/attempt2/';
+            input.outputDir = outputDir + '/attempt2/';
 
-		if (!fs.existsSync(input.outputDir))
-			fs.mkdirSync(input.outputDir);
+            if (!fs.existsSync(input.outputDir))
+                fs.mkdirSync(input.outputDir);
 
-		playServerTestingHelper.generateThumbsFromM3U8Promise(input.m3u8Url, input.outputDir)
-			.then(function () {
-				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
-					.then(function (filenames) {
-						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-								playServerTestingHelper.printStatus('2nd Attempt - Validating Ads and Videos according to CuePoints. Expected To play Ads');
-								PreRoleAdTester.ValidateAll(results).then(function () {
-										playServerTestingHelper.printError('Pre-role Ad was played on first attempt.');
-										playServerTestingHelper.printError('Ads were verified on 2nd attempt.');
-										resolve(true);
-									}
-									, function (results) {
-										playServerTestingHelper.printOk('2nd Attempt failed');
-										reject(fail);
-									})
-									.catch(function () {
-										reject(false);
-									});
-							})
-							.catch(function () {
-								reject(false);
-							});
-					});
-			}).catch(function () {
-			reject(false);
-		});
+            playServerTestingHelper.generateThumbsFromM3U8Promise(input.m3u8Url, input.outputDir)
+                .then(function () {
+                    playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
+                        .then(function (filenames) {
+                            playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
+                                playServerTestingHelper.printStatus('2nd Attempt - Validating Ads and Videos according to CuePoints. Expected To play Ads');
+                                PreRoleAdTester.ValidateAll(results).then(function () {
+                                        playServerTestingHelper.printError('Pre-role Ad was played on first attempt.');
+                                        playServerTestingHelper.printError('Ads were verified on 2nd attempt.');
+                                        resolve(true);
+                                    }
+                                    , function (results) {
+                                        playServerTestingHelper.printOk('2nd Attempt failed');
+                                        reject(fail);
+                                    })
+                                    .catch(function () {
+                                        reject(false);
+                                    });
+                            })
+                                .catch(function () {
+                                    reject(false);
+                                });
+                        });
+                }).catch(function () {
+                    reject(false);
+                });
+        });
+
 	}
 }
 
