@@ -132,14 +132,16 @@ class PlayServerTestingHelper {
         }
     }
 
-    static cleanFolder(folder) {
-        let This = this;
+    static cleanFolder(folder,callback)
+    {
         console.log("remove folder: " + folder);
-        rmdir(folder, function (err, dirs, files) {
-            if (err) {
-                This.printError(err);
-            }
-        });
+        rmdir(folder,
+            function (err, dirs, files)
+            {
+                if (err) throw err;
+                console.log(`Removed dir ${dirs} ${files}`);
+                callback();
+            });
     }
 
     static printHelp() {
@@ -530,18 +532,20 @@ class PlayServerTestingHelper {
 			{
 				PlayServerTestingHelper.printInfo("Finished Test: " + testName);
 				PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
-				PlayServerTestingHelper.cleanFolder(input.outputDir);
-				if (typeof doneMethod === 'function')
-					doneMethod(res);
-				return assert.equal(res, true);
+				PlayServerTestingHelper.cleanFolder(input.outputDir,function() {
+                    if (typeof doneMethod === 'function')
+                        doneMethod(res);
+                    return assert.equal(res, true);
+                });
 			}, function (res)
 			{
 				PlayServerTestingHelper.printInfo("Finished Test" + testName);
-				PlayServerTestingHelper.cleanFolder(input.outputDir);
-				PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
-				if (typeof doneMethod === 'function')
-					doneMethod(res);
-				return assert.equal(res, false);
+				PlayServerTestingHelper.cleanFolder(input.outputDir,function() {
+                    PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+                    if (typeof doneMethod === 'function')
+                        doneMethod(res);
+                    return assert.equal(res, false);
+                });
 			});
 		}, waitBeforeRunningTest);
     }
@@ -592,19 +596,22 @@ class PlayServerTestingHelper {
                     {
                         PlayServerTestingHelper.printInfo("Finished Test: " + testName);
                         PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
-                        PlayServerTestingHelper.cleanFolder(input.outputDir);
+                        PlayServerTestingHelper.cleanFolder(input.outputDir,function(){
                         if (!res)
                             testsErrorsArray.push(testName + " Failed");
-                        resolve()
+                        resolve()});
 
                     }, function (res)
                     {
                         PlayServerTestingHelper.printInfo("Finished Test" + testName);
                         PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
-                        PlayServerTestingHelper.cleanFolder(input.outputDir);
-                        if (!res)
-                            testsErrorsArray.push(testName + " Failed Here");
-                        resolve();
+                        PlayServerTestingHelper.cleanFolder(input.outputDir,
+                        function()
+                        {
+                            if (!res)
+                                testsErrorsArray.push(testName + " Failed Here");
+                            resolve();
+                        });
                     });
                 }, waitBeforeRunningTest);
         });
