@@ -128,6 +128,7 @@ function finishTest(res){
 
 
 function testInit(client) {
+	cuePointList = [];
 	sessionClient = client;
 	let testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
 	let testName = 'TestFullFlowSingleCuePoint';

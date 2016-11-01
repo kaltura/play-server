@@ -113,6 +113,7 @@ function finishTest(res){
 
 //var exec = require('child_process').execSync; //exec('pwd', {stdio:[0,1,2]});
 function testInit(client) {
+	cuePointList = [];
 	sessionClient = client;
 	let testFullFlowMultiTests = new TestFullFlowMultiTests();
 	let testName1 = 'TestFullFlowMultiTests1';

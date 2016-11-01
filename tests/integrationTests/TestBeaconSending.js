@@ -148,6 +148,7 @@ function finishTest(res){
 
 
 function testInit(client) {
+	cuePointList = [];
 	sessionClient = client;
 	let testName = 'fullFlowBeaconSendingTest';
 
