@@ -1,0 +1,41 @@
+<VAST version="3.0" xsi:noNamespaceSchemaLocation="vast.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<Ad id="ad1">
+		<InLine>
+			<AdSystem version="2.0">KALTURA_TEST</AdSystem>
+			<AdTitle/>
+			<Description/>
+			<Survey/>
+			<Impression id="DART"><![CDATA[
+				http://projects.kaltura.com/beacons/CatchBeacon.php?id=10&eventType=impression
+			]]></Impression>
+			<Creatives>
+				<Creative sequence="1" AdID="">
+					<Linear>
+						<Duration>00:00:15</Duration>
+						<TrackingEvents>
+							<Tracking event="start"><![CDATA[
+								http://projects.kaltura.com/beacons/CatchBeacon.php?id=10&eventType=start
+							]]></Tracking>
+							<Tracking event="midpoint"><![CDATA[
+								http://projects.kaltura.com/beacons/CatchBeacon.php?id=10&eventType=midpoint
+							]]></Tracking>
+							<Tracking event="firstQuartile"><![CDATA[
+								http://projects.kaltura.com/beacons/CatchBeacon.php?id=10&eventType=firstQuartile
+							]]></Tracking>
+							<Tracking event="thirdQuartile"><![CDATA[
+								http://projects.kaltura.com/beacons/CatchBeacon.php?id=10&eventType=thirdQuartile
+							]]></Tracking>
+							<Tracking event="complete"><![CDATA[
+								http://projects.kaltura.com/beacons/CatchBeacon.php?id=10&eventType=complete
+							]]></Tracking>
+						</TrackingEvents>
+						<AdParameters/>
+						<MediaFiles>
+							<MediaFile id="1" delivery="progressive" type="video/mp4" bitrate="2125" width="1280" height="720"></MediaFile>
+						</MediaFiles>
+					</Linear>
+				</Creative>
+			</Creatives>
+		</InLine>
+	</Ad>
+</VAST>
