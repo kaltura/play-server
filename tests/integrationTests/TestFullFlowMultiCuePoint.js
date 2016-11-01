@@ -129,10 +129,15 @@ function testInit(client) {
 		})
 		.then(function (cuePoint) {
 			cuePoint.startTime = cuePoint.startTime + aggregateAdTime; //So we can know when the add will actually play
-
 			aggregateAdTime += cuePoint.duration + 2000;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
-			return playServerTestingHelper.createCuePoint(sessionClient, entry, 60000, 15000);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 36000, 15000);
+		})
+		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime; //So we can know when the add will actually play
+			aggregateAdTime += cuePoint.duration + 2000;//extra two seconds because we stitch the last two seconds to the end of the ad
+			cuePointList.push(cuePoint);
+			return playServerTestingHelper.createCuePoint(sessionClient, entry, 50000, 15000);
 		})
 		.then(function (cuePoint) {
 			cuePoint.startTime = cuePoint.startTime + aggregateAdTime;
