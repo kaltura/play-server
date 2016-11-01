@@ -157,6 +157,7 @@ function finishTest(res){
 // to make sure that the video was rewinded 2 seconds back
 
 function testInit(client) {
+	cuePointList = [];
 	sessionClient = client;
 	let testName = 'VideoRewindTester';
 

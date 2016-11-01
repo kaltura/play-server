@@ -114,6 +114,7 @@ function finishTest(res){
 
 function testInit(client)
 {
+	cuePointList = [];
 	sessionClient = client;
 	let entry;
 	const testName = 'IntersectingCuePointsTester';

@@ -111,6 +111,7 @@ function finishTest(res){
 
 function testInit(client)
 {
+	cuePointList = [];
 	sessionClient = client;
 	const testName = 'unAlignedCuePointTester';
 
