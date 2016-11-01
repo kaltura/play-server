@@ -11,11 +11,11 @@ const testDirName = __dirname;
 
 require('../../lib/utils/KalturaConfig');
 const fileName = KalturaConfig.config.testing.resourcesPath + '/adSample';
-const outputPath = KalturaConfig.config.testing.outputPath + '/adSample_output.mpg';
+const outputPath = KalturaConfig.config.testing.outputPath + '/adSample_output.mp4';
 require('../../lib/utils/KalturaLogger');
 
 const engine = new TrancodinfEngine('ffmpeg');
-const commandLine = ` -i ${fileName} -y ${outputPath}`;
+const commandLine = ` -i ${fileName} -f mp4 -y ${outputPath}`;
 
 describe('test TranscodeingEngine class', function () {
 	this.timeout(0);
@@ -28,7 +28,7 @@ describe('test TranscodeingEngine class', function () {
 	});
 
 	it('test TranscodeingEngine - transcode file using ffmpeg and save output', function () {
-		return engine.transcodeFile(commandLine).then(function (data) {
+		return engine.transcodeFile(commandLine, null, outputPath).then(function (data) {
 			expect(data).to.be.an.instanceof(TranscodingEngineResponse);
 			expect(data.transcoderResponse.substring(0, 66)).to.equal('ffmpeg version 2.7.2 Copyright (c) 2000-2015 the FFmpeg developers');
 		}, function (err) {
