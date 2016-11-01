@@ -27,16 +27,16 @@ const FETCH_OFFSET1 = 1500;
 const FETCH_OFFSET2 = 2000;
 const FETCH_LINK1 = 'http://playserver/fetch1';
 const FETCH_LINK2 = 'http://playserver/fetch1';
-const NUMBER_OF_FLAVORS = 2;
+const FLAVORS = ['flavor1', 'flavor2'];
 
 const MANIFEST_LAYOUT_EXPECTED_RESULT =	'{ "discontinuity": false,' +
 	'"durations": [ '+ DURATION_A + ',' + DURATION_B + ',' + DURATION_C +'],' +
 	'"sequences": ['+
-		'{ "clips": [ '+
+		'{ "id": "flavor1", "clips": [ '+
 			'{"type": "source","path": "' + SOURCE1_PATH_FALVOR1 + '" ,"clipFrom":0 },'+
 			'{"type": "dynamic","id": "'+ DYNAMIC_ID_FALVOR1 +'"},' +
 			'{"type": "source","path": "' + SOURCE2_PATH_FALVOR1 + '" ,"clipFrom":'+ DURATION_A +' }] },'+
-		'{ "clips": [ '+
+		'{  "id": "flavor2", "clips": [ '+
 			'{"type": "source","path": "' + SOURCE1_PATH_FALVOR2 + '" ,"clipFrom":0 },'+
 			'{"type": "dynamic","id": "'+ DYNAMIC_ID_FALVOR2 +'"},' +
 			'{"type": "source","path": "' + SOURCE2_PATH_FALVOR2 + '" ,"clipFrom":' +DURATION_A +' }] }],'+
@@ -74,7 +74,7 @@ function removeWhiteSpaces(text)
 
 describe('testLayoutObjects', function() {
 	it('check ManifestLayoutData', function() {
-		const manifestData = new VODManifestLayoutData(NUMBER_OF_FLAVORS);
+		const manifestData = new VODManifestLayoutData(FLAVORS);
 		const clips1 = [new SourceClipData(0, SOURCE1_PATH_FALVOR1),
 			new SourceClipData(0, SOURCE1_PATH_FALVOR2)];
 		const clips2 = [new DynamicClipData(DYNAMIC_ID_FALVOR1),
