@@ -525,7 +525,11 @@ class PlayServerTestingHelper {
     }
 
 	static testInvoker(testName, test, input, waitBeforeRunningTest = 0,doneMethod = null) {
-        PlayServerTestingHelper.printInfo("Starting testing: " + testName);
+        errorsArray = [];
+	testsErrorsArray = [];
+	qrResults = [];
+	
+	PlayServerTestingHelper.printInfo("Starting testing: " + testName);
 		setTimeout(function()
 		{
 			test.runTest(input, function (res)
@@ -552,6 +556,9 @@ class PlayServerTestingHelper {
 
     static runMultiTests(m3u8Urls, videoThumbDirs, testNames, testClass, waitBeforeRunningTests, doneMethod = null) {
 
+	errorsArray = [];
+	testsErrorsArray = [];
+	qrResults = [];
         let testsPromises = [];
         for (let i = 0; i < testNames.length; i++) {
             let input = [];
