@@ -526,9 +526,15 @@ class PlayServerTestingHelper {
 
 	static testInvoker(testName, test, input, waitBeforeRunningTest = 0,doneMethod = null) {
         errorsArray = [];
+<<<<<<< HEAD
         testsErrorsArray = [];
         qrResults = [];
 
+=======
+	testsErrorsArray = [];
+	qrResults = [];
+	
+>>>>>>> 101f673bbdb2e0b0a2285628f05aca2c2fa5da71
 	PlayServerTestingHelper.printInfo("Starting testing: " + testName);
 		setTimeout(function()
 		{
@@ -559,6 +565,9 @@ class PlayServerTestingHelper {
         testsErrorsArray = [];
         qrResults = [];
 
+	errorsArray = [];
+	testsErrorsArray = [];
+	qrResults = [];
         let testsPromises = [];
         for (let i = 0; i < testNames.length; i++) {
             let input = [];
