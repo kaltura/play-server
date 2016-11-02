@@ -5,6 +5,7 @@ const KalturaVastParser = require('../../lib/protocols/vast/KalturaVastParser');
 require('../../lib/utils/KalturaConfig');
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const VAST_FILE_EXAMPLE_URL = 'file:' + resourcesPath + '/VastExampleForUnitTest.xml';
+const INVALID_VAST_FILE = 'file:' + resourcesPath + '/inValidVastExampleForUnitTest.xml';
 
 const VAST_ONLINE_EXAMPLE_URL = `http://projects.kaltura.com/vast/vast12.xml`;
 const DEFAULT_HEADERS = {};
@@ -49,7 +50,24 @@ describe('Testing Online Kaltura Vast Parser', function()
 		expect(vastResponse.ads.length).to.equal(1);
 		expect(vastResponse.ads[0].creatives[0].mediaFiles.length).to.equal(1);
 	});
+	
+});
 
+describe('Testing Offline Kaltura Vast Parser with invalid vast', function()
+{
+	before(function(done){
+		KalturaVastParser.parse(INVALID_VAST_FILE, DEFAULT_HEADERS, VAST_TIMEOUT,
+			function (vastObject)
+			{
+				vastResponse = vastObject;
+				done();
+			});
+	});
+
+	it('Testing vast structure', function ()
+	{
+		expect(vastResponse).to.equal(null);
+	});
 });
 
 
