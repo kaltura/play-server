@@ -11,7 +11,7 @@ const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonat
 
 const playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
-const cuePointList = [];
+let cuePointList = [];
 let entry = null;
 let DoneMethod = null;
 
