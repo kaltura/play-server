@@ -54,9 +54,10 @@ describe('test the flow of ad transcode', function () {
 
 	it('test TranscodeingEngine - transcode file using ffmpeg and save output', function () {
 		const engine = new TrancodinfEngine('ffmpeg');
-		return engine.transcodeFile(commandLine, filePath, outPath).then(function (data) {
+		return engine.transcodeFile(commandLine, flavorId, outPath).then(function (data) {
 			expect(data).to.be.an.instanceof(TranscodingEngineResponse);
-			expect(data.transcoderResponse.substring(0, 66)).to.equal('ffmpeg version 2.7.2 Copyright (c) 2000-2015 the FFmpeg developers');
+			expect(data.pathToLogFile).to.equal(`${KalturaConfig.config.logger.convertLogDir}/${flavorId}_adSample_output.mpg.log`);
+			expect(data.pathToAdFile).to.equal(outPath);
 		}, function (err) {
 			expect(err).to.be.null;
 		});
