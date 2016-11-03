@@ -138,7 +138,7 @@ function testInit(client) {
 	if (!fs.existsSync(beaconTrackingDir))
 		fs.mkdirSync(beaconTrackingDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);
@@ -152,10 +152,11 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			//playServerTestingHelper.warmupVideo(m3u8Url);
-			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 77);
-			let fullFlowWithCouchBaseRestartTest = new FullFlowWithCouchBaseRestartTest();
-			return playServerTestingHelper.testInvoker(testName, fullFlowWithCouchBaseRestartTest, input, 78000, finishTest);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+				let fullFlowWithCouchBaseRestartTest = new FullFlowWithCouchBaseRestartTest();
+				return playServerTestingHelper.testInvoker(testName, fullFlowWithCouchBaseRestartTest, input, null, finishTest);
+			});
+
 		})
 		.catch(playServerTestingHelper.printError);
 }

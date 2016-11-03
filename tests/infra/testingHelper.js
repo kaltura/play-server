@@ -139,7 +139,6 @@ class PlayServerTestingHelper {
             function (err, dirs, files)
             {
                 if (err) throw err;
-                console.log(`Removed dir ${dirs} ${files}`);
                 callback();
             });
     }
@@ -162,6 +161,7 @@ class PlayServerTestingHelper {
                 .then(PlayServerTestingHelper.uploadFilePromise)
                 .then(PlayServerTestingHelper.addContentPromise)
                 .then(function (result) {
+                    process.env.entryId = result.entry.id;
                     resolve(result.entry);
                 })
                 .catch(reject);
@@ -171,16 +171,20 @@ class PlayServerTestingHelper {
     static deleteEntry(client, entry) {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printInfo("Start DeleteEntry " + entry.id);
-            client.baseEntry.deleteAction(function (results) {
-                    if (results && results.code && results.message) {
-                        PlayServerTestingHelper.printError('Kaltura Error', results);
-                        reject(results);
-                    } else {
-                        PlayServerTestingHelper.printOk('deleteEntry ' + entry.id + ' OK');
-                        resolve(entry);
-                    }
-                },
-                entry.id);
+            if (!KalturaConfig.config.testing.shouldDeleteEntriesAfterTest)
+                resolve();
+            else {
+                client.baseEntry.deleteAction(function (results) {
+                        if (results && results.code && results.message) {
+                            PlayServerTestingHelper.printError('Kaltura Error', results);
+                            reject(results);
+                        } else {
+                            PlayServerTestingHelper.printOk('deleteEntry ' + entry.id + ' OK');
+                            resolve(entry);
+                        }
+                    },
+                    entry.id);
+            }
         });
     }
 
@@ -413,8 +417,11 @@ class PlayServerTestingHelper {
         });
     }
 
-    static getVideoSecBySec(m3u8Url, lengthOfVideo)
+    static getVideoSecBySec(m3u8Url, lengthOfVideo, callback)
     {
+        if (process.env.reRunTest)
+            return callback();
+
         let startTimeForReading = new Date();
         const interval = setInterval(function()
                     {
@@ -423,7 +430,7 @@ class PlayServerTestingHelper {
                         {
                             PlayServerTestingHelper.printOk('SUCCESS video is warmed-up');
                             clearInterval(interval);
-                            return;
+                            return callback();
                         }
                         child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4 -ss ' + currentSecond + ' -t 1 -y /dev/null'),
                             function(error, stdout, stderr)
@@ -431,9 +438,9 @@ class PlayServerTestingHelper {
                                 if (error !== null) {
                                     PlayServerTestingHelper.printError('Error while trying to get second ' + currentSecond + ' of video: ' + error);
                                 }
-                                //else {
-                                //    currentVideoTime++;
-                                //}
+                                else {
+                                    callback();
+                                }
                             }
                         ;
                     }, 1000);
@@ -535,7 +542,8 @@ class PlayServerTestingHelper {
 			{
 				PlayServerTestingHelper.printInfo("Finished Test: " + testName);
 				PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
-				PlayServerTestingHelper.cleanFolder(input.outputDir,function() {
+                PlayServerTestingHelper.reRunTestInfo(test.constructor.name);
+                PlayServerTestingHelper.cleanFolder(input.outputDir,function() {
                     if (typeof doneMethod === 'function')
                         doneMethod(res);
                     return assert.equal(res, true);
@@ -543,14 +551,22 @@ class PlayServerTestingHelper {
 			}, function (res)
 			{
 				PlayServerTestingHelper.printInfo("Finished Test" + testName);
-				PlayServerTestingHelper.cleanFolder(input.outputDir,function() {
-                    PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+                PlayServerTestingHelper.reRunTestInfo(test.constructor.name);
+                PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+                PlayServerTestingHelper.cleanFolder(input.outputDir,function() {
                     if (typeof doneMethod === 'function')
                         doneMethod(res);
                     return assert.equal(res, false);
                 });
 			});
 		}, waitBeforeRunningTest);
+    }
+
+    static reRunTestInfo(testName)
+    {
+        PlayServerTestingHelper.printStatus("To Re-Run Test run the following command: ");
+        PlayServerTestingHelper.shouldDeleteEntriesAfterTest('env reRunTest=0 entryId=' + process.env.entryId + ' mocha ' +  testName +'.js');
+        PlayServerTestingHelper.printStatus("Please make sure that shouldDeleteEntriesAfterTest was set to false in config file while running original test before re running the test.");
     }
 
     static runMultiTests(m3u8Urls, videoThumbDirs, testNames, testClass, waitBeforeRunningTests, doneMethod = null) {

@@ -13,6 +13,7 @@ resourcesPath = @PLAY_SERVER_BASE_DIR@/tests/resources
 outputPath = @PLAY_SERVER_BASE_DIR@/tests/output
 impersonatePartnerId = @PARTNER_ID@
 uiConfId = @UI_CONF_ID@
+shouldDeleteEntriesAfterTest = @shouldDeleteEntriesAfterTest@
 
 
 [fileUtils]

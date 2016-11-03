@@ -150,14 +150,14 @@ function finishTest(res){
 function testInit(client) {
 	cuePointList = [];
 	sessionClient = client;
-	let testName = 'fullFlowBeaconPODSendingTest';
 
-	let videoThumbDir = outputDir + '/' + testName +'/';
+	let testName = 'fullFlowBeaconPODSendingTest';
+	let videoThumbDir = outputDir + '/' + testName + '/';
 
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 32000, 'vastForBeaconPODTest');
@@ -171,10 +171,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			//playServerTestingHelper.warmupVideo(m3u8Url);
-			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 152);
-			let testBeaconPODSending = new TestBeaconPODSending();
-			return playServerTestingHelper.testInvoker(testName, testBeaconPODSending, input, 153000, finishTest);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+				let testBeaconPODSending = new TestBeaconPODSending();
+				return playServerTestingHelper.testInvoker(testName, testBeaconPODSending, input, null, finishTest);
+			});
 		})
 		.catch(playServerTestingHelper.printError);
 }

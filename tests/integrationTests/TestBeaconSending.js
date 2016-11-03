@@ -157,7 +157,7 @@ function testInit(client) {
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 16000, 'vastForBeaconTest');
@@ -171,10 +171,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			//playServerTestingHelper.warmupVideo(m3u8Url);
-			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 137);
-			let testBeaconSending = new TestBeaconSending();
-			return playServerTestingHelper.testInvoker(testName, testBeaconSending, input, 138000, finishTest);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+				let testBeaconSending = new TestBeaconSending();
+				return playServerTestingHelper.testInvoker(testName, testBeaconSending, input, null, finishTest);
+			});
 		})
 		.catch(playServerTestingHelper.printError);
 }
