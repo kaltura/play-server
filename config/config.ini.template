@@ -24,6 +24,7 @@ accessLogName = kaltura_play_access.log
 logName = kaltura_play.log
 errorLogName = kaltura_play_error.log
 largeDataDebugEnabled = 0
+convertLogDir = @CONVERT_LOG_DIR@
 
 [cache]
 type = @CACHE_TYPE@

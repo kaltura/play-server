@@ -12,6 +12,7 @@ const testDirName = __dirname;
 require('../../lib/utils/KalturaConfig');
 const fileName = KalturaConfig.config.testing.resourcesPath + '/adSample';
 const outputPath = KalturaConfig.config.testing.outputPath + '/adSample_output.mp4';
+const flavorId = '0_123456';
 require('../../lib/utils/KalturaLogger');
 
 const engine = new TrancodinfEngine('ffmpeg');
@@ -28,9 +29,10 @@ describe('test TranscodeingEngine class', function () {
 	});
 
 	it('test TranscodeingEngine - transcode file using ffmpeg and save output', function () {
-		return engine.transcodeFile(commandLine, null, outputPath).then(function (data) {
+		return engine.transcodeFile(commandLine, flavorId, outputPath).then(function (data) {
 			expect(data).to.be.an.instanceof(TranscodingEngineResponse);
-			expect(data.transcoderResponse.substring(0, 66)).to.equal('ffmpeg version 2.7.2 Copyright (c) 2000-2015 the FFmpeg developers');
+			expect(data.pathToLogFile).to.equal(`${KalturaConfig.config.logger.convertLogDir}/${flavorId}_adSample_output.mp4.log`);
+			expect(data.pathToAdFile).to.equal(outputPath);
 		}, function (err) {
 			expect(err).to.be.null;
 		});
@@ -56,7 +58,7 @@ describe('test TranscodeingEngine class', function () {
 
 	it('test TranscodeingEngine - command line error', function() {
 		const badengine = new TrancodinfEngine('ffmpegg');
-		return badengine.transcodeFile(commandLine, fileName, outputPath).then(function (data) {
+		return badengine.transcodeFile(commandLine, flavorId, outputPath).then(function (data) {
 			expect(data).to.be.null;
 		}, function (err) {
 			expect(err).to.be.an('error');
