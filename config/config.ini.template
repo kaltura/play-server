@@ -48,6 +48,7 @@ vodApiTimeout = 600
 layout = 600
 calcLayoutMili = 100
 errorAdBreakTTL = 10
+tinyUrlTtl = 3600
 
 [memcache]
 hostname = @MEMCACHE_HOST@
