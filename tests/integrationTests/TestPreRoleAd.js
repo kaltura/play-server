@@ -174,7 +174,7 @@ function testInit(client) {
 		fs.mkdirSync(videoThumbDir);
 
 	let aggregateAdTime = 0;
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			// when bug is fixed please modify cue point start time to 0
@@ -203,10 +203,11 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			//playServerTestingHelper.warmupVideo(m3u8Url);
-			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 109);
-			let preRoleAdTester = new PreRoleAdTester();
-			return playServerTestingHelper.testInvoker(testName, preRoleAdTester, input, 110000, finishTest);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+				let preRoleAdTester = new PreRoleAdTester();
+				return playServerTestingHelper.testInvoker(testName, preRoleAdTester, input, null, finishTest);
+			});
+
 		})
 		.catch(playServerTestingHelper.printError);
 }

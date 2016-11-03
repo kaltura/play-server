@@ -124,7 +124,7 @@ function testInit(client)
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	playServerTestingHelper.createEntry(sessionClient, `${resourcesPath}/2MinVideo.mp4`)
+	playServerTestingHelper.createEntry(sessionClient, `${resourcesPath}/2MinVideo.mp4`, process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);
@@ -142,10 +142,11 @@ function testInit(client)
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			//playServerTestingHelper.warmupVideo(m3u8Url);
-			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 137);
-			const intersectingCuePointsTester = new IntersectingCuePointsTester();
-			return playServerTestingHelper.testInvoker(testName, intersectingCuePointsTester, input, 138000, finishTest);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+				let intersectingCuePointsTester = new IntersectingCuePointsTester();
+				return playServerTestingHelper.testInvoker(testName, intersectingCuePointsTester, input, null, finishTest);
+			});
+
 		})
 		.catch(playServerTestingHelper.printError);
 }

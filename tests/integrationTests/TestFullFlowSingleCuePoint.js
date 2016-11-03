@@ -140,7 +140,7 @@ function testInit(client) {
 	if (!fs.existsSync(beaconTrackingDir))
 		fs.mkdirSync(beaconTrackingDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);
@@ -168,11 +168,12 @@ function testInit(client) {
 				}
 				let suffix = myArray[1].substr(myArray[1].indexOf('/v/2/'));
 				input.m3u8Url = myArray[0] + 'sessionId/' + Math.floor(Math.random() * 50000000) + suffix;
-				//playServerTestingHelper.warmupVideo(input.m3u8Url);
-				playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 77);
-				console.log('test ' + y);
-				const testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
-				playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, ((y * 10000) + 78000), finishTest);
+				playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+					console.log('test ' + y);
+					let testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
+					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, null, finishTest);
+				});
+
 			}
 		})
 		.catch(playServerTestingHelper.printError);

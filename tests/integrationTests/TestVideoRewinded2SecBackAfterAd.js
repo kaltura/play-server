@@ -161,7 +161,7 @@ function testInit(client) {
 	sessionClient = client;
 	let testName = 'VideoRewindTester';
 
-	let videoThumbDir = outputDir + '/' + testName +'/';
+	let videoThumbDir = outputDir + '/' + testName + '/';
 
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
@@ -169,7 +169,7 @@ function testInit(client) {
 	if (!fs.existsSync(beaconTrackingDir))
 		fs.mkdirSync(beaconTrackingDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 15000, 6500);
@@ -177,12 +177,18 @@ function testInit(client) {
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
-			thumbsToCompare.push({"startThumb":Math.floor((cuePoint.startTime-2)/1000), "endThumb":Math.ceil((cuePoint.startTime + cuePoint.duration)/1000)});
+			thumbsToCompare.push({
+				"startThumb": Math.floor((cuePoint.startTime - 2) / 1000),
+				"endThumb": Math.ceil((cuePoint.startTime + cuePoint.duration) / 1000)
+			});
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 29000, 4000);
 		})
 		.then(function (cuePoint) {
 			cuePointList.push(cuePoint);
-			thumbsToCompare.push({"startThumb":Math.floor((cuePoint.startTime-2)/1000), "endThumb":Math.ceil((cuePoint.startTime + cuePoint.duration + 1)/1000)});
+			thumbsToCompare.push({
+				"startThumb": Math.floor((cuePoint.startTime - 2) / 1000),
+				"endThumb": Math.ceil((cuePoint.startTime + cuePoint.duration + 1) / 1000)
+			});
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
@@ -190,10 +196,11 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			//playServerTestingHelper.warmupVideo(m3u8Url);
-			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 73);
-			let videoRewindTester = new VideoRewindTester();
-			return playServerTestingHelper.testInvoker(testName, videoRewindTester, input, 74000, finishTest);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+				let videoRewindTester = new VideoRewindTester();
+				return playServerTestingHelper.testInvoker(testName, videoRewindTester, input, null, finishTest);
+			});
+
 		})
 		.catch(playServerTestingHelper.printError);
 }
