@@ -565,7 +565,7 @@ class PlayServerTestingHelper {
     static reRunTestInfo(testName)
     {
         PlayServerTestingHelper.printStatus("To Re-Run Test run the following command: ");
-        PlayServerTestingHelper.shouldDeleteEntriesAfterTest('env reRunTest=0 entryId=' + process.env.entryId + ' mocha ' +  testName +'.js');
+        PlayServerTestingHelper.printStatus('env reRunTest=0 entryId=' + process.env.entryId + ' mocha ' +  testName +'.js');
         PlayServerTestingHelper.printStatus("Please make sure that shouldDeleteEntriesAfterTest was set to false in config file while running original test before re running the test.");
     }
 
