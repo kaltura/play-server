@@ -175,7 +175,7 @@ class PlayServerTestingHelper {
     static deleteEntry(client, entry) {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printInfo("Start DeleteEntry " + entry.id);
-            if (!KalturaConfig.config.testing.shouldDeleteEntriesAfterTest)
+            if (!(KalturaConfig.config.testing.shouldDeleteEntriesAfterTest == "true"))
                 resolve();
             else {
                 client.baseEntry.deleteAction(function (results) {
