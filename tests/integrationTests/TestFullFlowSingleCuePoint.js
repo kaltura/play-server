@@ -110,22 +110,29 @@ describe('test full flow', function () {
 });
 
 let testCounter = 0;
-function finishTest(res){
+function finishTest(res) {
 	testCounter += 1;
 	if (res)
 		playServerTestingHelper.printOk("test num " + testCounter + " SUCCESS");
 	else
 		playServerTestingHelper.printError("test num " + testCounter + " FAIL");
 	if (testCounter == numOfTests)
-		playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
-			playServerTestingHelper.printInfo("return from delete entry");
+		playServerTestingHelper.deleteCuePoints(sessionClient, cuePointList, function () {
+			playServerTestingHelper.deleteEntry(sessionClient, entry).then(function (results) {
+				playServerTestingHelper.printInfo("return from delete entry");
+				if (res)
+					DoneMethod();
+				else
+					DoneMethod('Test failed');
+			});
+		}, function (err) {
+			playServerTestingHelper.printError(err);
 			if (res)
 				DoneMethod();
 			else
 				DoneMethod('Test failed');
 		});
 }
-
 
 function testInit(client) {
 	cuePointList = [];

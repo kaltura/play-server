@@ -22,6 +22,7 @@ if (!fs.existsSync(outputDir))
 let errorsArray = [];
 let testsErrorsArray = [];
 let qrResults = [];
+let cuePointsErrorsArray = [];
 
 const KalturaClientLogger = {
     log: function(str) {
@@ -153,7 +154,10 @@ class PlayServerTestingHelper {
     static createEntry(client, path, entryId) {
         let input = {client: client, path: path};
         if (entryId)
+        {
+            console.log("EREZ " +entryId);
             return PlayServerTestingHelper.getEntryPromise(client, entryId);
+        }
 
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.createEntryPromise(input)
@@ -188,6 +192,47 @@ class PlayServerTestingHelper {
         });
     }
 
+    static deleteCuePoints(client, cuePointList, resolve, reject) {
+        cuePointsErrorsArray = [];
+        Promise.all(PlayServerTestingHelper.getIterateCuePointsToDeletePromises(client, cuePointList)).then(function () {
+            if (cuePointsErrorsArray.length > 0) {
+                for (let i = 0; i < cuePointsErrorsArray.length; i++)
+                    PlayServerTestingHelper.printError(cuePointsErrorsArray[i]);
+                reject();
+            } else {
+                PlayServerTestingHelper.printOk('Finished deleting cuePoints');
+                resolve();
+            }
+        }, function (reason) {
+            PlayServerTestingHelper.printError(reason);
+            reject();
+        });
+    }
+
+    static getIterateCuePointsToDeletePromises(client, cuePointsList) {
+        let cuePointPromises = [];
+        cuePointsList.forEach(function (cuePoint) {
+            cuePointPromises.push(PlayServerTestingHelper.deleteCuePoint(client, cuePoint));
+        });
+        return cuePointPromises;
+    }
+
+    static deleteCuePoint(client, cuePoint) {
+        return new Promise(function (resolve, reject) {
+            PlayServerTestingHelper.printInfo("Start deleteCuePoint "  + cuePoint.id);
+            client.cuePoint.deleteAction(function (results) {
+                    if (results && results.code && results.message) {
+                        PlayServerTestingHelper.printError('Kaltura Error', results);
+                        reject(results);
+                    } else {
+                        PlayServerTestingHelper.printOk('deleteCuePoint ' + cuePoint.id + ' OK');
+                        resolve();
+                    }
+                },
+                cuePoint.id);
+        });
+    }
+
     static getEntryPromise(client, endryId) {
         return new Promise(function (resolve, reject) {
             client.baseEntry.get(function (results) {
@@ -196,6 +241,7 @@ class PlayServerTestingHelper {
                     reject(results);
                 } else {
                     PlayServerTestingHelper.printOk('createEntry OK');
+                    console.log("EREZ " +results );
                     resolve(results);
                 }
             }, endryId);
@@ -404,7 +450,7 @@ class PlayServerTestingHelper {
     static generateThumbsFromM3U8Promise(m3u8Url, videoThumbDir) {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printStatus("Generating thumbs from M3U8 url ");
-            child_process.exec('ffmpeg -i ' + m3u8Url + ' -vf fps=0.5 -f image2 -r 0.5 -y ' + videoThumbDir + '%d.jpg',
+            child_process.exec('ffmpeg -i ' + m3u8Url + ' -vf fps=0.5 -f image2 -r 0.5 -y ' + videoThumbDir + '%d.jpg >> /dev/null 2>&1',
                 function (error, stdout, stderr) {
                     if (error !== null) {
                         PlayServerTestingHelper.printError('Error while generateThumbsFromM3U8Promise: ' + error);
@@ -523,7 +569,6 @@ class PlayServerTestingHelper {
     }
 
     static getIterateThumbsPromises(videoThumbDir, array) {
-        var index = 0;
         let qrPromises = [];
         array.forEach(function (name) {
             qrPromises.push(PlayServerTestingHelper.ReadQrCode(videoThumbDir, name));
@@ -535,31 +580,29 @@ class PlayServerTestingHelper {
         errorsArray = [];
         testsErrorsArray = [];
         qrResults = [];
-	PlayServerTestingHelper.printInfo("Starting testing: " + testName);
-		setTimeout(function()
-		{
-			test.runTest(input, function (res)
-			{
-				PlayServerTestingHelper.printInfo("Finished Test: " + testName);
-				PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
+
+        PlayServerTestingHelper.printInfo("Starting testing: " + testName);
+        setTimeout(function () {
+            test.runTest(input, function (res) {
+                PlayServerTestingHelper.printInfo("Finished Test: " + testName);
+                PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
                 PlayServerTestingHelper.reRunTestInfo(test.constructor.name);
-                PlayServerTestingHelper.cleanFolder(input.outputDir,function() {
+                PlayServerTestingHelper.cleanFolder(input.outputDir, function () {
                     if (typeof doneMethod === 'function')
                         doneMethod(res);
                     return assert.equal(res, true);
                 });
-			}, function (res)
-			{
-				PlayServerTestingHelper.printInfo("Finished Test" + testName);
+            }, function (res) {
+                PlayServerTestingHelper.printInfo("Finished Test" + testName);
                 PlayServerTestingHelper.reRunTestInfo(test.constructor.name);
                 PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
-                PlayServerTestingHelper.cleanFolder(input.outputDir,function() {
+                PlayServerTestingHelper.cleanFolder(input.outputDir, function () {
                     if (typeof doneMethod === 'function')
                         doneMethod(res);
                     return assert.equal(res, false);
                 });
-			});
-		}, waitBeforeRunningTest);
+            });
+        }, waitBeforeRunningTest);
     }
 
     static reRunTestInfo(testName)

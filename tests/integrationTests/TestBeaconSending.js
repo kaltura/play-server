@@ -126,7 +126,7 @@ describe('test full flow', function () {
 	});
 });
 
-function finishTest(res){
+function finishTest(res) {
 	if (res)
 		playServerTestingHelper.printOk("test SUCCESS");
 	else
@@ -137,8 +137,16 @@ function finishTest(res){
 	else
 		playServerTestingHelper.printError("beacon validation FAIL");
 	res = res && res2;
-	playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
-		playServerTestingHelper.printInfo("return from delete entry");
+	playServerTestingHelper.deleteCuePoints(sessionClient, cuePointList, function () {
+		playServerTestingHelper.deleteEntry(sessionClient, entry).then(function (results) {
+			playServerTestingHelper.printInfo("return from delete entry");
+			if (res)
+				DoneMethod();
+			else
+				DoneMethod('Test failed');
+		});
+	}, function (err) {
+		playServerTestingHelper.printError(err);
 		if (res)
 			DoneMethod();
 		else
