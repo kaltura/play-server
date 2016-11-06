@@ -21,7 +21,7 @@ describe('testTranscodingHelper', function ()
 	this.timeout(0);
 	it('test get Adapted Transcoding Command', function (done)
 	{
-		TranscodingHelper.getAdaptedTranscodingCommand(flavorId, null, 30, connector, impersonatePartnerId, null, outputPath, true).then(
+		TranscodingHelper.getAdaptedTranscodingCommand(flavorId, null, 30, connector, impersonatePartnerId, null, outputPath, false).then(
 			function (response) {
 				expect(response.command.indexOf('/dev/zero')).to.not.equal(-1);
 				done();
@@ -36,7 +36,7 @@ describe('testTranscodingHelper', function ()
 	it('test transcode And Save To Disk', function (done)
 	{
 		this.timeout(30000);
-		TranscodingHelper.transcodeAndSaveToDisk(flavorId, null, 30, connector, impersonatePartnerId, null, outputPath, true).then(
+		TranscodingHelper.transcodeAndSaveToDisk(flavorId, null, 30, connector, impersonatePartnerId, null, outputPath, false).then(
 			function (response) {
 				done();
 			},
@@ -50,7 +50,7 @@ describe('testTranscodingHelper', function ()
 	it('test transcode Ad To Disk', function (done)
 	{
 		this.timeout(30000);
-		TranscodingHelper.transcodeExistingFileToDisk(flavorId, connector, impersonatePartnerId, adVideoFile, adVideoFile, null, true).then(
+		TranscodingHelper.transcodeExistingFileToDisk(flavorId, connector, impersonatePartnerId, adVideoFile, adVideoFile, null, false).then(
 			function (outPath) {
 				done();
 			},
