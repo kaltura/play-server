@@ -130,7 +130,6 @@ class VideoRewindTester {
 }
 
 
-
 describe('test full flow', function () {
 	it('test - Video Rewinded 2 Sec Back After', function (done) {
 		this.timeout(210000);
@@ -140,15 +139,23 @@ describe('test full flow', function () {
 	});
 });
 
-function finishTest(res){
+function finishTest(res) {
 	if (res)
 		playServerTestingHelper.printOk("test SUCCESS");
 	else
 		playServerTestingHelper.printError("test FAIL");
-	playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
-		playServerTestingHelper.printInfo("return from delete entry");
-		if (res) //if test pass finish test else wait for timeout
+	playServerTestingHelper.deleteCuePoints(sessionClient, cuePointList, function () {
+		playServerTestingHelper.deleteEntry(sessionClient, entry).then(function (results) {
+			playServerTestingHelper.printInfo("return from delete entry");
+			if (res) //if test pass finish test else wait for timeout
+				DoneMethod();
+		});
+	}, function (err) {
+		playServerTestingHelper.printError(err);
+		if (res)
 			DoneMethod();
+		else
+			DoneMethod('Test failed');
 	});
 }
 
