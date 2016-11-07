@@ -179,7 +179,7 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 45, function () {
 				let testBeaconSending = new TestBeaconSending();
 				return playServerTestingHelper.testInvoker(testName, testBeaconSending, input, null, finishTest);
 			});

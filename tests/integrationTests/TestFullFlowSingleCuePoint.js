@@ -86,6 +86,7 @@ class TestFullFlowSingleCuePoint {
 
 }
 
+
 let numOfTests = 1;
 describe('test full flow', function () {
 	it('test - Single Cue Point', function (done) {
@@ -150,8 +151,6 @@ function testInit(client) {
 				const input = [];
 				input.m3u8Url = m3u8Url;
 				input.outputDir = videoThumbDir;
-				const y = i;
-				videoThumbDir = outputDir + '/' + testName + y + '/';
 				input.outputDir = videoThumbDir;
 				if (!fs.existsSync(videoThumbDir))
 					fs.mkdirSync(videoThumbDir);
