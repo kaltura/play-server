@@ -157,13 +157,13 @@ function testInit(client) {
 		})
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
-			playServerTestingHelper.getVideoSecBySec(m3u8Url, 30);
+			playServerTestingHelper.getVideoSecBySec(m3u8Url, 77);
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
 
-			playServerTestingHelper.getVideoSecBySec(m3u8Url, 30, function () {
+			playServerTestingHelper.getVideoSecBySec(m3u8Url, 77, function () {
 				let testFullFlowMultiTests = new TestFullFlowMultiTests();
 				playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, testFullFlowMultiTests, waitBeforeRunningTests, finishTest);
 			});
