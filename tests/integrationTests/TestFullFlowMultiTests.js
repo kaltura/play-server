@@ -86,9 +86,8 @@ class TestFullFlowMultiTests {
 
 }
 
-
 describe('test full flow multi test', function () {
-	it('test - video with no ads', function (done) {
+	it('test - full flow multi test', function (done) {
 		this.timeout(240000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
@@ -158,13 +157,13 @@ function testInit(client) {
 		})
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
-			playServerTestingHelper.getVideoSecBySec(m3u8Url, 30, null);
+			playServerTestingHelper.getVideoSecBySec(m3u8Url, 30);
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
 		})
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
 
-			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+			playServerTestingHelper.getVideoSecBySec(m3u8Url, 30, function () {
 				let testFullFlowMultiTests = new TestFullFlowMultiTests();
 				playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, testFullFlowMultiTests, waitBeforeRunningTests, finishTest);
 			});
