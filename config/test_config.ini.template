@@ -11,6 +11,7 @@ transcodedFlavorId = @FLAVOR_ID@
 sourceFlavorId = @FLAVOR_ID@
 resourcesPath = @PLAY_SERVER_BASE_DIR@/tests/resources
 outputPath = @PLAY_SERVER_BASE_DIR@/tests/output
+testsPath = @PLAY_SERVER_BASE_DIR@/tests/integrationTests
 impersonatePartnerId = @PARTNER_ID@
 uiConfId = @UI_CONF_ID@
 shouldDeleteEntriesAfterTest = @shouldDeleteEntriesAfterTest@

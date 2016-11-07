@@ -155,7 +155,6 @@ class PlayServerTestingHelper {
         let input = {client: client, path: path};
         if (entryId)
         {
-            console.log("EREZ " +entryId);
             return PlayServerTestingHelper.getEntryPromise(client, entryId);
         }
 
@@ -172,10 +171,10 @@ class PlayServerTestingHelper {
         });
     }
 
-    static deleteEntry(client, entry) {
+    static deleteEntry(client, entry, shouldDeleteEntry = 'false') {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printInfo("Start DeleteEntry " + entry.id);
-            if (!(KalturaConfig.config.testing.shouldDeleteEntriesAfterTest == "true"))
+            if ( shouldDeleteEntry != 'true' && KalturaConfig.config.testing.shouldDeleteEntriesAfterTest != 'true')
                 resolve();
             else {
                 client.baseEntry.deleteAction(function (results) {
@@ -241,7 +240,6 @@ class PlayServerTestingHelper {
                     reject(results);
                 } else {
                     PlayServerTestingHelper.printOk('createEntry OK');
-                    console.log("EREZ " +results );
                     resolve(results);
                 }
             }, endryId);
@@ -466,7 +464,12 @@ class PlayServerTestingHelper {
     static getVideoSecBySec(m3u8Url, lengthOfVideo, callback)
     {
         if (process.env.reRunTest)
-            return callback();
+        {
+            if (callback)
+                return callback();
+            else
+                return;
+        }
 
         let startTimeForReading = new Date();
         const interval = setInterval(function()
@@ -476,7 +479,10 @@ class PlayServerTestingHelper {
                         {
                             PlayServerTestingHelper.printOk('SUCCESS video is warmed-up');
                             clearInterval(interval);
-                            return callback();
+                            if (callback)
+                                return callback();
+                            else
+                                return;
                         }
                         child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4 -ss ' + currentSecond + ' -t 1 -y /dev/null'),
                             function(error, stdout, stderr)
@@ -485,7 +491,10 @@ class PlayServerTestingHelper {
                                     PlayServerTestingHelper.printError('Error while trying to get second ' + currentSecond + ' of video: ' + error);
                                 }
                                 else {
-                                    callback();
+                                    if (callback)
+                                        return callback();
+                                    else
+                                        return;
                                 }
                             }
                         ;
