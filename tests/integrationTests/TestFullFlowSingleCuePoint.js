@@ -84,18 +84,6 @@ class TestFullFlowSingleCuePoint {
 			});
 	}
 
-	//function validateTrackedBeaconsFile() {
-//	playServerTestingHelper.printInfo("Start validateTrackedBeaconsFile");
-//
-//	if (fs.existsSync(beaconTrackingDir + '/beaconTracking.txt')) {
-//		var array = fs.readFileSync(beaconTrackingDir + '/beaconTracking.txt').toString().split("\n");
-//		for (i in array)
-//			playServerTestingHelper.printStatus(array[i]);
-//	}else {
-//		playServerTestingHelper.printError("Can't read " + beaconTrackingDir + '/beaconTracking.txt - file doesn\'t exists');
-//	}
-//}
-
 }
 
 
@@ -163,8 +151,6 @@ function testInit(client) {
 				const input = [];
 				input.m3u8Url = m3u8Url;
 				input.outputDir = videoThumbDir;
-				const y = i;
-				videoThumbDir = outputDir + '/' + testName + y + '/';
 				input.outputDir = videoThumbDir;
 				if (!fs.existsSync(videoThumbDir))
 					fs.mkdirSync(videoThumbDir);
@@ -176,9 +162,8 @@ function testInit(client) {
 				let suffix = myArray[1].substr(myArray[1].indexOf('/v/2/'));
 				input.m3u8Url = myArray[0] + 'sessionId/' + Math.floor(Math.random() * 50000000) + suffix;
 				playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
-					console.log('test ' + y);
 					let testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
-					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, null, finishTest);
+					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, 78000, finishTest);
 				});
 
 			}

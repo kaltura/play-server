@@ -22,14 +22,14 @@ let cuePointList = [];
 let entry = null;
 let DoneMethod = null;
 
-class FullFlowWithCouchBaseRestartTest{
+class TestfullFlowWithCouchBaseRestart{
 
 	static ValidateAll(qrCodesResults) {
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Ads and Videos according to CuePoints...');
 			let errorsArray = [];
 			for (let i = 0; i < qrCodesResults.length; i++) {
-				if (!FullFlowWithCouchBaseRestartTest.validateQrResult(qrCodesResults[i])) {
+				if (!TestfullFlowWithCouchBaseRestart.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
 						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
 					else
@@ -49,9 +49,9 @@ class FullFlowWithCouchBaseRestartTest{
 
 	static validateQrResult(qrCodeItem) {
 		if (qrCodeItem.ad)
-			return FullFlowWithCouchBaseRestartTest.isValidAd(qrCodeItem);
+			return TestfullFlowWithCouchBaseRestart.isValidAd(qrCodeItem);
 		else // case of thumb not of a ad - should not be in time of a cuePoint
-			return !FullFlowWithCouchBaseRestartTest.isValidAd(qrCodeItem);
+			return !TestfullFlowWithCouchBaseRestart.isValidAd(qrCodeItem);
 	}
 
 	static isValidAd(qrCodeItem){
@@ -70,7 +70,7 @@ class FullFlowWithCouchBaseRestartTest{
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							FullFlowWithCouchBaseRestartTest.ValidateAll(results).then(function () {
+							TestfullFlowWithCouchBaseRestart.ValidateAll(results).then(function () {
 									resolve(true);
 								}
 								, reject);
@@ -87,8 +87,8 @@ class FullFlowWithCouchBaseRestartTest{
 }
 
 
-describe('test full flow', function () {
-	it('test - With CouchBase Restart', function (done) {
+describe('test full flow With CouchBase Restart', function () {
+	it('test - full flow With CouchBase Restart', function (done) {
 		this.timeout(180000);
 		DoneMethod = done;
 		playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
@@ -134,7 +134,7 @@ function finishTest(res) {
 function testInit(client) {
 	cuePointList = [];
 	sessionClient = client;
-	let testName = 'FullFlowWithCouchBaseRestartTest';
+	let testName = 'TestfullFlowWithCouchBaseRestart';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
 
@@ -144,7 +144,7 @@ function testInit(client) {
 	if (!fs.existsSync(beaconTrackingDir))
 		fs.mkdirSync(beaconTrackingDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);
@@ -159,8 +159,8 @@ function testInit(client) {
 			input.outputDir = videoThumbDir;
 
 			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
-				let fullFlowWithCouchBaseRestartTest = new FullFlowWithCouchBaseRestartTest();
-				return playServerTestingHelper.testInvoker(testName, fullFlowWithCouchBaseRestartTest, input, null, finishTest);
+				let testfullFlowWithCouchBaseRestart = new TestfullFlowWithCouchBaseRestart();
+				return playServerTestingHelper.testInvoker(testName, testfullFlowWithCouchBaseRestart, input, 78000, finishTest);
 			});
 
 		})

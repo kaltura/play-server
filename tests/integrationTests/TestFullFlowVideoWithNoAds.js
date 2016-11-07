@@ -22,7 +22,7 @@ let cuePointList = [];
 let entry = null;
 let DoneMethod = null;
 
-class VideoWithNoAdsTester {
+class TestFullFlowVideoWithNoAds {
 
 	static ValidateAll(qrCodesResults) {
 		return new Promise(function (resolve, reject) {
@@ -49,7 +49,7 @@ class VideoWithNoAdsTester {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							VideoWithNoAdsTester.ValidateAll(results).then(function () {
+							TestFullFlowVideoWithNoAds.ValidateAll(results).then(function () {
 									resolve(true);
 								}
 								, reject);
@@ -99,7 +99,7 @@ function finishTest(res) {
 function testInit(client) {
 	cuePointList = [];
 	sessionClient = client;
-	let testName = 'VideoWithNoAdsTester';
+	let testName = 'TestFullFlowVideoWithNoAds';
 
 	let videoThumbDir = outputDir + '/' + testName + '/';
 
@@ -117,7 +117,7 @@ function testInit(client) {
 			input.outputDir = videoThumbDir;
 
 			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
-				let tester = new VideoWithNoAdsTester();
+				let tester = new TestFullFlowVideoWithNoAds();
 				return playServerTestingHelper.testInvoker(testName, tester, input, null, finishTest);
 			});
 		})

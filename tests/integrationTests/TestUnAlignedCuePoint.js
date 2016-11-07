@@ -15,15 +15,15 @@ let cuePointList = [];
 let entry = null;
 let DoneMethod = null;
 
-class UnAlignedCuePointTester {
+class TestUnAlignedCuePoint {
 
-	static validateUnAlignedCuePoint(qrCodesResults)
+	static TestUnAlignedCuePoint(qrCodesResults)
 	{
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Ads and Videos according to CuePoints...');
 			let errorsArray = [];
 			for (let i = 0; i < qrCodesResults.length; i++) {
-				if (!UnAlignedCuePointTester.validateQrResult(qrCodesResults[i]))
+				if (!TestUnAlignedCuePoint.validateQrResult(qrCodesResults[i]))
 				{
 					if (qrCodesResults[i].ad)
 						errorsArray.push(`FAIL - Found Ad thumb at time: [${qrCodesResults[i].thumbTime} seconds] from beginning of video but Ad cue point is not defined for that time`);
@@ -46,8 +46,8 @@ class UnAlignedCuePointTester {
 	static validateQrResult(qrCodeItem)
 	{
 		if (qrCodeItem.ad)
-			return UnAlignedCuePointTester.isValidAd(qrCodeItem);
-		return !UnAlignedCuePointTester.isValidAd(qrCodeItem); // case of thumb not of a ad - should not be in time of a cuePoint
+			return TestUnAlignedCuePoint.isValidAd(qrCodeItem);
+		return !TestUnAlignedCuePoint.isValidAd(qrCodeItem); // case of thumb not of a ad - should not be in time of a cuePoint
 	}
 
 	static isValidAd(qrCodeItem)
@@ -67,8 +67,8 @@ class UnAlignedCuePointTester {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							playServerTestingHelper.printStatus('run validateUnAlignedCuePoint');
-							UnAlignedCuePointTester.validateUnAlignedCuePoint(results).then(function () {
+							playServerTestingHelper.printStatus('run TestUnAlignedCuePoint');
+							TestUnAlignedCuePoint.TestUnAlignedCuePoint(results).then(function () {
 								resolve(true);
 							}
 								, reject);
@@ -121,7 +121,7 @@ function testInit(client)
 {
 	cuePointList = [];
 	sessionClient = client;
-	const testName = 'unAlignedCuePointTester';
+	const testName = 'TestUnAlignedCuePoint';
 
 	const videoThumbDir = `${outputDir}/${testName}/`;
 
@@ -142,7 +142,7 @@ function testInit(client)
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
-				let unalignedCuePointTester = new UnAlignedCuePointTester();
+				let unalignedCuePointTester = new TestUnAlignedCuePoint();
 				return playServerTestingHelper.testInvoker(testName, unalignedCuePointTester, input, null, finishTest);
 			});
 		})

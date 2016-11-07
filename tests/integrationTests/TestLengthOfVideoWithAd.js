@@ -22,14 +22,14 @@ let videoTimings = [];
 let entry = null;
 let DoneMethod = null;
 
-class LengthOfVideoWithAdTest {
+class TestLengthOfVideoWithAd {
 
 	static ValidateAll(qrCodesResults) {
 		return new Promise(function (resolve, reject) {
 			playServerTestingHelper.printStatus('Validating Ads and Videos according to CuePoints...');
 			let errorsArray = [];
 			for (let i = 0; i < qrCodesResults.length; i++) {
-				if (!LengthOfVideoWithAdTest.validateQrResult(qrCodesResults[i])) {
+				if (!TestLengthOfVideoWithAd.validateQrResult(qrCodesResults[i])) {
 					if (qrCodesResults[i].ad)
 						errorsArray.push('FAIL - Found Ad thumb at time: [' + qrCodesResults[i].thumbTime + " seconds] from beginning if video but Ad cue point is not defined for that time");
 					else
@@ -49,11 +49,11 @@ class LengthOfVideoWithAdTest {
 
 	static validateQrResult(qrCodeItem) {
 		if (qrCodeItem.ad)
-			return LengthOfVideoWithAdTest.isValidAd(qrCodeItem);
+			return TestLengthOfVideoWithAd.isValidAd(qrCodeItem);
 		else // case of thumb not of a ad - should not be in time of a cuePoint
 		{
 			videoTimings.push(qrCodeItem.contentTime);
-			return !LengthOfVideoWithAdTest.isValidAd(qrCodeItem);
+			return !TestLengthOfVideoWithAd.isValidAd(qrCodeItem);
 		}
 	}
 
@@ -69,7 +69,7 @@ class LengthOfVideoWithAdTest {
 
 	static validateLengthOfVideo() {
 		return new Promise(function (resolve, reject) {
-			if (videoTimings.length != 31) {
+			if (videoTimings.length != 61) {
 				playServerTestingHelper.printError("Video content length should be 60 Seconds (31 thumbs) but received only :  " + videoTimings.length);
 				reject(false);
 				return;
@@ -93,8 +93,8 @@ class LengthOfVideoWithAdTest {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							LengthOfVideoWithAdTest.ValidateAll(results).then(function () {
-									 LengthOfVideoWithAdTest.validateLengthOfVideo().then(function () {
+							TestLengthOfVideoWithAd.ValidateAll(results).then(function () {
+									 TestLengthOfVideoWithAd.validateLengthOfVideo().then(function () {
 											resolve(true);
 										 } , function () {
 											 reject(false);
@@ -150,14 +150,14 @@ function finishTest(res) {
 function testInit(client) {
 	cuePointList = [];
 	sessionClient = client;
-	let testName = 'LengthOfVideoWithAdTest.js';
+	let testName = 'TestLengthOfVideoWithAd.js';
 
 	let videoThumbDir = outputDir + '/' + testName +'/';
 
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);
@@ -172,7 +172,7 @@ function testInit(client) {
 			input.outputDir = videoThumbDir;
 
 			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
-				let lengthOfVideoWithAdTest = new LengthOfVideoWithAdTest();
+				let lengthOfVideoWithAdTest = new TestLengthOfVideoWithAd();
 				return playServerTestingHelper.testInvoker(testName, lengthOfVideoWithAdTest, input, null, finishTest);
 			});
 
