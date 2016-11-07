@@ -160,7 +160,7 @@ function testInit(client) {
 
 			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
 				let testfullFlowWithCouchBaseRestart = new TestfullFlowWithCouchBaseRestart();
-				return playServerTestingHelper.testInvoker(testName, testfullFlowWithCouchBaseRestart, input, null, finishTest);
+				return playServerTestingHelper.testInvoker(testName, testfullFlowWithCouchBaseRestart, input, 78000, finishTest);
 			});
 
 		})

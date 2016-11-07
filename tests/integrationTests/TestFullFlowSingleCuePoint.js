@@ -163,7 +163,7 @@ function testInit(client) {
 				input.m3u8Url = myArray[0] + 'sessionId/' + Math.floor(Math.random() * 50000000) + suffix;
 				playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
 					let testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
-					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, null, finishTest);
+					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, 78000, finishTest);
 				});
 
 			}
