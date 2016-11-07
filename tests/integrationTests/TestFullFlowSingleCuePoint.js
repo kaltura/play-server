@@ -86,6 +86,7 @@ class TestFullFlowSingleCuePoint {
 
 }
 
+
 let numOfTests = 1;
 describe('test full flow', function () {
 	it('test - Single Cue Point', function (done) {
@@ -150,8 +151,6 @@ function testInit(client) {
 				const input = [];
 				input.m3u8Url = m3u8Url;
 				input.outputDir = videoThumbDir;
-				const y = i;
-				videoThumbDir = outputDir + '/' + testName + y + '/';
 				input.outputDir = videoThumbDir;
 				if (!fs.existsSync(videoThumbDir))
 					fs.mkdirSync(videoThumbDir);
@@ -163,7 +162,6 @@ function testInit(client) {
 				let suffix = myArray[1].substr(myArray[1].indexOf('/v/2/'));
 				input.m3u8Url = myArray[0] + 'sessionId/' + Math.floor(Math.random() * 50000000) + suffix;
 				playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
-					console.log('test ' + y);
 					let testFullFlowSingleCuePoint = new TestFullFlowSingleCuePoint();
 					playServerTestingHelper.testInvoker(testName, testFullFlowSingleCuePoint, input, null, finishTest);
 				});

@@ -87,7 +87,7 @@ class TestfullFlowWithCouchBaseRestart{
 }
 
 
-describe('test full flow', function () {
+describe('test full flow With CouchBase Restart', function () {
 	it('test - full flow With CouchBase Restart', function (done) {
 		this.timeout(180000);
 		DoneMethod = done;
@@ -144,7 +144,7 @@ function testInit(client) {
 	if (!fs.existsSync(beaconTrackingDir))
 		fs.mkdirSync(beaconTrackingDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);

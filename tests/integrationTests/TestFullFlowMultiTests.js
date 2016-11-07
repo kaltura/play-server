@@ -137,8 +137,8 @@ function testInit(client) {
 	testNames.push(testName2);
 	videoThumbDirs.push(videoThumbDir1);
 	videoThumbDirs.push(videoThumbDir2);
-	waitBeforeRunningTests.push(null);
-	waitBeforeRunningTests.push(null);
+	waitBeforeRunningTests.push(77000);
+	waitBeforeRunningTests.push(87000);
 
 	if (!fs.existsSync(videoThumbDir1))
 		fs.mkdirSync(videoThumbDir1);
@@ -146,7 +146,7 @@ function testInit(client) {
 	if (!fs.existsSync(videoThumbDir2))
 		fs.mkdirSync(videoThumbDir2);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 30000, 15000);

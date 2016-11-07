@@ -154,34 +154,34 @@ function finishTest(res) {
 	else
 		playServerTestingHelper.printError("test FAIL");
 	playServerTestingHelper.deleteCuePoints(sessionClient, cuePointList, function () {
-			playServerTestingHelper.deleteEntry(sessionClient, entry).then(function (results) {
-				playServerTestingHelper.printInfo("return from delete entry");
-				if (res)
-					DoneMethod();
-				else
-					DoneMethod('Test failed');
-			});
-	},function (err) {
-			playServerTestingHelper.printError(err);
+		playServerTestingHelper.deleteEntry(sessionClient, entry).then(function (results) {
+			playServerTestingHelper.printInfo("return from delete entry");
 			if (res)
 				DoneMethod();
 			else
 				DoneMethod('Test failed');
 		});
-
+	}, function (err) {
+		playServerTestingHelper.printError(err);
+		if (res)
+			DoneMethod();
+		else
+			DoneMethod('Test failed');
+	});
+}
 
 function testInit(client) {
 	cuePointList = [];
 	sessionClient = client;
 	let testName = 'PreRoleAdTest';
 
-	let videoThumbDir = outputDir + '/' + testName +'/';
+	let videoThumbDir = outputDir + '/' + testName + '/';
 
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
 	let aggregateAdTime = 0;
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			// when bug is fixed please modify cue point start time to 0
@@ -218,3 +218,4 @@ function testInit(client) {
 		})
 		.catch(playServerTestingHelper.printError);
 }
+
