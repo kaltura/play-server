@@ -37,7 +37,7 @@ function testInit(client) {
                         child_process.execSync('echo Yes | /opt/couchbase/bin/couchbase-cli bucket-flush -c localhost:8091 -u kaltura -p kaltura --bucket=playServer --enable-flush --force');
                         console.log("Sleeping 10 secs");
                         sleepFor(10000);
-                        let command = 'env reRunTest=0 entryId=' + entry.id + ' mocha ' + testsPath + '/' + fileName + ' | tee -a /tmp/result.txt';
+                        let command = 'env reRunTest=0 entryId=' + entry.id + ' mocha -R xunit ' + testsPath + '/' + fileName + ' | tee -a /tmp/results.xml';
                         console.log("Running: " + command);
                         let code = child_process.execSync(command);
                         playServerTestingHelper.printStatus(code);
@@ -45,7 +45,7 @@ function testInit(client) {
                 }
 
                 playServerTestingHelper.deleteEntry(sessionClient, entry, 'true').then(function (results) {
-                    //runMoreTests(sessionClient);
+                    runMoreTests(sessionClient);
                     playServerTestingHelper.printInfo("Run All Tests Finished");
                 }, function (err) {
                     playServerTestingHelper.printError(err);
@@ -62,7 +62,7 @@ function runMoreTests(client) {
     for (var i = 0; i < tests.length; i++) {
         let fileName = tests[i];
         process.env.entryId = '';
-        let command = 'mocha ' + testsPath + '/' + fileName + ' | tee -a /tmp/result.txt';
+        let command = 'mocha  -R xunit' + testsPath + '/' + fileName + ' | tee -a /tmp/result.txt';
         console.log("Running: " + command);
         let code = child_process.execSync(command);
         playServerTestingHelper.printStatus(code);
