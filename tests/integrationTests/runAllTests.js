@@ -62,7 +62,7 @@ function runMoreTests(client) {
     for (var i = 0; i < tests.length; i++) {
         let fileName = tests[i];
         process.env.entryId = '';
-        let command = 'mocha  -R xunit' + testsPath + '/' + fileName + ' | tee -a /tmp/result.txt';
+        let command = 'mocha  -R xunit ' + testsPath + '/' + fileName + ' | tee -a /tmp/result.txt';
         console.log("Running: " + command);
         let code = child_process.execSync(command);
         playServerTestingHelper.printStatus(code);
