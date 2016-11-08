@@ -22,7 +22,7 @@ let cuePointList = [];
 let entry = null;
 let DoneMethod = null;
 
-class VideoWithNoAdsTester {
+class TestFullFlowVideoWithNoAds {
 
 	static ValidateAll(qrCodesResults) {
 		return new Promise(function (resolve, reject) {
@@ -49,7 +49,7 @@ class VideoWithNoAdsTester {
 				playServerTestingHelper.getThumbsFileNamesFromDir(input.outputDir)
 					.then(function (filenames) {
 						playServerTestingHelper.readQrCodesFromThumbsFileNames(input.outputDir, filenames, function (results) {
-							VideoWithNoAdsTester.ValidateAll(results).then(function () {
+							TestFullFlowVideoWithNoAds.ValidateAll(results).then(function () {
 									resolve(true);
 								}
 								, reject);
@@ -75,15 +75,23 @@ describe('test full flow', function () {
 	});
 });
 
-function finishTest(res){
+function finishTest(res) {
 	if (res)
 		playServerTestingHelper.printOk("test SUCCESS");
 	else
 		playServerTestingHelper.printError("test FAIL");
-	playServerTestingHelper.deleteEntry(sessionClient,entry).then(function (results) {
-		playServerTestingHelper.printInfo("return from delete entry");
+	playServerTestingHelper.deleteCuePoints(sessionClient, cuePointList, function () {
+		playServerTestingHelper.deleteEntry(sessionClient, entry).then(function (results) {
+			playServerTestingHelper.printInfo("return from delete entry");
+			if (res)
+				DoneMethod();
+		});
+	}, function (err) {
+		playServerTestingHelper.printError(err);
 		if (res)
 			DoneMethod();
+		else
+			DoneMethod('Test failed');
 	});
 }
 
@@ -91,14 +99,14 @@ function finishTest(res){
 function testInit(client) {
 	cuePointList = [];
 	sessionClient = client;
-	let testName = 'VideoWithNoAdsTester';
+	let testName = 'TestFullFlowVideoWithNoAds';
 
-	let videoThumbDir = outputDir + '/' + testName +'/';
+	let videoThumbDir = outputDir + '/' + testName + '/';
 
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
-	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4")
+	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
 			return playServerTestingHelper.buildM3U8Url(sessionClient, entry);
@@ -108,10 +116,10 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			//playServerTestingHelper.warmupVideo(m3u8Url);
-			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 60);
-			let tester = new VideoWithNoAdsTester();
-			return playServerTestingHelper.testInvoker(testName, tester, input, 61000, finishTest);
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+				let tester = new TestFullFlowVideoWithNoAds();
+				return playServerTestingHelper.testInvoker(testName, tester, input, null, finishTest);
+			});
 		})
 		.catch(playServerTestingHelper.printError);
 }

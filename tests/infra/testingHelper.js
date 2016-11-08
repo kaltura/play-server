@@ -22,6 +22,7 @@ if (!fs.existsSync(outputDir))
 let errorsArray = [];
 let testsErrorsArray = [];
 let qrResults = [];
+let cuePointsErrorsArray = [];
 
 const KalturaClientLogger = {
     log: function(str) {
@@ -139,7 +140,6 @@ class PlayServerTestingHelper {
             function (err, dirs, files)
             {
                 if (err) throw err;
-                console.log(`Removed dir ${dirs} ${files}`);
                 callback();
             });
     }
@@ -154,7 +154,9 @@ class PlayServerTestingHelper {
     static createEntry(client, path, entryId) {
         let input = {client: client, path: path};
         if (entryId)
+        {
             return PlayServerTestingHelper.getEntryPromise(client, entryId);
+        }
 
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.createEntryPromise(input)
@@ -162,25 +164,71 @@ class PlayServerTestingHelper {
                 .then(PlayServerTestingHelper.uploadFilePromise)
                 .then(PlayServerTestingHelper.addContentPromise)
                 .then(function (result) {
+                    process.env.entryId = result.entry.id;
                     resolve(result.entry);
                 })
                 .catch(reject);
         });
     }
 
-    static deleteEntry(client, entry) {
+    static deleteEntry(client, entry, shouldDeleteEntry = 'false') {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printInfo("Start DeleteEntry " + entry.id);
-            client.baseEntry.deleteAction(function (results) {
+            if ( shouldDeleteEntry != 'true' && KalturaConfig.config.testing.shouldDeleteEntriesAfterTest != 'true')
+                resolve();
+            else {
+                client.baseEntry.deleteAction(function (results) {
+                        if (results && results.code && results.message) {
+                            PlayServerTestingHelper.printError('Kaltura Error', results);
+                            reject(results);
+                        } else {
+                            PlayServerTestingHelper.printOk('deleteEntry ' + entry.id + ' OK');
+                            resolve(entry);
+                        }
+                    },
+                    entry.id);
+            }
+        });
+    }
+
+    static deleteCuePoints(client, cuePointList, resolve, reject) {
+        cuePointsErrorsArray = [];
+        Promise.all(PlayServerTestingHelper.getIterateCuePointsToDeletePromises(client, cuePointList)).then(function () {
+            if (cuePointsErrorsArray.length > 0) {
+                for (let i = 0; i < cuePointsErrorsArray.length; i++)
+                    PlayServerTestingHelper.printError(cuePointsErrorsArray[i]);
+                reject();
+            } else {
+                PlayServerTestingHelper.printOk('Finished deleting cuePoints');
+                resolve();
+            }
+        }, function (reason) {
+            PlayServerTestingHelper.printError(reason);
+            reject();
+        });
+    }
+
+    static getIterateCuePointsToDeletePromises(client, cuePointsList) {
+        let cuePointPromises = [];
+        cuePointsList.forEach(function (cuePoint) {
+            cuePointPromises.push(PlayServerTestingHelper.deleteCuePoint(client, cuePoint));
+        });
+        return cuePointPromises;
+    }
+
+    static deleteCuePoint(client, cuePoint) {
+        return new Promise(function (resolve, reject) {
+            PlayServerTestingHelper.printInfo("Start deleteCuePoint "  + cuePoint.id);
+            client.cuePoint.deleteAction(function (results) {
                     if (results && results.code && results.message) {
                         PlayServerTestingHelper.printError('Kaltura Error', results);
                         reject(results);
                     } else {
-                        PlayServerTestingHelper.printOk('deleteEntry ' + entry.id + ' OK');
-                        resolve(entry);
+                        PlayServerTestingHelper.printOk('deleteCuePoint ' + cuePoint.id + ' OK');
+                        resolve();
                     }
                 },
-                entry.id);
+                cuePoint.id);
         });
     }
 
@@ -400,7 +448,7 @@ class PlayServerTestingHelper {
     static generateThumbsFromM3U8Promise(m3u8Url, videoThumbDir) {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printStatus("Generating thumbs from M3U8 url ");
-            child_process.exec('ffmpeg -i ' + m3u8Url + ' -vf fps=0.5 -f image2 -r 0.5 -y ' + videoThumbDir + '%d.jpg',
+            child_process.exec('ffmpeg -i ' + m3u8Url + ' -vf fps=0.5 -f image2 -r 0.5 -y ' + videoThumbDir + '%d.jpg >> /dev/null 2>&1',
                 function (error, stdout, stderr) {
                     if (error !== null) {
                         PlayServerTestingHelper.printError('Error while generateThumbsFromM3U8Promise: ' + error);
@@ -413,8 +461,16 @@ class PlayServerTestingHelper {
         });
     }
 
-    static getVideoSecBySec(m3u8Url, lengthOfVideo)
+    static getVideoSecBySec(m3u8Url, lengthOfVideo, callback)
     {
+        if (process.env.reRunTest)
+        {
+            if (callback)
+                return callback();
+            else
+                return;
+        }
+
         let startTimeForReading = new Date();
         const interval = setInterval(function()
                     {
@@ -423,7 +479,10 @@ class PlayServerTestingHelper {
                         {
                             PlayServerTestingHelper.printOk('SUCCESS video is warmed-up');
                             clearInterval(interval);
-                            return;
+                            if (callback)
+                                return callback();
+                            else
+                                return;
                         }
                         child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4 -ss ' + currentSecond + ' -t 1 -y /dev/null'),
                             function(error, stdout, stderr)
@@ -431,9 +490,12 @@ class PlayServerTestingHelper {
                                 if (error !== null) {
                                     PlayServerTestingHelper.printError('Error while trying to get second ' + currentSecond + ' of video: ' + error);
                                 }
-                                //else {
-                                //    currentVideoTime++;
-                                //}
+                                else {
+                                    if (callback)
+                                        return callback();
+                                    else
+                                        return;
+                                }
                             }
                         ;
                     }, 1000);
@@ -516,7 +578,6 @@ class PlayServerTestingHelper {
     }
 
     static getIterateThumbsPromises(videoThumbDir, array) {
-        var index = 0;
         let qrPromises = [];
         array.forEach(function (name) {
             qrPromises.push(PlayServerTestingHelper.ReadQrCode(videoThumbDir, name));
@@ -528,29 +589,36 @@ class PlayServerTestingHelper {
         errorsArray = [];
         testsErrorsArray = [];
         qrResults = [];
-	PlayServerTestingHelper.printInfo("Starting testing: " + testName);
-		setTimeout(function()
-		{
-			test.runTest(input, function (res)
-			{
-				PlayServerTestingHelper.printInfo("Finished Test: " + testName);
-				PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
-				PlayServerTestingHelper.cleanFolder(input.outputDir,function() {
+
+        PlayServerTestingHelper.printInfo("Starting testing: " + testName);
+        setTimeout(function () {
+            test.runTest(input, function (res) {
+                PlayServerTestingHelper.printInfo("Finished Test: " + testName);
+                PlayServerTestingHelper.printOk('TEST ' + test.constructor.name + ' - SUCCESS');
+                PlayServerTestingHelper.reRunTestInfo(test.constructor.name);
+                PlayServerTestingHelper.cleanFolder(input.outputDir, function () {
                     if (typeof doneMethod === 'function')
                         doneMethod(res);
                     return assert.equal(res, true);
                 });
-			}, function (res)
-			{
-				PlayServerTestingHelper.printInfo("Finished Test" + testName);
-				PlayServerTestingHelper.cleanFolder(input.outputDir,function() {
-                    PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+            }, function (res) {
+                PlayServerTestingHelper.printInfo("Finished Test" + testName);
+                PlayServerTestingHelper.reRunTestInfo(test.constructor.name);
+                PlayServerTestingHelper.printError('TEST ' + test.constructor.name + ' - FAILED');
+                PlayServerTestingHelper.cleanFolder(input.outputDir, function () {
                     if (typeof doneMethod === 'function')
                         doneMethod(res);
                     return assert.equal(res, false);
                 });
-			});
-		}, waitBeforeRunningTest);
+            });
+        }, waitBeforeRunningTest);
+    }
+
+    static reRunTestInfo(testName)
+    {
+        PlayServerTestingHelper.printStatus("To Re-Run Test run the following command: ");
+        PlayServerTestingHelper.printStatus('env reRunTest=0 entryId=' + process.env.entryId + ' mocha ' +  testName +'.js');
+        PlayServerTestingHelper.printStatus("Please make sure that shouldDeleteEntriesAfterTest was set to false in config file while running original test before re running the test.");
     }
 
     static runMultiTests(m3u8Urls, videoThumbDirs, testNames, testClass, waitBeforeRunningTests, doneMethod = null) {
