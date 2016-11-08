@@ -11,23 +11,21 @@ class h264Verifier
 {
 	/**
 	 * inserts the flavor ids and flavor paths to the cache
-	 * @param flavorIds - array of flavor ids
-	 * @param flavorPaths - array of flavor paths
+	 * @param flavorId
+	 * @param flavorPath
 	 */
-	static insertFlavorsPathToCache(flavorIds, flavorPaths)
+	static insertFlavorPathToCache(flavorId, flavorPath)
 	{
-		h264Verifier.writeToLog(`called insertFlavorsPathToCache with ${flavorIds} and ${flavorPaths}`);
+		h264Verifier.writeToLog(`called insertFlavorsPathToCache with ${flavorId} and ${flavorPath}`);
 		const testTime = KalturaConfig.config.h264Verification.cacheTime;
-		for (let i = 0; i < flavorIds.length; i++)
-		{
-			KalturaCache.set(flavorIds[i], { path: flavorPaths[i] }, testTime,
-				function () {
-					h264Verifier.writeToLog(`inserted flavorId ${flavorIds[i]} with path ${flavorPaths[i]} to cache`);
-				},
-				function () {
-					h264Verifier.writeToLog(`unable to insert flavorId ${flavorIds[i]} with path ${flavorPaths[i]} to cache`);
-				}, null);
-		}
+
+		KalturaCache.set(flavorId, { path: flavorPath }, testTime,
+			function () {
+				h264Verifier.writeToLog(`inserted flavorId ${flavorId} with path ${flavorPath} to cache`);
+			},
+			function () {
+				h264Verifier.writeToLog(`unable to insert flavorId ${flavorId} with path ${flavorPath} to cache`);
+			}, null);
 	}
 
 	/**

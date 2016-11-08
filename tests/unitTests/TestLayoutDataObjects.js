@@ -1,10 +1,7 @@
 /**
  * This is a unit test to validate proper functionality of the layout manager for the different types of layouts
  */
-
-
 const chai = require('chai');
-const util = require('util');
 const expect = chai.expect; // we are using the 'expect' style of Chai
 const VODManifestLayoutData = require('../../lib/dataObjects/layoutObjects/VODManifestLayoutData');
 const DynamicClipData = require('../../lib/dataObjects/layoutObjects/DynamicClipData');
