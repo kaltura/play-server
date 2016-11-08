@@ -163,7 +163,7 @@ function testInit(client) {
 		.then(function (m3u8Url) {
 			m3u8Urls.push(m3u8Url);
 
-			playServerTestingHelper.getVideoSecBySec(m3u8Url, 77, function () {
+			playServerTestingHelper.getVideoSecBySec(m3u8Url, 120, function () {
 				let testFullFlowMultiTests = new TestFullFlowMultiTests();
 				playServerTestingHelper.runMultiTests(m3u8Urls, videoThumbDirs, testNames, testFullFlowMultiTests, waitBeforeRunningTests, finishTest);
 			});
