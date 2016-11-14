@@ -65,17 +65,16 @@ describe('Test Size Filter', function(){
 		expect(fileURL).to.include('1600K_1280x720');
 	});
 
-	// todo this currently fails since the algorithm is wrong in selecting best ad
-	//it('validate same aspect different values by factor', function()
-	//{
-	//	const id = null;
-	//	const width = 176 * 5;
-	//	const height = 132 * 5;
-	//	const bitrate = 130;
-	//	const flavorAttributes = new VideoAttributes(id, width, height, bitrate);
-	//	const ad = vastResponse.ads[1];
-	//	const sizeFilter = new VastSizeFilter(flavorAttributes, ad);
-	//	const fileURL = sizeFilter.filter();
-	//	expect(fileURL).to.include('130K_176x132');
-	//});
+	it('validate same aspect different values by factor', function()
+	{
+		const id = null;
+		const width = 176 * 5;
+		const height = 132 * 5;
+		const bitrate = 130;
+		const flavorAttributes = new VideoAttributes(id, width, height, bitrate);
+		const ad = vastResponse.ads[1];
+		const sizeFilter = new VastSizeFilter(flavorAttributes, ad);
+		const fileURL = sizeFilter.filter();
+		expect(fileURL).to.include('130K_176x132');
+	});
 });
