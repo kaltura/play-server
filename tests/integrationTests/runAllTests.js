@@ -33,7 +33,7 @@ function testInit(client) {
                 console.log(" got " + files);
                 for (var i = 0; i < files.length; i++) {
                     let fileName = files[i];
-                    if (fileName.split('.')[1] == 'js' && fileName != 'runAllTestsInit.js' && fileName != 'TestPreRoleAd.js' && fileName != 'TestVideoRewinded2SecBackAfterAd.js') {
+                    if (fileName.split('.')[1] == 'js' && fileName != 'runAllTests.js' && fileName != 'TestPreRoleAd.js' && fileName != 'TestVideoRewinded2SecBackAfterAd.js') {
                         console.log("Serving " + fileName);
                         console.log("Restartung Nginx before test...");
                         child_process.execSync('sshpass -p ' + nginxPass + ' ssh root@'+ nginxHost + ' \'service nginx restart\'');
