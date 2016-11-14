@@ -18,7 +18,6 @@ let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let entry = null;
 
-let
 playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 
