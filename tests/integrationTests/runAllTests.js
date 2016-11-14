@@ -8,6 +8,8 @@ const config = require('../../lib/utils/KalturaConfig');
 
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 const serviceUrl = KalturaConfig.config.testing.serviceUrl;
+const nginxHost = KalturaConfig.config.testing.nginxHost;
+const nginxPass = KalturaConfig.config.testing.nginxPass;
 const impersonatePartnerId = KalturaConfig.config.testing.impersonatePartnerId;
 const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonatePartnerId;
 const testsPath = KalturaConfig.config.testing.testsPath;
@@ -16,6 +18,7 @@ let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
 let entry = null;
 
+let
 playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
 playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 
@@ -33,7 +36,9 @@ function testInit(client) {
                     let fileName = files[i];
                     if (fileName.split('.')[1] == 'js' && fileName != 'runAllTestsInit.js' && fileName != 'TestPreRoleAd.js' && fileName != 'TestVideoRewinded2SecBackAfterAd.js') {
                         console.log("Serving " + fileName);
-                        console.log("Flushing couchbase before test");
+                        console.log("Restartung Nginx before test...");
+                        child_process.execSync('sshpass -p ' + nginxPass + ' ssh root@'+ nginxHost + ' \'service nginx restart\'');
+                        console.log("Flushing couchbase before test...");
                         child_process.execSync('echo Yes | /opt/couchbase/bin/couchbase-cli bucket-flush -c localhost:8091 -u kaltura -p kaltura --bucket=playServer --enable-flush --force');
                         console.log("Sleeping 10 secs");
                         sleepFor(10000);
@@ -62,7 +67,7 @@ function runMoreTests(client) {
     for (var i = 0; i < tests.length; i++) {
         let fileName = tests[i];
         process.env.entryId = '';
-        let command = 'mocha  -R xunit ' + testsPath + '/' + fileName + ' | tee -a /tmp/result.txt';
+        let command = 'mocha  -R xunit ' + testsPath + '/' + fileName + ' | tee -a /tmp/results.txt';
         console.log("Running: " + command);
         let code = child_process.execSync(command);
         playServerTestingHelper.printStatus(code);
