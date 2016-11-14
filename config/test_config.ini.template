@@ -1,6 +1,8 @@
 [testing]
 serviceUrl = @SERVICE_URL@
 nginxUrl = @NGINX_URL@
+nginxHost = @NGINX_HOST@
+nginxPass = @NGINX_PASS@
 beaconServer = @BEACON_SERVER@
 partnerId = -6
 secret = @PLAY_PARTNER_ADMIN_SECRET@

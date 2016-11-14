@@ -531,6 +531,7 @@ class PlayServerTestingHelper {
     }
 
     static readQrCodesFromThumbsFileNames(videoThumbDir, filenames, resolve, reject) {
+        qrResults.length = 0;
         Promise.all(PlayServerTestingHelper.getIterateThumbsPromises(videoThumbDir, filenames)).then(function () {
             if (errorsArray.length > 0) {
                 for (let i = 0; i < errorsArray.length; i++)
