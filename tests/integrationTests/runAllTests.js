@@ -33,7 +33,7 @@ function testInit(client) {
                 console.log(" got " + files);
                 for (var i = 0; i < files.length; i++) {
                     let fileName = files[i];
-                    if (fileName.split('.')[1] == 'js' && fileName != 'runAllTests.js' && fileName != 'TestPreRoleAd.js' && fileName != 'TestVideoRewinded2SecBackAfterAd.js') {
+                    if (fileName.split('.')[1] == 'js' && fileName != 'runAllTests.js' && fileName != 'TestVideoRewinded2SecBackAfterAd.js') {
                         console.log("Serving " + fileName);
                         console.log("Restartung Nginx before test...");
                         child_process.execSync('sshpass -p ' + nginxPass + ' ssh root@'+ nginxHost + ' \'service nginx restart\'');
@@ -62,7 +62,7 @@ function testInit(client) {
 
 
 function runMoreTests(client) {
-    let tests = ['TestPreRoleAd.js', 'TestVideoRewinded2SecBackAfterAd.js' ];
+    let tests = ['TestVideoRewinded2SecBackAfterAd.js' ];
     for (var i = 0; i < tests.length; i++) {
         let fileName = tests[i];
         process.env.entryId = '';
