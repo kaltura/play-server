@@ -46,6 +46,7 @@ fileDownloadTimeout = 60
 lock = 50
 vodApiTimeout = 600
 layout = 600
+errorLayout = 10
 calcLayoutMili = 100
 errorAdBreakTTL = 10
 tinyUrlTtl = 3600
