@@ -167,7 +167,6 @@ function testInit(client) {
 	cuePointList = [];
 	sessionClient = client;
 	let testName = 'TestVideoRewinded2SecBackAfterAd';
-
 	let videoThumbDir = outputDir + '/' + testName + '/';
 
 	if (!fs.existsSync(videoThumbDir))
@@ -176,6 +175,8 @@ function testInit(client) {
 	if (!fs.existsSync(beaconTrackingDir))
 		fs.mkdirSync(beaconTrackingDir);
 
+	let aggregateAdTime = 0;
+
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/1MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;
@@ -183,6 +184,8 @@ function testInit(client) {
 
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime; //So we can know when the add will actually play
+			aggregateAdTime += cuePoint.duration + 2000;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			thumbsToCompare.push({
 				"startThumb": Math.floor((cuePoint.startTime - 2) / 1000),
@@ -191,6 +194,8 @@ function testInit(client) {
 			return playServerTestingHelper.createCuePoint(sessionClient, entry, 29000, 4000);
 		})
 		.then(function (cuePoint) {
+			cuePoint.startTime = cuePoint.startTime + aggregateAdTime; //So we can know when the add will actually play
+			aggregateAdTime += cuePoint.duration + 2000;//extra two seconds because we stitch the last two seconds to the end of the ad
 			cuePointList.push(cuePoint);
 			thumbsToCompare.push({
 				"startThumb": Math.floor((cuePoint.startTime - 2) / 1000),
@@ -203,7 +208,7 @@ function testInit(client) {
 			input.m3u8Url = m3u8Url;
 			input.outputDir = videoThumbDir;
 
-			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 30, function () {
+			playServerTestingHelper.getVideoSecBySec(input.m3u8Url, 5, function () {
 				let videoRewindTester = new TestVideoRewinded2SecBackAfterAd();
 				return playServerTestingHelper.testInvoker(testName, videoRewindTester, input, null, finishTest);
 			});
