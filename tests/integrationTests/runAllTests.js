@@ -33,7 +33,7 @@ function testInit(client) {
                 console.log(" got " + files);
                 for (var i = 0; i < files.length; i++) {
                     let fileName = files[i];
-                    if (fileName.split('.')[1] == 'js' && fileName != 'runAllTests.js' && fileName != 'TestVideoRewinded2SecBackAfterAd.js') {
+                    if (fileName.split('.')[1] == 'js' && fileName != 'runAllTests.js'){
                         console.log("Serving " + fileName);
                         console.log("Restartung Nginx before test...");
                         child_process.execSync('sshpass -p ' + nginxPass + ' ssh root@'+ nginxHost + ' \'service nginx restart\'');
@@ -49,7 +49,6 @@ function testInit(client) {
                 }
 
                 playServerTestingHelper.deleteEntry(sessionClient, entry, 'true').then(function (results) {
-                    runMoreTests(sessionClient);
                     playServerTestingHelper.printInfo("Run All Tests Finished");
                 }, function (err) {
                     playServerTestingHelper.printError(err);
@@ -60,18 +59,6 @@ function testInit(client) {
             });
 }
 
-
-function runMoreTests(client) {
-    let tests = ['TestVideoRewinded2SecBackAfterAd.js' ];
-    for (var i = 0; i < tests.length; i++) {
-        let fileName = tests[i];
-        process.env.entryId = '';
-        let command = 'mocha  -R xunit ' + testsPath + '/' + fileName + ' | tee -a /tmp/results.xml';
-        console.log("Running: " + command);
-        let code = child_process.execSync(command);
-        playServerTestingHelper.printStatus(code);
-    }
-}
 
 function sleepFor( sleepDuration ){
     var now = new Date().getTime();
