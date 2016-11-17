@@ -50,8 +50,8 @@ calcLayoutMili = 100
 errorAdBreakTTL = 10
 tinyUrlTtl = 3600
 fetchIdentifierLifetime = 60
-entryVersionTimeout = 600
-lockTtl = 60
+entryVersionTimeout = 86000
+lockTtl = 1
 
 [memcache]
 hostname = @MEMCACHE_HOST@
