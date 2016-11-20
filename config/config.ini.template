@@ -52,6 +52,7 @@ tinyUrlTtl = 3600
 fetchIdentifierLifetime = 60
 entryVersionTimeout = 86000
 lockTtl = 1
+sessionIdVersionTimeout = 10800
 
 [memcache]
 hostname = @MEMCACHE_HOST@
