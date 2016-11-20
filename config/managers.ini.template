@@ -52,7 +52,7 @@ millisAdBreakRetryTimeout = 1000
 [fetch]
 ;domain = @LAYOUT_SERVICE_HOSTNAME@
 durationCoefficient = 1
-vastRequestTimeOut = 10
+vastRequestTimeout = 10
 
 [system]
 [tracking]
