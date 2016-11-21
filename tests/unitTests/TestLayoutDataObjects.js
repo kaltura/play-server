@@ -25,8 +25,9 @@ const FETCH_OFFSET2 = 2000;
 const FETCH_LINK1 = 'http://playserver/fetch1';
 const FETCH_LINK2 = 'http://playserver/fetch1';
 const FLAVORS = ['flavor1', 'flavor2'];
+const VERSION = 'v_1';
 
-const MANIFEST_LAYOUT_EXPECTED_RESULT =	'{ "discontinuity": false,' +
+const MANIFEST_LAYOUT_EXPECTED_RESULT =	'{"id": "'+ VERSION + '", "discontinuity": false,' +
 	'"durations": [ '+ DURATION_A + ',' + DURATION_B + ',' + DURATION_C +'],' +
 	'"sequences": ['+
 		'{ "id": "flavor1", "clips": [ '+
@@ -71,7 +72,7 @@ function removeWhiteSpaces(text)
 
 describe('testLayoutObjects', function() {
 	it('check ManifestLayoutData', function() {
-		const manifestData = new VODManifestLayoutData(FLAVORS);
+		const manifestData = new VODManifestLayoutData(FLAVORS,VERSION);
 		const clips1 = [new SourceClipData(0, SOURCE1_PATH_FALVOR1),
 			new SourceClipData(0, SOURCE1_PATH_FALVOR2)];
 		const clips2 = [new DynamicClipData(DYNAMIC_ID_FALVOR1),

@@ -43,13 +43,15 @@ restoreableAction = 600
 serverProcess = 60
 trackingBeaconUrl = 10
 fileDownloadTimeout = 60
-lock = 50
+lock = 10
 vodApiTimeout = 600
 layout = 600
 calcLayoutMili = 100
 errorAdBreakTTL = 10
 tinyUrlTtl = 3600
 fetchIdentifierLifetime = 60
+entryVersionTimeout = 86000
+sessionIdVersionTimeout = 10800
 
 [memcache]
 hostname = @MEMCACHE_HOST@
