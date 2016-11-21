@@ -74,6 +74,12 @@ retry = 30000
 ;idle = 5000, the idle timeout for the connections.
 dataVersion = 0
 
+[filters]
+ratioWeightFactor = 150
+frameSizeWeightFactor = 90
+bitRateWeightFactor = 50
+
+
 [couchbase]
 clusterName = @CLUSTER_NAME@
 bucketName = @BUCKET_NAME@
