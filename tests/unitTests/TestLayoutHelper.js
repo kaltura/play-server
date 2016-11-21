@@ -14,20 +14,12 @@ describe('testLayoutHelper', function ()
 		LayoutHelper.deleteEntryVersion(entryId,() => {}, () => {});
 	});
 
-	it('test addEntryVersion', function (done)
+	it('test initEntryVersion', function (done)
 	{
-		namespace.bind(LayoutHelper.addEntryVersion(entryId,
-			function(){
+		namespace.bind(LayoutHelper.initEntryVersion(entryId,
+			function() {
 				done();
 			},function(err){
-				// const message = err.slice(48,85);
-				// if( (message == `The key already exists in the server.`) || err == `Cache.add [${entryId}]:Error: Item is not stored` ) //item is already in cache
-				// 	done();
-				// else
-				// {
-				// 	expect(err).to.equal(null);
-				// 	done();
-				// }
 				expect(err).to.equal(null);
 			})
 		);
@@ -36,7 +28,7 @@ describe('testLayoutHelper', function ()
 	it('test getEntryVersion', function (done)
 	{
 		LayoutHelper.getEntryVersion(entryId,
-			function(response){
+			function(response) {
 				expect(response.id).to.equal(LayoutHelper.getBaseVersion());
 				done();
 			},function(err){
