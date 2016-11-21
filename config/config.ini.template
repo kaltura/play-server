@@ -73,10 +73,9 @@ retry = 30000
 dataVersion = 0
 
 [filters]
-orientationWeightFactor = 1000
-ratioWeightFactor = 10
-frameSizeWeightFactor = 30
-bitRateWeightFactor = 40
+ratioWeightFactor = 150
+frameSizeWeightFactor = 90
+bitRateWeightFactor = 50
 
 
 [couchbase]
