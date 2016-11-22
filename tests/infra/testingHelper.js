@@ -501,20 +501,6 @@ class PlayServerTestingHelper {
                     }, 1000);
     }
 
-    static warmupVideo(m3u8Url)
-    {
-        child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4  -t 2 -y /dev/null'),
-            function(error, stdout, stderr)
-            {
-                if (error !== null) {
-                    PlayServerTestingHelper.printError('Error while trying to warmup video: ' + error);
-                } else {
-                    PlayServerTestingHelper.printOk('SUCCESS video is warmed-up');
-                }
-            }
-        ;
-    }
-
     static getThumbsFileNamesFromDir(videoThumbDir) {
         return new Promise(function (resolve, reject) {
             PlayServerTestingHelper.printStatus("Reading thumbs from dir " + videoThumbDir);
@@ -690,20 +676,6 @@ class PlayServerTestingHelper {
                 }, waitBeforeRunningTest);
         });
     }
-
-	static warmupVideo(m3u8Url)
-	{
-		child_process.exec('ffmppeg -i ' + m3u8Url + ' -c copy -f mp4  -t 2 -y /dev/null'),
-			function(error, stdout, stderr)
-			{
-				if (error !== null) {
-					PlayServerTestingHelper.printError('Error while trying to warmup video: ' + error);
-				} else {
-					PlayServerTestingHelper.printOk('SUCCESS video is warmed-up');
-				}
-			}
-		;
-	}
 
 }
 
