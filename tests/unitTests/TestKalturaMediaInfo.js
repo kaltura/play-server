@@ -7,6 +7,7 @@ const KalturaMediaInfo = require('../../lib/utils/KalturaMediaInfo');
 const KalturaMediaInfoResponse = require('../../lib/utils/KalturaMediaInfoResponse');
 
 require('../../lib/utils/KalturaConfig');
+require('../../lib/utils/KalturaLogger');
 const resourcesPath = KalturaConfig.config.testing.resourcesPath;
 
 const testsDirName = __dirname;
@@ -15,6 +16,18 @@ const badInfo = new KalturaMediaInfo('ffrobb');
 
 function removeWhiteSpaces(text){
 	return text.replace(/ /g,'');
+}
+
+function isEmpty(object)
+{
+	for (var key in object)
+	{
+		if (object.hasOwnProperty(key))
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 
@@ -47,7 +60,8 @@ describe('test KalturaMediaInfo class', function () {
 
 	it('test KalturaMediaInfo - emptyFile', function () {
 		return info.mediaInfoExec(resourcesPath + '/emptyFile').then(function (data) {
-			expect(data).to.be.null;
+			const parsedResult = JSON.parse(data.jsonInfo);
+			expect(isEmpty(parsedResult)).to.be.true;
 		}, function (err) {
 			expect(err).to.not.be.null;
 			expect(err.message.substring(0, 25)).to.equal('Command failed: ffprobe -');
