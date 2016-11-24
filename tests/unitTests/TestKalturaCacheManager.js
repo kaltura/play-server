@@ -2,6 +2,7 @@ const chai = require('chai');
 const expect = chai.expect; // we are using the 'expect' style of Chai
 const KalturaCouchbaseConnector = require('../../lib/utils/KalturaCouchbaseConnector');
 const KalturaMemcacheConnector = require('../../lib/utils/KalturaMemcacheConnector');
+const continuationLocalStorage = require('continuation-local-storage');
 let localUndefined;
 //describe.skip('testCouchbaseConnector', function() {
 //	const connector = KalturaCouchbaseConnector.getInstance();
@@ -39,7 +40,9 @@ let localUndefined;
 
 describe('testMemcacheConnector', function() {
 	const connector = KalturaMemcacheConnector;
-
+	let namespace = continuationLocalStorage.getNamespace('play-server');
+	if (!namespace)
+		continuationLocalStorage.createNamespace('play-server');
 	it('test delete', function(done)
 	{
 		// just to reset the cache
