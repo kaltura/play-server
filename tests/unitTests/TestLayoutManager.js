@@ -11,6 +11,7 @@ const chai = require('chai');
 const expect = chai.expect; // we are using the "expect" style of Chai
 const KalturaLayoutManager = require('../../lib/managers/KalturaLayoutManager');
 const VodData = require('../../lib/dataObjects/apiResponseObjects/VodData');
+const continuationLocalStorage = require('continuation-local-storage');
 
 
 // this is a simulated result got from the server
@@ -40,6 +41,9 @@ for (let x = 0 ; x < flavorDataList.length; x++)
 {
 	flavorDataList[x].url = flavorUrls[x];
 }
+let namespace = continuationLocalStorage.getNamespace('play-server');
+if (!namespace)
+	continuationLocalStorage.createNamespace('play-server');
 
 describe('test ManifestLayout middle cue points and no cuepoints ', function() {
 	//var apiResults = JSON.parse(TWO_MIDDLE_CUE_POINTS_API_RESULTS);
