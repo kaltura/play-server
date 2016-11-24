@@ -7,6 +7,7 @@ var fs = require('fs');
 const expect = chai.expect; // we are using the "expect" style of Chai
 
 const KalturaTrackingManager = require('./../../lib/managers/KalturaTrackingManager');
+const KalturaTestingManager = require('./../../lib/managers/KalturaTestingManager');
 const KalturaLayoutManager = require('./../../lib/managers/KalturaLayoutManager');
 require('../../lib/utils/KalturaConfig');
 
@@ -63,7 +64,7 @@ describe('testTrackingManager', function() {
 		if (checkIfExist(filePath))
 			fs.unlinkSync(filePath);
 
-		let tester = new kalturaTesting.KalturaTestingManager();
+		let tester = new KalturaTestingManager();
 		TrackingBeacon = 'david1';
 		tester.writeBeaconToFile(TrackingBeacon);
 
