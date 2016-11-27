@@ -17,6 +17,10 @@ require('../../lib/utils/KalturaLogger');
 
 const engine = new TrancodinfEngine('ffmpeg');
 const commandLine = ` -i ${fileName} -f mp4 -y ${outputPath}`;
+const continuationLocalStorage = require('continuation-local-storage');
+let namespace = continuationLocalStorage.getNamespace('play-server');
+if (!namespace)
+	continuationLocalStorage.createNamespace('play-server');
 
 describe('test TranscodeingEngine class', function () {
 	this.timeout(0);
