@@ -24,7 +24,9 @@ describe('Test Duration Filter ', function(){
 			{
 				vastResponse = vastObject;
 				done();
-			});
+			},
+			(err) => done()
+		);
 	});
 
 	it('validate parse vast succeeded', function()
