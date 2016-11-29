@@ -11,9 +11,9 @@ const VAST_ONLINE_EXAMPLE_URL = `http://projects.kaltura.com/vast/vast12.xml`;
 const DEFAULT_HEADERS = {};
 const VAST_TIMEOUT = 1000;
 
-let vastResponse = null;
 describe('Testing Offline Kaltura Vast Parser', function()
 {
+	let vastResponse = null;
 	// Since the call is asynchronous we need to use done to verify completion
 	before(function(done){
 		KalturaVastParser.parse(VAST_FILE_EXAMPLE_URL, DEFAULT_HEADERS, VAST_TIMEOUT,
@@ -21,7 +21,9 @@ describe('Testing Offline Kaltura Vast Parser', function()
 			{
 				vastResponse = vastObject;
 				done();
-			});
+			},
+			(err) => { done(); }
+		);
 	});
 
 	it('Testing vast structure', function ()
@@ -34,6 +36,7 @@ describe('Testing Offline Kaltura Vast Parser', function()
 
 describe('Testing Online Kaltura Vast Parser', function()
 {
+	let vastResponse = null;
 	// Since the call is asynchronous we need to use done to verify completion
 	before(function (done)
 	{
@@ -42,7 +45,9 @@ describe('Testing Online Kaltura Vast Parser', function()
 			{
 				vastResponse = vastObject;
 				done();
-			});
+			},
+			(err) => { done(); }
+		);
 	});
 
 	it('Testing vast structure', function ()
@@ -55,13 +60,19 @@ describe('Testing Online Kaltura Vast Parser', function()
 
 describe('Testing Offline Kaltura Vast Parser with invalid vast', function()
 {
+	let vastResponse = null;
 	before(function(done){
 		KalturaVastParser.parse(INVALID_VAST_FILE, DEFAULT_HEADERS, VAST_TIMEOUT,
 			function (vastObject)
 			{
 				vastResponse = vastObject;
 				done();
-			});
+			},
+			function(err)
+			{
+				done();
+			}
+		);
 	});
 
 	it('Testing vast structure', function ()
