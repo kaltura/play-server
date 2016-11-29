@@ -30,9 +30,6 @@
 							]]></Tracking>
 						</TrackingEvents>
 						<AdParameters/>
-						<MediaFiles>
-							<MediaFile id="1" delivery="progressive" type="video/mp4" bitrate="2125" width="1280" height="720"></MediaFile>
-						</MediaFiles>
 					</Linear>
 				</Creative>
 			</Creatives>
