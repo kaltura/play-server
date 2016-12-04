@@ -26,13 +26,33 @@ NAME="play_server"
 PLAY_SERVER_PREFIX="@PLAY_SERVER_BASE_DIR@"
 NODE_PATH="$PLAY_SERVER_PREFIX/node_modules"
 APPLICATION_PATH="$PLAY_SERVER_PREFIX/main.js"
-PIDFILE="@LOG_DIR@/play_server.pid"
+PIDFILE="@PID_DIR@/play_server.pid"
 LOGFILE="@LOG_DIR@/play-server.log"
 MIN_UPTIME="5000"
 SPIN_SLEEP_TIME="2000"
 export PATH=$PATH:$NODE_PATH/forever/bin
- 
+
+loadNvm() {
+    # This loads nvm
+    cd $PLAY_SERVER_PREFIX
+    [ -z "$NVM_DIR" ] && NVM_DIR="$HOME/.nvm"
+    if [ -s "$NVM_DIR/nvm.sh" ] ; then
+        source "$NVM_DIR/nvm.sh"
+        if [ -s .nvmrc ] ; then
+            nvm use || nvm install
+        else
+            echo "no .nvmrc in $PWD , Exiting"
+            exit 1
+        fi
+    else
+        echo "nvm not found in $NVM_DIR, this is a must, Exiting!"
+        exit 1
+    fi
+}
+
+
 start() {
+    loadNvm
     if [ -f $PIDFILE ] ; then
        echo "Server Already Running..."
        RETVAL=1
@@ -49,6 +69,7 @@ start() {
 }
  
 stop() {
+    loadNvm
     if [ -f $PIDFILE ]; then
         echo "Shutting down $NAME"
         # Tell Forever to stop the process.
@@ -110,7 +131,7 @@ case "$1" in
     restart)
         restart
         ;;
- 	logRotated)
+    logRotated)
         logRotated
         ;;
 
