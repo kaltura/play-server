@@ -27,7 +27,7 @@ const FETCH_LINK2 = 'http://playserver/fetch1';
 const FLAVORS = ['flavor1', 'flavor2'];
 const VERSION = 'v_1';
 
-const MANIFEST_LAYOUT_EXPECTED_RESULT =	'{"id": "'+ VERSION + '", "discontinuity": false,' +
+const MANIFEST_LAYOUT_EXPECTED_RESULT =	'{"id": "'+ VERSION + '", "discontinuity": false,' + '"referenceClipIndex": '+ 1 + "," +
 	'"durations": [ '+ DURATION_A + ',' + DURATION_B + ',' + DURATION_C +'],' +
 	'"sequences": ['+
 		'{ "id": "flavor1", "clips": [ '+
@@ -88,6 +88,24 @@ describe('testLayoutObjects', function() {
 		manifestData.addNotification(new NotificationLayoutData(FETCH_LINK2, FETCH_OFFSET2));
 
 		expect(removeWhiteSpaces(manifestData.toJSON())).to.equal(removeWhiteSpaces(MANIFEST_LAYOUT_EXPECTED_RESULT));
+	});
+
+	it('check ManifestLayoutData pre-roll', function() {
+		const manifestData = new VODManifestLayoutData(FLAVORS,VERSION);
+		manifestData.setReferenceClipIndex(2);
+		const clips1 = [new SourceClipData(0, SOURCE1_PATH_FALVOR1),
+			new SourceClipData(0, SOURCE1_PATH_FALVOR2)];
+		const clips2 = [new DynamicClipData(DYNAMIC_ID_FALVOR1),
+			new DynamicClipData(DYNAMIC_ID_FALVOR2)];
+		const paths = new Array();
+		paths.push(SOURCE2_PATH_FALVOR1);
+		paths.push(SOURCE2_PATH_FALVOR2);
+		const clips3 = new SourceClipDataArray(DURATION_A, paths);
+		manifestData.addSequence(DURATION_A, clips1);
+		manifestData.addSequence(DURATION_B, clips2);
+		manifestData.addSequence(DURATION_C, clips3.clips);
+
+		expect(manifestData.referenceClipIndex).to.equal(2);
 	});
 
 	it('check AdBreakLayoutData', function() {
