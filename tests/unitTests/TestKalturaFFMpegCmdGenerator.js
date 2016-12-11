@@ -31,42 +31,37 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 		const namespace = continuationLocalStorage.createNamespace('play-server');//Here just to make sure we create it only once
 		clsBluebird(namespace);
 	});
-	it('test - get mediaInfo for ad', function (done) {
+	it('test - get mediaInfo for ad', function () {
 		return info.mediaInfoExec(resourcesPath + '/adSample').then(function (data) {
 			expect(data).to.be.an.instanceof(KalturaMediaInfoResponse);
 			expect(removeWhiteSpaces(data.jsonInfo).substring(0, 20)).to.equal('{"programs":[],"stre');
 			response = data;
-			done();
 		}, function (err) {
 			expect(err).to.be.null;
-			done();
 		});
 	});
 
-	it('test - start client session', function(done) {
+	it('test - start client session', function() {
 		this.timeout(5000);
 		return connector._startSession().then(function (data) {
 			if (!connector.client.getKs())
 				expect(data).to.not.be.null;
 			expect(connector.client.getKs()).to.not.be.null;
-			done();
 		}, function (err) {
 			//to check with no cache:
 			//expect(err).to.have.property('response');
 			//expect(err.response).to.not.equal('').and.not.equal(null);
 			expect(err).to.be.null;
-			done();
 		});
 	});
 
-	it('test - get command line via Api call transcoded flavor id', function(done) {
+	it('test - get command line via Api call transcoded flavor id', function() {
 		const filePath = resourcesPath + '/adSample';
 		const outputFilePath = outputPath + '/adSample_output.mpg';
 		return KalturaFFMpegCmdGenerator.generateCommandLineFormat(flavorId, response.jsonInfo, 15, connector, KalturaConfig.config.testing.impersonatePartnerId).then(function (data) {
 			expect(data).to.not.be.null;
 			const cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(data, filePath, outputFilePath);
 			expect(cmdLine).to.not.be.null;
-			done();
 		}, function (err) {
 			if (!err)
 				expect(true).to.be.true;
@@ -75,22 +70,19 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 				const cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(err.response, filePath, outputFilePath);
 				expect(cmdLine).to.not.be.null;
 			}
-			done();
 		});
 	});
 
-	it('test - get command line via Api call source flavor id', function(done) {
+	it('test - get command line via Api call source flavor id', function() {
 		return KalturaFFMpegCmdGenerator.generateCommandLineFormat(sourceFlavorId, response.jsonInfo, 15, connector, KalturaConfig.config.testing.impersonatePartnerId).then(function (data) {
 			// should not get here - if so then the data should be null - validating the opposite
 			expect(data).to.not.be.null;
-			done();
 		}, function (err) {
 			expect(err).to.not.be.null;
 			if (err.code)
 				expect(err.code).to.equal('FLAVOR_PARAMS_OUTPUT_ID_NOT_FOUND');
 			else
 				expect(err.indexOf('KalturaAPIException')).to.not.equal(-1);
-			done();
 		});
 	});
 
