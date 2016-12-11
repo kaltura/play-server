@@ -43,6 +43,7 @@ function testInit(client) {
                         //sleepFor(2000);
                         // update the play server on a new version of the entry
                         playServerTestingHelper.updateEntryVersion(entry.id);
+	                    sleepFor(1000);
                         let command = 'env reRunTest=0 entryId=' + entry.id + ' mocha -R xunit ' + testsPath + '/' + fileName + ' | tee -a /tmp/results.xml';
                         console.log("Running: " + command);
                         let code = child_process.execSync(command);
