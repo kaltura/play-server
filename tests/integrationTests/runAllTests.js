@@ -35,13 +35,6 @@ function testInit(client) {
                     let fileName = files[i];
                     if (fileName.split('.')[1] == 'js' && fileName != 'runAllTests.js'){
                         console.log("Serving " + fileName);
-                        //console.log("Restartung Nginx before test...");
-                        //child_process.execSync('sshpass -p ' + nginxPass + ' ssh root@'+ nginxHost + ' \'service nginx restart\'');
-                        //console.log("Flushing couchbase before test...");
-                        //child_process.execSync('echo Yes | /opt/couchbase/bin/couchbase-cli bucket-flush -c localhost:8091 -u kaltura -p kaltura --bucket=playServer --enable-flush --force');
-                        //console.log("Sleeping 1 secs");
-                        //sleepFor(2000);
-                        // update the play server on a new version of the entry
                         playServerTestingHelper.updateEntryVersion(entry.id);
 	                    sleepFor(1000);
                         let command = 'env reRunTest=0 entryId=' + entry.id + ' mocha -R xunit ' + testsPath + '/' + fileName + ' | tee -a /tmp/results.xml';
