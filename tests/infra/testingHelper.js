@@ -677,6 +677,15 @@ class PlayServerTestingHelper {
         });
     }
 
+    static updateEntryVersion(entryId)
+    {
+        PlayServerTestingHelper.printInfo("Updating entry version in cache , entry: " + entryId );
+        KalturaUtils.getHttpUrl("http://localhost/p/0/layout/updateEntry?entry_id="+entryId, null,
+            () => PlayServerTestingHelper.printInfo("Successfully updated entry version in cache , entry: " + entryId ),
+            (err) => PlayServerTestingHelper.printInfo("Failed to update version , entry: " + entryId + " due to " + util.inspect(err))
+        );
+    }
+
 }
 
 module.exports.PlayServerTestingHelper = PlayServerTestingHelper;
