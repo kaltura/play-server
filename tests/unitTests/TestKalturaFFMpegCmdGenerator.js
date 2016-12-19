@@ -74,6 +74,7 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 	});
 
 	it('test - get command line via Api call source flavor id', function() {
+		this.timeout(5000);
 		return KalturaFFMpegCmdGenerator.generateCommandLineFormat(sourceFlavorId, response.jsonInfo, 15, connector, KalturaConfig.config.testing.impersonatePartnerId).then(function (data) {
 			// should not get here - if so then the data should be null - validating the opposite
 			expect(data).to.not.be.null;
