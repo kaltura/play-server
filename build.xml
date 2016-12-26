@@ -89,8 +89,10 @@
                 </replace>
                 <replace file="${basedir}/bin/play-server.sh" value="@TOKEN_VALUE_NOT_FOUND@" propertyFile="${configFilePath}">
                         <replacefilter token="@LOG_DIR@" property="user_input.LOG_DIR"/>
+			<replacefilter token="@PID_DIR@" property="user_input.PID_DIR"/>
                         <replacefilter token="@PLAY_SERVER_BASE_DIR@" property="user_input.PLAY_SERVER_BASE_DIR"/>
                 </replace>
+		<chmod file="${basedir}/bin/play-server.sh" perm="+x"/>	
 	</target>
 
 </project>
