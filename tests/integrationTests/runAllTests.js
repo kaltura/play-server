@@ -14,12 +14,8 @@ const impersonatePartnerId = KalturaConfig.config.testing.impersonatePartnerId;
 const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonatePartnerId;
 const testsPath = KalturaConfig.config.testing.testsPath;
 
-let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
+const playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
-let entry = null;
-
-playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
-playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 
 function testInit(client) {
     sessionClient = client;
@@ -35,12 +31,13 @@ function testInit(client) {
                     let fileName = files[i];
                     if (fileName.split('.')[1] == 'js' && fileName != 'runAllTests.js'){
                         console.log("Serving " + fileName);
-                        playServerTestingHelper.updateEntryVersion(entry.id);
-	                    sleepFor(1000);
                         let command = 'env reRunTest=0 entryId=' + entry.id + ' mocha -R xunit ' + testsPath + '/' + fileName + ' | tee -a /tmp/results.xml';
                         console.log("Running: " + command);
                         let code = child_process.execSync(command);
                         playServerTestingHelper.printStatus(code);
+                        playServerTestingHelper.execUpdateEntryVersion(entry.id);
+                        playServerTestingHelper.execDeleteEntryAPICachedCalls(entry.id, impersonatePartnerId);
+                        sleepFor(2000);
                     }
                 }
 
@@ -60,3 +57,6 @@ function sleepFor( sleepDuration ){
     var now = new Date().getTime();
     while(new Date().getTime() < now + sleepDuration){ /* do nothing */ }
 }
+
+playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
+playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
