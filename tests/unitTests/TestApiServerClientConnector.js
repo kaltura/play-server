@@ -22,7 +22,7 @@ describe('testApiClientConnector', function () {
 		clsBluebird(namespace);
 	});
 	it('test api exception', function () {
-		let wrongSecret = '123456789abcdefghi';
+		const wrongSecret = '123456789abcdefghi';
 		const falseConnector = new ApiClientConnector(partnerId, wrongSecret, kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);
 		return falseConnector._startSession().then(function (data) {
 			expect(data).to.be.null;
