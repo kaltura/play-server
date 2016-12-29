@@ -36,7 +36,6 @@ function testInit(client) {
                         let code = child_process.execSync(command);
                         playServerTestingHelper.printStatus(code);
                         playServerTestingHelper.execUpdateEntryVersion(entry.id);
-                        playServerTestingHelper.execDeleteEntryAPICachedCalls(entry.id, impersonatePartnerId);
                         sleepFor(2000);
                     }
                 }
