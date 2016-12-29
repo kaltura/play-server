@@ -21,20 +21,6 @@ describe('testApiClientConnector', function () {
 		const namespace = continuationLocalStorage.createNamespace('play-server');//Here just to make sure we create it only once
 		clsBluebird(namespace);
 	});
-	it('test session start', function () {
-		return connector._startSession().then(function (data) {
-			expect(data).to.not.be.null;
-		}, function (err) {
-			if (!err)
-				expect(true).to.equal.true; // because it mean err == null
-			else {
-				expect(err.response).to.not.be.null;
-				expect(err.response).to.not.equal('undifined');
-				expect(err.response).to.not.equal('');
-				// because this mean we had cache fault but not actual fault
-			}
-		});
-	});
 	it('test api exception', function () {
 		let wrongSecret = '123456789abcdefghi';
 		const falseConnector = new ApiClientConnector(partnerId, wrongSecret, kalturaTypes.KalturaSessionType.ADMIN, serviceUrl);
@@ -49,7 +35,20 @@ describe('testApiClientConnector', function () {
 			}
 		});
 	});
-
+	it('test session start', function () {
+		return connector._startSession().then(function (data) {
+			expect(data).to.not.be.null;
+		}, function (err) {
+			if (!err)
+				expect(true).to.equal.true; // because it mean err == null
+			else {
+				expect(err.response).to.not.be.null;
+				expect(err.response).to.not.equal('undifined');
+				expect(err.response).to.not.equal('');
+				// because this mean we had cache fault but not actual fault
+			}
+		});
+	});
 	it('test handleApiRequest with uiConf get action ', function () {
 		return connector.handleApiRequest('uiConf', 'get', [uiConfId], impersonatePartnerId).then(function (data) {
 			expect(data).to.have.property('objectType').and.equal('KalturaUiConf');

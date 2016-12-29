@@ -14,12 +14,8 @@ const impersonatePartnerId = KalturaConfig.config.testing.impersonatePartnerId;
 const secretImpersonatePartnerId = KalturaConfig.config.testing.secretImpersonatePartnerId;
 const testsPath = KalturaConfig.config.testing.testsPath;
 
-let playServerTestingHelper = testingHelper.PlayServerTestingHelper;
+const playServerTestingHelper = testingHelper.PlayServerTestingHelper;
 let sessionClient = null;
-let entry = null;
-
-playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
-playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);
 
 function testInit(client) {
     sessionClient = client;
@@ -35,16 +31,12 @@ function testInit(client) {
                     let fileName = files[i];
                     if (fileName.split('.')[1] == 'js' && fileName != 'runAllTests.js'){
                         console.log("Serving " + fileName);
-                        console.log("Restartung Nginx before test...");
-                        child_process.execSync('sshpass -p ' + nginxPass + ' ssh root@'+ nginxHost + ' \'service nginx restart\'');
-                        console.log("Flushing couchbase before test...");
-                        child_process.execSync('echo Yes | /opt/couchbase/bin/couchbase-cli bucket-flush -c localhost:8091 -u kaltura -p kaltura --bucket=playServer --enable-flush --force');
-                        console.log("Sleeping 10 secs");
-                        sleepFor(10000);
                         let command = 'env reRunTest=0 entryId=' + entry.id + ' mocha -R xunit ' + testsPath + '/' + fileName + ' | tee -a /tmp/results.xml';
                         console.log("Running: " + command);
                         let code = child_process.execSync(command);
                         playServerTestingHelper.printStatus(code);
+                        playServerTestingHelper.execUpdateEntryVersion(entry.id);
+                        sleepFor(2000);
                     }
                 }
 
@@ -64,3 +56,6 @@ function sleepFor( sleepDuration ){
     var now = new Date().getTime();
     while(new Date().getTime() < now + sleepDuration){ /* do nothing */ }
 }
+
+playServerTestingHelper.initTestHelper(serviceUrl, impersonatePartnerId, secretImpersonatePartnerId);
+playServerTestingHelper.initClient(playServerTestingHelper.serverHost, playServerTestingHelper.partnerId, playServerTestingHelper.adminSecret, testInit);

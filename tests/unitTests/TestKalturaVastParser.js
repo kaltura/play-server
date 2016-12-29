@@ -9,7 +9,7 @@ const INVALID_VAST_FILE = 'file:' + resourcesPath + '/inValidVastExampleForUnitT
 
 const VAST_ONLINE_EXAMPLE_URL = `http://projects.kaltura.com/vast/vast12.xml`;
 const DEFAULT_HEADERS = {};
-const VAST_TIMEOUT = 1000;
+const VAST_TIMEOUT = 10000;
 
 describe('Testing Offline Kaltura Vast Parser', function()
 {

@@ -165,6 +165,9 @@ function testInit(client) {
 	if (!fs.existsSync(videoThumbDir))
 		fs.mkdirSync(videoThumbDir);
 
+	if (!fs.existsSync(beaconTrackingFile))
+		fs.closeSync(fs.openSync(beaconTrackingFile, 'w'));
+
 	playServerTestingHelper.createEntry(sessionClient, resourcesPath + "/2MinVideo.mp4", process.env.entryId)
 		.then(function (resultEntry) {
 			entry = resultEntry;

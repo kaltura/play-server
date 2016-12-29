@@ -41,23 +41,10 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 		});
 	});
 
-	it('test - start client session', function() {
-		this.timeout(500);
-		return connector._startSession().then(function (data) {
-			if (!connector.client.getKs())
-				expect(data).to.not.be.null;
-			expect(connector.client.getKs()).to.not.be.null;
-		}, function (err) {
-			//to check with no cache:
-			//expect(err).to.have.property('response');
-			//expect(err.response).to.not.equal('').and.not.equal(null);
-			expect(err).to.be.null;
-		});
-	});
-
 	it('test - get command line via Api call transcoded flavor id', function() {
 		const filePath = resourcesPath + '/adSample';
 		const outputFilePath = outputPath + '/adSample_output.mpg';
+		this.timeout(50000);
 		return KalturaFFMpegCmdGenerator.generateCommandLineFormat(flavorId, response.jsonInfo, 15, connector, KalturaConfig.config.testing.impersonatePartnerId).then(function (data) {
 			expect(data).to.not.be.null;
 			const cmdLine = KalturaFFMpegCmdGenerator.fillCmdLineFormat(data, filePath, outputFilePath);
@@ -74,6 +61,7 @@ describe('test KalturaFFMpegCmdGenerator', function () {
 	});
 
 	it('test - get command line via Api call source flavor id', function() {
+		this.timeout(50000);
 		return KalturaFFMpegCmdGenerator.generateCommandLineFormat(sourceFlavorId, response.jsonInfo, 15, connector, KalturaConfig.config.testing.impersonatePartnerId).then(function (data) {
 			// should not get here - if so then the data should be null - validating the opposite
 			expect(data).to.not.be.null;
