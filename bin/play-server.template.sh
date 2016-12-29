@@ -35,7 +35,7 @@ export PATH=$PATH:$NODE_PATH/forever/bin
 loadNvm() {
     # This loads nvm
     cd $PLAY_SERVER_PREFIX
-    [ -z "$NVM_DIR" ] && NVM_DIR="$HOME/.nvm"
+    NVM_DIR="/root/.nvm"
     if [ -s "$NVM_DIR/nvm.sh" ] ; then
         source "$NVM_DIR/nvm.sh"
         if [ -s .nvmrc ] ; then
