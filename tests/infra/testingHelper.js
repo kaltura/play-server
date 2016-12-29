@@ -683,13 +683,13 @@ class PlayServerTestingHelper {
 	static execUpdateEntryVersion(entryId)
 	{
 		PlayServerTestingHelper.printInfo(`Updating entry version in cache , entry: ${entryId}`);
-		child_process.execSync(`curl "http://localhost/p/0/cleanUp/updateEntry/entryId/${entryId}"`);
+		child_process.execSync(`curl "http://localhost/p/0/cleanUp/updateEntry/entry_id/${entryId}"`);
 	}
 
 	static execDeleteEntryAPICachedCalls(entryId, partnerId)
 	{
 		PlayServerTestingHelper.printInfo(`Deleting entry API calls in cache , entry: ${entryId}`);
-		child_process.execSync(`curl "http://localhost/p/${partnerId}/cleanUp/dropEntryApiCachedResults/entryId/${entryId}"`);
+		child_process.execSync(`curl "http://localhost/p/${partnerId}/cleanUp/dropEntryApiCachedResults/entry_id/${entryId}"`);
 	}
 
 }
