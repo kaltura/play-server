@@ -48,6 +48,7 @@ fillerDefaultDurationSecs = 10
 secondsBackwardsAfterAd = 2
 millisBetweenInnerFetchAndLayout = 3000
 millisAdBreakRetryTimeout = 1000
+metadataProfileId = @METADATA_PROFILE_ID@
 
 [fetch]
 ;domain = @LAYOUT_SERVICE_HOSTNAME@
