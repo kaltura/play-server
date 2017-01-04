@@ -1,6 +1,7 @@
 const Promise = require('bluebird');
 const exec = require('child_process').exec;
 const fs = require('fs');
+const util = require('util');
 require('../../lib/utils/KalturaConfig');
 require('../../lib/utils/KalturaCache');
 
@@ -39,7 +40,10 @@ class h264Verifier
 		KalturaCache.get(flavorId,
 			function (flavorPath) {
 				h264Verifier.writeToLog(`got flavorId ${flavorId} from cache`);
-				h264Verifier.runVerification(flavorId, flavorPath.path, adPath);
+				if (flavorPath.path)
+					h264Verifier.runVerification(flavorId, flavorPath.path, adPath);
+				else
+					h264Verifier.writeToLog(`ERROR: could not fine flavorId ${flavorId} in cache - got only ${util.inspect(flavorPath)}`);
 			},
 			function (err) {
 				h264Verifier.writeToLog(`faild to get flavorId ${flavorId} from cache`);
@@ -50,7 +54,7 @@ class h264Verifier
 	/**
 	 * runs the script on the flavor and the ad and calls verifyScriptOutput function on the results
 	 * @param flavorId
-	 * @param flavorObj
+	 * @param flavorPath
 	 * @param adPath
 	 */
 	static runVerification(flavorId, flavorPath, adPath)
@@ -133,7 +137,6 @@ class h264Verifier
 	/**
 	 * writes str to a logFile, the logFilePath is defined in the config and must exist
 	 * @param str
-	 * @param logFileName
 	 */
 	static writeToLog(str)
 	{
