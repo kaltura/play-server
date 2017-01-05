@@ -43,7 +43,7 @@ class h264Verifier
 				if (flavorPath.path)
 					h264Verifier.runVerification(flavorId, flavorPath.path, adPath);
 				else
-					h264Verifier.writeToLog(`ERROR: could not fine flavorId ${flavorId} in cache - got only ${util.inspect(flavorPath)}`);
+					h264Verifier.writeToLog(`ERROR: could not find flavorId ${flavorId} in cache - got only ${util.inspect(flavorPath)}`);
 			},
 			function (err) {
 				h264Verifier.writeToLog(`faild to get flavorId ${flavorId} from cache`);
