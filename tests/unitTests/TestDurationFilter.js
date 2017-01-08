@@ -36,19 +36,19 @@ describe('Test Duration Filter ', function(){
 
 	it('validate duration filter expect single ad', function()
 	{
-		const duration = 10;// only the first ad is of the ~10 secs
+		const duration = 10000;// only the first ad is of the ~10 secs
 		const filteredAds = VastDurationFilter.filter(vastResponse, duration, COEFFICIENT);
 		expect(filteredAds.length).to.equal(1);
 	});
 	it('validate duration filter expect two ads', function()
 	{
-		const duration = 30;//only the first two are in the time scope
+		const duration = 30000;//only the first two are in the time scope
 		const filteredAds = VastDurationFilter.filter(vastResponse, duration, COEFFICIENT);
 		expect(filteredAds.length).to.equal(2);
 	});
 	it('validate duration filter expect all ads (3)', function()
 	{
-		const duration = 120;// expect all ads to take part
+		const duration = 120000;// expect all ads to take part
 		const filteredAds = VastDurationFilter.filter(vastResponse, duration, COEFFICIENT);
 		expect(filteredAds.length).to.equal(3);
 	});
