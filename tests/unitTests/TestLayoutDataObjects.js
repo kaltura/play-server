@@ -49,10 +49,10 @@ const BEACON1_ID = 'beacon1';
 const BEACON2_ID = 'beacon2';
 const BEACON3_ID = 'beacon3';
 const BEACON4_ID = 'beacon4';
-const BEACON1_OFFSET = '1000';
-const BEACON2_OFFSET = '2000';
-const BEACON3_OFFSET = '3000';
-const BEACON4_OFFSET = '4000';
+const BEACON1_OFFSET = 1000;
+const BEACON2_OFFSET = 2000;
+const BEACON3_OFFSET = 3000;
+const BEACON4_OFFSET = 4000;
 
 const AD_BREAK_EXPECTED_RESULT = '{ "clipIds": ["'+ AD_ID1 +'", "' + AD_ID2 + '" ,"'+ AD_FILLER +'"],' +
 	'"durations": [ '+ DURATION_A + ',' + DURATION_B + ',' + DURATION_C +'],' +
@@ -87,7 +87,7 @@ describe('testLayoutObjects', function() {
 		manifestData.addNotification(new NotificationLayoutData(FETCH_LINK1, FETCH_OFFSET1));
 		manifestData.addNotification(new NotificationLayoutData(FETCH_LINK2, FETCH_OFFSET2));
 
-		expect(removeWhiteSpaces(manifestData.toJSON())).to.equal(removeWhiteSpaces(MANIFEST_LAYOUT_EXPECTED_RESULT));
+		expect(removeWhiteSpaces(JSON.stringify(manifestData.toJSON()))).to.equal(removeWhiteSpaces(MANIFEST_LAYOUT_EXPECTED_RESULT));
 	});
 
 	it('check ManifestLayoutData pre-roll', function() {
@@ -117,13 +117,13 @@ describe('testLayoutObjects', function() {
 		adBreakData.addNotification(new NotificationLayoutData(BEACON2_ID, BEACON2_OFFSET));
 		adBreakData.addNotification(new NotificationLayoutData(BEACON3_ID, BEACON3_OFFSET));
 		adBreakData.addNotification(new NotificationLayoutData(BEACON4_ID, BEACON4_OFFSET));
-		expect(removeWhiteSpaces(adBreakData.toJSON())).to.equal(removeWhiteSpaces(AD_BREAK_EXPECTED_RESULT));
+		expect(removeWhiteSpaces(JSON.stringify(adBreakData.toJSON()))).to.equal(removeWhiteSpaces(AD_BREAK_EXPECTED_RESULT));
 	});
 
 	it('check AdPathLayoutData', function() {
 		const adPathData = new AdPathLayoutData();
 		adPathData.setPath(SOURCE1_PATH_FALVOR1);
-		expect(removeWhiteSpaces(adPathData.toJSON())).to.equal(AD_PATH_EXPECTED_RESULT);
+		expect(removeWhiteSpaces(JSON.stringify(adPathData.toJSON()))).to.equal(AD_PATH_EXPECTED_RESULT);
 	});
 
 	it('check Notification layout object sort', function() {
