@@ -40,7 +40,7 @@ class h264Verifier
 		KalturaCache.get(flavorId,
 			function (flavorPath) {
 				h264Verifier.writeToLog(`got flavorId ${flavorId} from cache`);
-				if (flavorPath.path)
+				if (flavorPath && flavorPath.path)
 					h264Verifier.runVerification(flavorId, flavorPath.path, adPath);
 				else
 					h264Verifier.writeToLog(`ERROR: could not find flavorId ${flavorId} in cache - got only ${util.inspect(flavorPath)}`);

@@ -10,6 +10,8 @@ const SourceClipDataArray = require('../../lib/dataObjects/layoutObjects/SourceC
 const NotificationLayoutData = require('../../lib/dataObjects/layoutObjects/NotificationLayoutData');
 const AdBreakLayoutData = require('../../lib/dataObjects/layoutObjects/AdBreakLayoutData');
 const AdPathLayoutData = require('../../lib/dataObjects/layoutObjects/AdPathLayoutData');
+const PlayerEntryLayoutData = require('../../lib/dataObjects/layoutObjects/PlayerEntryLayoutData');
+const LayoutHelper =  require('../../lib/managers/helpers/EntryVersionHelper');
 
 const DURATION_A = 1000;
 const DURATION_B = 2000;
@@ -72,7 +74,7 @@ function removeWhiteSpaces(text)
 
 describe('testLayoutObjects', function() {
 	it('check ManifestLayoutData', function() {
-		const manifestData = new VODManifestLayoutData(FLAVORS,VERSION);
+		const manifestData = new VODManifestLayoutData(FLAVORS, VERSION);
 		const clips1 = [new SourceClipData(0, SOURCE1_PATH_FALVOR1),
 			new SourceClipData(0, SOURCE1_PATH_FALVOR2)];
 		const clips2 = [new DynamicClipData(DYNAMIC_ID_FALVOR1),
@@ -90,8 +92,32 @@ describe('testLayoutObjects', function() {
 		expect(removeWhiteSpaces(JSON.stringify(manifestData.toJSON()))).to.equal(removeWhiteSpaces(MANIFEST_LAYOUT_EXPECTED_RESULT));
 	});
 
+	it('check PlayerManifestLayoutData', function()
+	{
+		const manifestData = new VODManifestLayoutData(FLAVORS, VERSION);
+		manifestData.setReferenceClipIndex(2);
+		const clips1 = [new SourceClipData(0, SOURCE1_PATH_FALVOR1),
+			new SourceClipData(0, SOURCE1_PATH_FALVOR2)];
+		const clips2 = [new DynamicClipData(DYNAMIC_ID_FALVOR1),
+			new DynamicClipData(DYNAMIC_ID_FALVOR2)];
+		const paths = new Array();
+		paths.push(SOURCE2_PATH_FALVOR1);
+		paths.push(SOURCE2_PATH_FALVOR2);
+		const clips3 = new SourceClipDataArray(DURATION_A, paths);
+		manifestData.addSequence(DURATION_A, clips1);
+		manifestData.addSequence(DURATION_B, clips2);
+		manifestData.addSequence(DURATION_C, clips3.clips);
+
+		const playerLayout = LayoutHelper.manifestToPlayerLayoutTranslator(manifestData);
+		expect(playerLayout.sequences).not.to.equal(null);
+		expect(playerLayout.sequences.length).to.equal(3);
+		expect(!playerLayout.sequences[0].adId).to.equal(true);
+		expect(playerLayout.sequences[1].adId).to.equal(DYNAMIC_ID_FALVOR1);
+	});
+
+
 	it('check ManifestLayoutData pre-roll', function() {
-		const manifestData = new VODManifestLayoutData(FLAVORS,VERSION);
+		const manifestData = new VODManifestLayoutData(FLAVORS, VERSION);
 		manifestData.setReferenceClipIndex(2);
 		const clips1 = [new SourceClipData(0, SOURCE1_PATH_FALVOR1),
 			new SourceClipData(0, SOURCE1_PATH_FALVOR2)];
