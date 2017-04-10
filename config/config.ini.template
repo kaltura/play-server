@@ -96,6 +96,9 @@ HOST = @UDP_SERVER_HOST@
 
 [bin]
 binDir = @PLAY_SERVER_BASE_DIR@/bin
+ffprobePath = @PATH_TO_FFPROBE_ON_SERVER@
+ffmpegPath = @PATH_TO_FFMPEG_ON_SERVER@
+
 [bin][debug]
 enabled = false
 port = 6000
