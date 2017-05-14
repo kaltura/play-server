@@ -1,6 +1,7 @@
 from mpegTsDefs import *
 import subprocess
 import commands
+import urllib
 import sys
 import os
 
@@ -26,6 +27,8 @@ def getTSTimestamps(inputFilenames, filterStreamId):
 	for inputFilename in inputFilenames:
 		if inputFilename == '-':
 			curBuffer = sys.stdin.read()
+		elif inputFilename.startswith('http://') or inputFilename.startswith('https://'):
+			curBuffer = urllib.urlopen(inputFilename).read()
 		else:
 			curBuffer = file(inputFilename, 'rb').read()
 		inputData += curBuffer
